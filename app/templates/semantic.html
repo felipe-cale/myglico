@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}SPARQL | MyGlico MVP{% endblock %}
+{% block content %}
+<section class="hero-panel compact">
+    <div>
+        <p class="eyebrow">Web semântica</p>
+        <h2>Workspace SPARQL sobre o grafo do MVP</h2>
+        <p class="muted">
+            O grafo une pacientes, eventos normalizados, indicadores diários e relações de proveniência.
+        </p>
+    </div>
+</section>
+
+<section class="content-grid single-column">
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Consultas prontas</p>
+                <h3>Escolha uma consulta</h3>
+            </div>
+        </div>
+        <div class="chip-row">
+            {% for key in sample_queries.keys() %}
+            <a class="chip" href="/semantic?name={{ key }}">{{ key }}</a>
+            {% endfor %}
+        </div>
+        <pre class="code-block">{{ query_text }}</pre>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Resultados</p>
+                <h3>Bindings retornados</h3>
+            </div>
+        </div>
+        <div class="table-shell">
+            <table>
+                <thead>
+                    <tr>
+                        {% if results %}
+                            {% for key in results[0].keys() %}
+                            <th>{{ key }}</th>
+                            {% endfor %}
+                        {% else %}
+                            <th>Resultado</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if results %}
+                        {% for row in results %}
+                        <tr>
+                            {% for value in row.values() %}
+                            <td>{{ value }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td>Nenhum resultado para a consulta selecionada.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+</section>
+{% endblock %}
+

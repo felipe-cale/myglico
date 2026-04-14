@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}{{ patient.display_name }} | MyGlico MVP{% endblock %}
+{% block content %}
+<section class="hero-panel compact">
+    <div>
+        <p class="eyebrow">{{ patient.source_file }}</p>
+        <h2>{{ patient.display_name }}</h2>
+        <p class="muted">
+            Relatório analítico consolidado a partir do dataset UCI Diabetes, com indicadores clínicos observacionais,
+            detecção simples de dias atípicos e rastreabilidade para os artefatos de proveniência.
+        </p>
+    </div>
+    <div class="artifact-links">
+        {% if latest_batch_links.provenance_ttl %}
+        <a href="{{ latest_batch_links.provenance_ttl }}">Import TTL</a>
+        {% endif %}
+        {% if latest_run_links.provenance_ttl %}
+        <a href="{{ latest_run_links.provenance_ttl }}">Analytics TTL</a>
+        {% endif %}
+        {% if latest_run_links.semantic_ttl %}
+        <a href="{{ latest_run_links.semantic_ttl }}">Semantic TTL</a>
+        {% endif %}
+    </div>
+</section>
+
+<section class="metric-grid">
+    <article class="metric-card"><span>Dias observados</span><strong>{{ summary.days_observed }}</strong></article>
+    <article class="metric-card"><span>Média glicêmica</span><strong>{{ summary.avg_glucose if summary.avg_glucose is not none else "-" }}</strong></article>
+    <article class="metric-card"><span>% em hipo</span><strong>{{ summary.pct_hypo }}</strong></article>
+    <article class="metric-card"><span>% em faixa</span><strong>{{ summary.pct_in_range }}</strong></article>
+    <article class="metric-card"><span>% acima da meta</span><strong>{{ summary.pct_hyper }}</strong></article>
+    <article class="metric-card"><span>Dias atípicos</span><strong>{{ summary.anomaly_days }}</strong></article>
+</section>
+
+<section class="content-grid single-column">
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Visualização</p>
+                <h3>Média glicêmica diária</h3>
+            </div>
+        </div>
+        {% if line_chart_points %}
+        <svg viewBox="0 0 640 220" class="chart-svg" role="img" aria-label="Média glicêmica diária">
+            <polyline fill="none" stroke="var(--accent)" stroke-width="4" points="{{ line_chart_points }}"></polyline>
+        </svg>
+        {% else %}
+        <p class="muted">Ainda não há dados suficientes para montar a série.</p>
+        {% endif %}
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Horários de queda</p>
+                <h3>Distribuição de eventos abaixo de 70 mg/dL</h3>
+            </div>
+        </div>
+        <div class="bar-grid">
+            {% for item in hourly_lows %}
+            <div class="bar-item">
+                <span>{{ "%02d"|format(item.hour) }}h</span>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width: {{ item.count * 12 if item.count * 12 <= 100 else 100 }}%"></div>
+                </div>
+                <strong>{{ item.count }}</strong>
+            </div>
+            {% endfor %}
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Eventos recentes</p>
+                <h3>Últimos registros normalizados</h3>
+            </div>
+        </div>
+        <div class="table-shell">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Quando</th>
+                        <th>Tipo</th>
+                        <th>Subtipo</th>
+                        <th>Valor</th>
+                        <th>Qualidade do horário</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in recent_events %}
+                    <tr>
+                        <td>{{ event.occurred_at }}</td>
+                        <td>{{ event.event_type }}</td>
+                        <td>{{ event.event_subtype }}</td>
+                        <td>{{ event.numeric_value }}</td>
+                        <td>{{ event.timestamp_quality }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Indicadores diários</p>
+                <h3>Síntese da camada analítica</h3>
+            </div>
+        </div>
+        <div class="table-shell">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Média</th>
+                        <th>% Hipo</th>
+                        <th>% Faixa</th>
+                        <th>% Hiper</th>
+                        <th>Atípico</th>
+                        <th>Cluster</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for indicator in indicators %}
+                    <tr>
+                        <td>{{ indicator.indicator_date }}</td>
+                        <td>{{ indicator.avg_glucose if indicator.avg_glucose is not none else "-" }}</td>
+                        <td>{{ indicator.pct_hypo }}</td>
+                        <td>{{ indicator.pct_in_range }}</td>
+                        <td>{{ indicator.pct_hyper }}</td>
+                        <td>{{ "Sim" if indicator.anomaly_flag else "Não" }}</td>
+                        <td>{{ indicator.cluster_label if indicator.cluster_label is not none else "-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Qualidade dos dados</p>
+                <h3>Issues detectadas para o paciente</h3>
+            </div>
+        </div>
+        <ul class="issue-list">
+            {% for issue in quality_issues %}
+            <li>
+                <strong>{{ issue.issue_type }}</strong>
+                <span>{{ issue.description }}</span>
+            </li>
+            {% else %}
+            <li>Nenhuma issue registrada para este paciente.</li>
+            {% endfor %}
+        </ul>
+    </article>
+</section>
+{% endblock %}
+

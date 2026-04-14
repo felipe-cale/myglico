@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}MyGlico MVP{% endblock %}
+{% block content %}
+<section class="hero-panel">
+    <div>
+        <p class="eyebrow">Recorte da disciplina</p>
+        <h2>UCI Diabetes + banco relacional + analytics + PROV + RDF/SPARQL</h2>
+        <p class="muted">
+            O ambiente já consolida a importação do dataset, normalização dos eventos, cálculo dos indicadores diários,
+            exportação de proveniência e um grafo semântico consultável.
+        </p>
+    </div>
+    <div class="artifact-links">
+        {% if latest_batch_links.provenance_json %}
+        <a href="{{ latest_batch_links.provenance_json }}">Import PROV-JSON</a>
+        {% endif %}
+        {% if latest_batch_links.provenance_ttl %}
+        <a href="{{ latest_batch_links.provenance_ttl }}">Import PROV-TTL</a>
+        {% endif %}
+        {% if latest_run_links.provenance_json %}
+        <a href="{{ latest_run_links.provenance_json }}">Analytics PROV-JSON</a>
+        {% endif %}
+        {% if latest_run_links.provenance_ttl %}
+        <a href="{{ latest_run_links.provenance_ttl }}">Analytics PROV-TTL</a>
+        {% endif %}
+        {% if latest_run_links.semantic_ttl %}
+        <a href="{{ latest_run_links.semantic_ttl }}">Grafo RDF</a>
+        {% endif %}
+    </div>
+</section>
+
+<section class="metric-grid">
+    <article class="metric-card">
+        <span>Pacientes</span>
+        <strong>{{ patient_count }}</strong>
+    </article>
+    <article class="metric-card">
+        <span>Eventos normalizados</span>
+        <strong>{{ normalized_count }}</strong>
+    </article>
+    <article class="metric-card">
+        <span>Indicadores diários</span>
+        <strong>{{ indicator_count }}</strong>
+    </article>
+    <article class="metric-card">
+        <span>Issues de qualidade</span>
+        <strong>{{ issue_count }}</strong>
+    </article>
+</section>
+
+<section class="content-grid">
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Pacientes importados</p>
+                <h3>Resumo analítico</h3>
+            </div>
+        </div>
+        <div class="table-shell">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Paciente</th>
+                        <th>Arquivo</th>
+                        <th>Dias</th>
+                        <th>Média</th>
+                        <th>% Hipo</th>
+                        <th>% Hiper</th>
+                        <th>Dias atípicos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in patients %}
+                    <tr>
+                        <td><a href="/patients/{{ patient.id }}">{{ patient.display_name }}</a></td>
+                        <td>{{ patient.source_file }}</td>
+                        <td>{{ patient.days_observed }}</td>
+                        <td>{{ patient.avg_glucose if patient.avg_glucose is not none else "-" }}</td>
+                        <td>{{ patient.pct_hypo }}</td>
+                        <td>{{ patient.pct_hyper }}</td>
+                        <td>{{ patient.anomaly_days }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Web semântica</p>
+                <h3>Consulta SPARQL de exemplo</h3>
+            </div>
+            <a href="/semantic">Abrir workspace semântico</a>
+        </div>
+        <pre class="code-block">{{ semantic_query }}</pre>
+        <div class="table-shell">
+            <table>
+                <thead>
+                    <tr>
+                        {% if semantic_result %}
+                            {% for key in semantic_result[0].keys() %}
+                            <th>{{ key }}</th>
+                            {% endfor %}
+                        {% else %}
+                            <th>Resultado</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if semantic_result %}
+                        {% for row in semantic_result[:10] %}
+                        <tr>
+                            {% for value in row.values() %}
+                            <td>{{ value }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td>Nenhum resultado disponível.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+</section>
+{% endblock %}
+

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MyGlico MVP{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+</head>
+<body>
+    <header class="shell-header">
+        <div>
+            <p class="eyebrow">MyGlico MVP</p>
+            <h1><a href="/" class="home-link">Camada analítica com proveniência e semântica</a></h1>
+        </div>
+        <nav class="shell-nav">
+            <a href="/">Pacientes</a>
+            <a href="/semantic">SPARQL</a>
+            <a href="/health">Health</a>
+        </nav>
+    </header>
+    <main class="page-shell">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
+
