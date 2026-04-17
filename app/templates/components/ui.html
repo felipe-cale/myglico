@@ -1,0 +1,44 @@
+{% macro metric_card(label, value, helper='', tone='default', suffix='') -%}
+<article class="metric-card metric-card--{{ tone }}">
+    <span class="metric-label">{{ label }}</span>
+    <strong class="metric-value">
+        {{ value }}
+        {% if suffix %}
+        <small>{{ suffix }}</small>
+        {% endif %}
+    </strong>
+    {% if helper %}
+    <p class="metric-helper">{{ helper }}</p>
+    {% endif %}
+</article>
+{%- endmacro %}
+
+{% macro status_badge(label, tone='neutral') -%}
+<span class="badge badge--{{ tone }}">{{ label }}</span>
+{%- endmacro %}
+
+{% macro artifact_link(label, href) -%}
+{% if href %}
+<a class="button button--ghost button--sm" href="{{ href }}">{{ label }}</a>
+{% endif %}
+{%- endmacro %}
+
+{% macro section_header(eyebrow, title, description='') -%}
+<div class="section-heading">
+    <p class="eyebrow">{{ eyebrow }}</p>
+    <h2>{{ title }}</h2>
+    {% if description %}
+    <p class="section-copy">{{ description }}</p>
+    {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro empty_state(title, description) -%}
+<div class="empty-state">
+    <div class="empty-state__icon" aria-hidden="true"></div>
+    <div>
+        <h3>{{ title }}</h3>
+        <p>{{ description }}</p>
+    </div>
+</div>
+{%- endmacro %}

@@ -1,84 +1,80 @@
 {% extends "base.html" %}
+{% from "components/ui.html" import artifact_link, empty_state, metric_card, section_header, status_badge %}
 {% block title %}MyGlico MVP{% endblock %}
 {% block content %}
-<section class="hero-panel">
-    <div>
-        <p class="eyebrow">Recorte da disciplina</p>
-        <h2>UCI Diabetes + banco relacional + analytics + PROV + RDF/SPARQL</h2>
-        <p class="muted">
-            O ambiente já consolida a importação do dataset, normalização dos eventos, cálculo dos indicadores diários,
-            exportação de proveniência e um grafo semântico consultável.
+<section class="hero hero--landing">
+    <div class="hero__content">
+        <div class="hero__chips">
+            {{ status_badge("MyGlico", "brand") }}
+            {{ status_badge("UCI Diabetes", "success") }}
+            {{ status_badge("PROV + RDF", "info") }}
+        </div>
+        <p class="eyebrow">Recorte visual do projeto academico</p>
+        <h1>Uma apresentacao mais clara, confiavel e coerente com a identidade do MyGlico</h1>
+        <p class="hero__text">
+            Esta versao preserva a implementacao atual do MVP, mas apresenta o conteudo com mais hierarquia,
+            identidade e legibilidade. O foco continua sendo o diario glicemico inteligente com analytics,
+            proveniencia e consulta semantica.
         </p>
+        <div class="hero__actions">
+            {{ artifact_link("Import PROV JSON", latest_batch_links.provenance_json) }}
+            {{ artifact_link("Analytics PROV TTL", latest_run_links.provenance_ttl) }}
+            {{ artifact_link("Grafo RDF", latest_run_links.semantic_ttl) }}
+        </div>
     </div>
-    <div class="artifact-links">
-        {% if latest_batch_links.provenance_json %}
-        <a href="{{ latest_batch_links.provenance_json }}">Import PROV-JSON</a>
-        {% endif %}
-        {% if latest_batch_links.provenance_ttl %}
-        <a href="{{ latest_batch_links.provenance_ttl }}">Import PROV-TTL</a>
-        {% endif %}
-        {% if latest_run_links.provenance_json %}
-        <a href="{{ latest_run_links.provenance_json }}">Analytics PROV-JSON</a>
-        {% endif %}
-        {% if latest_run_links.provenance_ttl %}
-        <a href="{{ latest_run_links.provenance_ttl }}">Analytics PROV-TTL</a>
-        {% endif %}
-        {% if latest_run_links.semantic_ttl %}
-        <a href="{{ latest_run_links.semantic_ttl }}">Grafo RDF</a>
-        {% endif %}
-    </div>
+    <aside class="hero__visual hero__visual--brand">
+        <img src="{{ url_for('static', path='img/myglico-logo.png') }}" alt="Identidade visual MyGlico">
+    </aside>
 </section>
 
 <section class="metric-grid">
-    <article class="metric-card">
-        <span>Pacientes</span>
-        <strong>{{ patient_count }}</strong>
-    </article>
-    <article class="metric-card">
-        <span>Eventos normalizados</span>
-        <strong>{{ normalized_count }}</strong>
-    </article>
-    <article class="metric-card">
-        <span>Indicadores diários</span>
-        <strong>{{ indicator_count }}</strong>
-    </article>
-    <article class="metric-card">
-        <span>Issues de qualidade</span>
-        <strong>{{ issue_count }}</strong>
-    </article>
+    {{ metric_card("Pacientes importados", patient_count, "Base consolidada para o recorte visual.", "brand") }}
+    {{ metric_card("Eventos normalizados", normalized_count, "Eventos prontos para leitura e analise.", "info") }}
+    {{ metric_card("Indicadores diarios", indicator_count, "Sintese usada nos relatorios atuais.", "success") }}
+    {{ metric_card("Issues de qualidade", issue_count, "Sinais tratados pela camada de proveniencia.", "warning") }}
 </section>
 
-<section class="content-grid">
-    <article class="panel">
+<section class="dashboard-grid">
+    <article class="panel panel--data">
         <div class="panel-heading">
-            <div>
-                <p class="eyebrow">Pacientes importados</p>
-                <h3>Resumo analítico</h3>
-            </div>
+            {{ section_header("Pacientes importados", "Resumo analitico por paciente", "A mesma lista existente agora organizada para leitura clinica e academica.") }}
         </div>
         <div class="table-shell">
-            <table>
+            <table class="data-table">
                 <thead>
                     <tr>
                         <th>Paciente</th>
                         <th>Arquivo</th>
                         <th>Dias</th>
-                        <th>Média</th>
+                        <th>Media</th>
                         <th>% Hipo</th>
                         <th>% Hiper</th>
-                        <th>Dias atípicos</th>
+                        <th>Dias atipicos</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for patient in patients %}
+                    {% set hypo_tone = "danger" if patient.pct_hypo >= 20 else "warning" if patient.pct_hypo >= 10 else "success" %}
+                    {% set hyper_tone = "warning" if patient.pct_hyper >= 30 else "success" %}
+                    {% set anomaly_tone = "danger" if patient.anomaly_days > 2 else "info" if patient.anomaly_days > 0 else "neutral" %}
                     <tr>
-                        <td><a href="/patients/{{ patient.id }}">{{ patient.display_name }}</a></td>
-                        <td>{{ patient.source_file }}</td>
+                        <td><a href="/patients/{{ patient.id }}" class="table-link">{{ patient.display_name }}</a></td>
+                        <td><span class="table-meta">{{ patient.source_file }}</span></td>
                         <td>{{ patient.days_observed }}</td>
-                        <td>{{ patient.avg_glucose if patient.avg_glucose is not none else "-" }}</td>
-                        <td>{{ patient.pct_hypo }}</td>
-                        <td>{{ patient.pct_hyper }}</td>
-                        <td>{{ patient.anomaly_days }}</td>
+                        <td>
+                            {% if patient.avg_glucose is not none %}
+                            {{ "%.1f"|format(patient.avg_glucose) }} mg/dL
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>{{ status_badge("%.1f%%"|format(patient.pct_hypo), hypo_tone) }}</td>
+                        <td>{{ status_badge("%.1f%%"|format(patient.pct_hyper), hyper_tone) }}</td>
+                        <td>{{ status_badge(patient.anomaly_days, anomaly_tone) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7">{{ empty_state("Sem pacientes", "A importacao ainda nao produziu registros para mostrar aqui.") }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -86,44 +82,26 @@
         </div>
     </article>
 
-    <article class="panel">
-        <div class="panel-heading">
-            <div>
-                <p class="eyebrow">Web semântica</p>
-                <h3>Consulta SPARQL de exemplo</h3>
+    <div class="stack">
+        <article class="panel panel--soft">
+            <div class="panel-heading">
+                {{ section_header("Camada semantica", "Consulta SPARQL de partida", "A consulta base continua acessivel, mas com apresentacao mais clara.") }}
+                <a href="/semantic" class="button button--primary button--sm">Abrir workspace</a>
             </div>
-            <a href="/semantic">Abrir workspace semântico</a>
-        </div>
-        <pre class="code-block">{{ semantic_query }}</pre>
-        <div class="table-shell">
-            <table>
-                <thead>
-                    <tr>
-                        {% if semantic_result %}
-                            {% for key in semantic_result[0].keys() %}
-                            <th>{{ key }}</th>
-                            {% endfor %}
-                        {% else %}
-                            <th>Resultado</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if semantic_result %}
-                        {% for row in semantic_result[:10] %}
-                        <tr>
-                            {% for value in row.values() %}
-                            <td>{{ value }}</td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr><td>Nenhum resultado disponível.</td></tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </article>
+            <pre class="code-block">{{ semantic_query }}</pre>
+        </article>
+
+        <article class="panel">
+            <div class="panel-heading">
+                {{ section_header("Artefatos do recorte", "Proveniencia e entregaveis", "Os mesmos arquivos do MVP, agora com chamadas visuais mais consistentes.") }}
+            </div>
+            <div class="button-cluster">
+                {{ artifact_link("Import PROV TTL", latest_batch_links.provenance_ttl) }}
+                {{ artifact_link("Analytics PROV JSON", latest_run_links.provenance_json) }}
+                {{ artifact_link("Analytics PROV TTL", latest_run_links.provenance_ttl) }}
+                {{ artifact_link("TTL semantico", latest_run_links.semantic_ttl) }}
+            </div>
+        </article>
+    </div>
 </section>
 {% endblock %}
-

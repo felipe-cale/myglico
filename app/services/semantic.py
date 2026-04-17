@@ -181,7 +181,7 @@ def _class_name_for_event_type(event_type: str) -> str:
 @lru_cache(maxsize=4)
 def _load_graph_cached(ttl_path: str) -> Graph:
     graph = Graph()
-    graph.parse(ttl_path, format="ttl")
+    graph.parse(_resolve_graph_path(ttl_path), format="ttl")
     return graph
 
 
@@ -198,3 +198,16 @@ def execute_sparql(ttl_path: str | Path, query: str, limit: int | None = None) -
         if limit is not None and index + 1 >= limit:
             break
     return rows
+
+
+def _resolve_graph_path(ttl_path: str | Path) -> str:
+    candidate = Path(str(ttl_path))
+    if candidate.exists():
+        return candidate.as_posix()
+
+    fallback_name = str(ttl_path).replace("\\", "/").split("/")[-1]
+    fallback = settings.semantic_dir / fallback_name
+    if fallback.exists():
+        return fallback.as_posix()
+
+    return str(ttl_path)

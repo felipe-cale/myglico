@@ -1,0 +1,23 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bookGradient" x1="16" y1="18" x2="78" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#24B26F"/>
+      <stop offset="1" stop-color="#167CD9"/>
+    </linearGradient>
+    <linearGradient id="screenGradient" x1="52" y1="48" x2="81" y2="83" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8CE7FF"/>
+      <stop offset="1" stop-color="#1E86F1"/>
+    </linearGradient>
+  </defs>
+  <rect x="9" y="10" width="50" height="58" rx="14" fill="white" stroke="url(#bookGradient)" stroke-width="5"/>
+  <path d="M23 28H46" stroke="#7FC9F4" stroke-width="4" stroke-linecap="round"/>
+  <path d="M23 38H46" stroke="#B1DDF8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M23 48H40" stroke="#B1DDF8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M19 16L59 65" stroke="url(#bookGradient)" stroke-width="4" stroke-linecap="round" opacity="0.22"/>
+  <path d="M56 57C56 44.85 65.85 35 78 35C90.15 35 100 44.85 100 57V66C100 78.15 90.15 88 78 88C65.85 88 56 78.15 56 66V57Z" fill="#0956B5" transform="translate(-18 -5)"/>
+  <path d="M43 52C43 42.61 50.61 35 60 35C69.39 35 77 42.61 77 52V58C77 67.39 69.39 75 60 75C50.61 75 43 67.39 43 58V52Z" fill="url(#screenGradient)" stroke="#0A58B7" stroke-width="4"/>
+  <rect x="49" y="41" width="22" height="15" rx="4" fill="#F4FBFF"/>
+  <path d="M53 70L60 62L67 70" stroke="#082C56" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="60" cy="67" r="6.5" fill="#FFD058" stroke="#0A58B7" stroke-width="4"/>
+  <circle cx="78" cy="22" r="6" fill="#FFD058"/>
+</svg>

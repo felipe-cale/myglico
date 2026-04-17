@@ -1,138 +1,224 @@
 {% extends "base.html" %}
+{% from "components/ui.html" import artifact_link, empty_state, section_header, status_badge %}
 {% block title %}{{ patient.display_name }} | MyGlico MVP{% endblock %}
 {% block content %}
-<section class="hero-panel compact">
-    <div>
-        <p class="eyebrow">{{ patient.source_file }}</p>
-        <h2>{{ patient.display_name }}</h2>
-        <p class="muted">
-            Relatório analítico consolidado a partir do dataset UCI Diabetes, com indicadores clínicos observacionais,
-            detecção simples de dias atípicos e rastreabilidade para os artefatos de proveniência.
+<section class="hero hero--compact">
+    <div class="hero__content">
+        <div class="hero__chips">
+            {{ status_badge(patient.source_file, "neutral") }}
+            <span class="badge badge--info" id="summary-measurements-badge">{{ summary.glucose_measurements }} medicoes</span>
+        </div>
+        <p class="eyebrow">Relatorio individual</p>
+        <h1>{{ patient.display_name }}</h1>
+        <p class="hero__text">
+            Relatorio analitico consolidado a partir do dataset UCI Diabetes, com indicadores observacionais,
+            leitura rapida de horarios de queda e rastreabilidade para os artefatos de proveniencia.
         </p>
+        <div class="hero__actions">
+            {{ artifact_link("Import TTL", latest_batch_links.provenance_ttl) }}
+            {{ artifact_link("Analytics TTL", latest_run_links.provenance_ttl) }}
+            {{ artifact_link("Semantic TTL", latest_run_links.semantic_ttl) }}
+        </div>
     </div>
-    <div class="artifact-links">
-        {% if latest_batch_links.provenance_ttl %}
-        <a href="{{ latest_batch_links.provenance_ttl }}">Import TTL</a>
-        {% endif %}
-        {% if latest_run_links.provenance_ttl %}
-        <a href="{{ latest_run_links.provenance_ttl }}">Analytics TTL</a>
-        {% endif %}
-        {% if latest_run_links.semantic_ttl %}
-        <a href="{{ latest_run_links.semantic_ttl }}">Semantic TTL</a>
-        {% endif %}
+    <aside class="hero__visual hero__visual--summary">
+        <div class="summary-orb">
+            <span>Faixa observada</span>
+            <strong id="hero-in-range">{{ "%.1f%%"|format(summary.pct_in_range) }}</strong>
+            <small id="selected-range-copy">
+                {% if filters.start_date and filters.end_date %}
+                de {{ filters.start_date }} ate {{ filters.end_date }}
+                {% else %}
+                no periodo consolidado
+                {% endif %}
+            </small>
+        </div>
+    </aside>
+</section>
+
+<section
+    class="panel filter-panel"
+    id="patient-analytics-app"
+    data-patient-id="{{ patient.id }}"
+    data-api-url="/api/patients/{{ patient.id }}"
+    data-start-date="{{ filters.start_date or '' }}"
+    data-end-date="{{ filters.end_date or '' }}"
+    data-available-start="{{ filters.available_start_date or '' }}"
+    data-available-end="{{ filters.available_end_date or '' }}"
+>
+    <div class="panel-heading">
+        {{ section_header("Filtro temporal", "Explorar o recorte analitico", "O frontend agora busca os dados no FastAPI conforme o periodo selecionado. O intervalo inicial mostra os ultimos 30 dias disponiveis do paciente.") }}
     </div>
+    <form class="filter-form" id="patient-range-form">
+        <label class="field">
+            <span>Data inicial</span>
+            <input id="start-date-input" name="start_date" type="date" value="{{ filters.start_date or '' }}" min="{{ filters.available_start_date or '' }}" max="{{ filters.available_end_date or '' }}">
+        </label>
+        <label class="field">
+            <span>Data final</span>
+            <input id="end-date-input" name="end_date" type="date" value="{{ filters.end_date or '' }}" min="{{ filters.available_start_date or '' }}" max="{{ filters.available_end_date or '' }}">
+        </label>
+        <div class="filter-actions">
+            <button class="button button--primary button--sm" type="submit">Aplicar periodo</button>
+            <button class="button button--ghost button--sm" id="last-30-days-button" type="button">Ultimos 30 dias</button>
+        </div>
+        <div class="filter-status">
+            <span class="badge badge--neutral" id="analytics-status">Pronto para consultar a API</span>
+        </div>
+    </form>
 </section>
 
 <section class="metric-grid">
-    <article class="metric-card"><span>Dias observados</span><strong>{{ summary.days_observed }}</strong></article>
-    <article class="metric-card"><span>Média glicêmica</span><strong>{{ summary.avg_glucose if summary.avg_glucose is not none else "-" }}</strong></article>
-    <article class="metric-card"><span>% em hipo</span><strong>{{ summary.pct_hypo }}</strong></article>
-    <article class="metric-card"><span>% em faixa</span><strong>{{ summary.pct_in_range }}</strong></article>
-    <article class="metric-card"><span>% acima da meta</span><strong>{{ summary.pct_hyper }}</strong></article>
-    <article class="metric-card"><span>Dias atípicos</span><strong>{{ summary.anomaly_days }}</strong></article>
+    <article class="metric-card metric-card--brand">
+        <span class="metric-label">Dias observados</span>
+        <strong class="metric-value" id="metric-days-observed">{{ summary.days_observed }}</strong>
+        <p class="metric-helper">Periodo com indicadores diarios.</p>
+    </article>
+    <article class="metric-card metric-card--info">
+        <span class="metric-label">Media glicemica</span>
+        <strong class="metric-value"><span id="metric-avg-glucose">{% if summary.avg_glucose is not none %}{{ "%.1f"|format(summary.avg_glucose) }}{% else %}-{% endif %}</span><small>mg/dL</small></strong>
+        <p class="metric-helper">Leitura media consolidada.</p>
+    </article>
+    <article class="metric-card metric-card--danger">
+        <span class="metric-label">% em hipo</span>
+        <strong class="metric-value" id="metric-pct-hypo">{{ "%.1f%%"|format(summary.pct_hypo) }}</strong>
+        <p class="metric-helper">Eventos abaixo do limiar.</p>
+    </article>
+    <article class="metric-card metric-card--success">
+        <span class="metric-label">% em faixa</span>
+        <strong class="metric-value" id="metric-pct-in-range">{{ "%.1f%%"|format(summary.pct_in_range) }}</strong>
+        <p class="metric-helper">Janela principal do acompanhamento.</p>
+    </article>
+    <article class="metric-card metric-card--warning">
+        <span class="metric-label">% acima da meta</span>
+        <strong class="metric-value" id="metric-pct-hyper">{{ "%.1f%%"|format(summary.pct_hyper) }}</strong>
+        <p class="metric-helper">Eventos observados acima da meta.</p>
+    </article>
+    <article class="metric-card metric-card--neutral">
+        <span class="metric-label">Dias atipicos</span>
+        <strong class="metric-value" id="metric-anomaly-days">{{ summary.anomaly_days }}</strong>
+        <p class="metric-helper">Sinais apontados pela analise.</p>
+    </article>
 </section>
 
-<section class="content-grid single-column">
-    <article class="panel">
+<section class="detail-grid">
+    <article class="panel panel--wide">
         <div class="panel-heading">
-            <div>
-                <p class="eyebrow">Visualização</p>
-                <h3>Média glicêmica diária</h3>
-            </div>
+            {{ section_header("Visualizacao principal", "Tendencia glicemica diaria", "Grafico dinamico carregado via FastAPI com base no intervalo selecionado.") }}
         </div>
-        {% if line_chart_points %}
-        <svg viewBox="0 0 640 220" class="chart-svg" role="img" aria-label="Média glicêmica diária">
-            <polyline fill="none" stroke="var(--accent)" stroke-width="4" points="{{ line_chart_points }}"></polyline>
-        </svg>
-        {% else %}
-        <p class="muted">Ainda não há dados suficientes para montar a série.</p>
-        {% endif %}
-    </article>
-
-    <article class="panel">
-        <div class="panel-heading">
-            <div>
-                <p class="eyebrow">Horários de queda</p>
-                <h3>Distribuição de eventos abaixo de 70 mg/dL</h3>
+        <div class="chart-card chart-card--tall">
+            <div class="chart-canvas-shell">
+                <canvas id="glucose-trend-chart" aria-label="Grafico de tendencia glicemica" role="img"></canvas>
             </div>
-        </div>
-        <div class="bar-grid">
-            {% for item in hourly_lows %}
-            <div class="bar-item">
-                <span>{{ "%02d"|format(item.hour) }}h</span>
-                <div class="bar-track">
-                    <div class="bar-fill" style="width: {{ item.count * 12 if item.count * 12 <= 100 else 100 }}%"></div>
-                </div>
-                <strong>{{ item.count }}</strong>
+            <div class="chart-caption">
+                <span>Media glicemica diaria com linhas de referencia de 70 e 180 mg/dL</span>
+                <span id="trend-caption">Dados atualizados pelo recorte aplicado.</span>
             </div>
-            {% endfor %}
         </div>
     </article>
 
     <article class="panel">
         <div class="panel-heading">
-            <div>
-                <p class="eyebrow">Eventos recentes</p>
-                <h3>Últimos registros normalizados</h3>
+            {{ section_header("Distribuicao do periodo", "Leitura rapida da faixa glicemica", "Resumo do periodo para facilitar a comparacao entre hipo, faixa e hiper.") }}
+        </div>
+        <div class="chart-card chart-card--compact">
+            <div class="chart-canvas-shell chart-canvas-shell--donut">
+                <canvas id="distribution-chart" aria-label="Distribuicao glicemica" role="img"></canvas>
             </div>
+            <div class="distribution-legend">
+                <div><span class="legend-dot legend-dot--danger"></span><strong id="legend-hypo">{{ "%.1f%%"|format(summary.pct_hypo) }}</strong><small>Hipo</small></div>
+                <div><span class="legend-dot legend-dot--success"></span><strong id="legend-in-range">{{ "%.1f%%"|format(summary.pct_in_range) }}</strong><small>Em faixa</small></div>
+                <div><span class="legend-dot legend-dot--warning"></span><strong id="legend-hyper">{{ "%.1f%%"|format(summary.pct_hyper) }}</strong><small>Hiper</small></div>
+            </div>
+        </div>
+    </article>
+
+    <article class="panel panel--wide">
+        <div class="panel-heading">
+            {{ section_header("Eventos extremos", "Leituras abaixo de 70 e acima de 250 mg/dL por hora", "O grafico consolida os dois extremos glicemicos na faixa horaria completa de 0h a 23h.") }}
+        </div>
+        <div class="chart-card">
+            <div class="chart-canvas-shell chart-canvas-shell--medium">
+                <canvas id="hourly-extremes-chart" aria-label="Eventos extremos glicemicos por hora" role="img"></canvas>
+            </div>
+        </div>
+    </article>
+
+    <article class="panel panel--wide">
+        <div class="panel-heading">
+            {{ section_header("Eventos recentes", "Ultimos registros do periodo", "Tabela alimentada via API para refletir o intervalo de datas selecionado.") }}
         </div>
         <div class="table-shell">
-            <table>
+            <table class="data-table">
                 <thead>
                     <tr>
                         <th>Quando</th>
                         <th>Tipo</th>
                         <th>Subtipo</th>
                         <th>Valor</th>
-                        <th>Qualidade do horário</th>
+                        <th>Contexto</th>
+                        <th>Qualidade do horario</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for event in recent_events %}
+                <tbody id="recent-events-body">
+                    {% for event in recent_events_json %}
                     <tr>
                         <td>{{ event.occurred_at }}</td>
-                        <td>{{ event.event_type }}</td>
-                        <td>{{ event.event_subtype }}</td>
-                        <td>{{ event.numeric_value }}</td>
-                        <td>{{ event.timestamp_quality }}</td>
+                        <td><span class="badge badge--info">{{ event.event_type.replace("_", " ") }}</span></td>
+                        <td>{{ event.event_subtype if event.event_subtype else "-" }}</td>
+                        <td>
+                            {% if event.glucose_mg_dl is not none %}
+                            {{ "%.1f"|format(event.glucose_mg_dl) }} mg/dL
+                            {% elif event.numeric_value is not none %}
+                            {{ "%.1f"|format(event.numeric_value) }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>{{ event.context_label if event.context_label else "-" }}</td>
+                        <td><span class="badge badge--neutral">{{ event.timestamp_quality.replace("_", " ") }}</span></td>
                     </tr>
+                    {% else %}
+                    <tr><td colspan="6">{{ empty_state("Sem eventos", "Nao ha registros recentes para este periodo.") }}</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </article>
 
-    <article class="panel">
+    <article class="panel panel--wide">
         <div class="panel-heading">
-            <div>
-                <p class="eyebrow">Indicadores diários</p>
-                <h3>Síntese da camada analítica</h3>
-            </div>
+            {{ section_header("Indicadores diarios", "Sintese analitica do periodo", "Tabela dinamica com os dias do intervalo selecionado.") }}
         </div>
         <div class="table-shell">
-            <table>
+            <table class="data-table">
                 <thead>
                     <tr>
                         <th>Data</th>
-                        <th>Média</th>
+                        <th>Media</th>
                         <th>% Hipo</th>
                         <th>% Faixa</th>
                         <th>% Hiper</th>
-                        <th>Atípico</th>
-                        <th>Cluster</th>
+                        <th>Atipico</th>
+                          <th>Perfil do dia</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for indicator in indicators %}
+                <tbody id="daily-indicators-body">
+                    {% for indicator in daily_indicators_json %}
                     <tr>
-                        <td>{{ indicator.indicator_date }}</td>
-                        <td>{{ indicator.avg_glucose if indicator.avg_glucose is not none else "-" }}</td>
-                        <td>{{ indicator.pct_hypo }}</td>
-                        <td>{{ indicator.pct_in_range }}</td>
-                        <td>{{ indicator.pct_hyper }}</td>
-                        <td>{{ "Sim" if indicator.anomaly_flag else "Não" }}</td>
-                        <td>{{ indicator.cluster_label if indicator.cluster_label is not none else "-" }}</td>
+                        <td>{{ indicator.date }}</td>
+                        <td>{% if indicator.avg_glucose is not none %}{{ "%.1f"|format(indicator.avg_glucose) }} mg/dL{% else %}-{% endif %}</td>
+                        <td><span class="badge badge--danger">{{ "%.1f%%"|format(indicator.pct_hypo) }}</span></td>
+                        <td><span class="badge badge--success">{{ "%.1f%%"|format(indicator.pct_in_range) }}</span></td>
+                        <td><span class="badge badge--warning">{{ "%.1f%%"|format(indicator.pct_hyper) }}</span></td>
+                        <td><span class="badge badge--neutral">{{ "Sim" if indicator.anomaly_flag else "Nao" }}</span></td>
+                          <td>
+                              <span title="{{ indicator.cluster_profile_description if indicator.cluster_profile_description else '' }}">
+                                  {{ indicator.cluster_profile_label if indicator.cluster_profile_label else ("Grupo " ~ indicator.cluster_label if indicator.cluster_label is not none else "-") }}
+                              </span>
+                          </td>
                     </tr>
+                    {% else %}
+                    <tr><td colspan="7">{{ empty_state("Sem indicadores", "Nao ha indicadores diarios neste periodo.") }}</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -141,22 +227,24 @@
 
     <article class="panel">
         <div class="panel-heading">
-            <div>
-                <p class="eyebrow">Qualidade dos dados</p>
-                <h3>Issues detectadas para o paciente</h3>
-            </div>
+            {{ section_header("Qualidade dos dados", "Issues detectadas", "Alertas e observacoes da normalizacao permanecem disponiveis sem alterar o fluxo existente.") }}
         </div>
         <ul class="issue-list">
             {% for issue in quality_issues %}
-            <li>
-                <strong>{{ issue.issue_type }}</strong>
+            <li class="issue-item">
+                <div class="issue-item__top">
+                    {{ status_badge(issue.severity, "warning" if issue.severity == "warning" else "danger" if issue.severity == "error" else "neutral") }}
+                    <strong>{{ issue.issue_type }}</strong>
+                </div>
                 <span>{{ issue.description }}</span>
             </li>
             {% else %}
-            <li>Nenhuma issue registrada para este paciente.</li>
+            <li>{{ empty_state("Nenhuma issue registrada", "Este paciente nao possui apontamentos adicionais de qualidade de dados.") }}</li>
             {% endfor %}
         </ul>
     </article>
 </section>
-{% endblock %}
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', path='js/patient-detail.js') }}?v=20260416-hourly-extremes" defer></script>
+{% endblock %}

@@ -13,3 +13,4 @@ artifacts/provenance/*.ttl
 artifacts/semantic/*.ttl
 dist/
 build/
+frontend-react/node_modules/

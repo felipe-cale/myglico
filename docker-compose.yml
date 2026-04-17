@@ -1,0 +1,45 @@
+services:
+  legacy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: myglico-legacy
+    working_dir: /app
+    environment:
+      MYGLICO_RELOAD: "1"
+      WATCHFILES_FORCE_POLLING: "true"
+    command: >
+      sh -lc "alembic upgrade head &&
+      python scripts/bootstrap_db.py &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+      --reload-dir /app/app
+      --reload-dir /app/app/templates
+      --reload-dir /app/app/static"
+    ports:
+      - "8001:8001"
+    volumes:
+      - .:/app
+
+  react:
+    build:
+      context: .
+      dockerfile: frontend-react/Dockerfile
+    container_name: myglico-react
+    working_dir: /workspace/frontend-react
+    depends_on:
+      - legacy
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_API_TARGET: "http://legacy:8001"
+      VITE_LEGACY_URL: "http://localhost:8001"
+    command: >
+      sh -lc "npm install &&
+      npm run dev -- --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/workspace
+      - myglico_node_modules:/workspace/frontend-react/node_modules
+
+volumes:
+  myglico_node_modules:

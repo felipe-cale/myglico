@@ -1,27 +1,38 @@
 {% extends "base.html" %}
+{% from "components/ui.html" import empty_state, section_header, status_badge %}
 {% block title %}SPARQL | MyGlico MVP{% endblock %}
 {% block content %}
-<section class="hero-panel compact">
-    <div>
-        <p class="eyebrow">Web semântica</p>
-        <h2>Workspace SPARQL sobre o grafo do MVP</h2>
-        <p class="muted">
-            O grafo une pacientes, eventos normalizados, indicadores diários e relações de proveniência.
+<section class="hero hero--compact">
+    <div class="hero__content">
+        <div class="hero__chips">
+            {{ status_badge("RDF", "brand") }}
+            {{ status_badge("OWL", "info") }}
+            {{ status_badge("SPARQL", "success") }}
+        </div>
+        <p class="eyebrow">Web semantica</p>
+        <h1>Workspace SPARQL sobre o grafo do MVP</h1>
+        <p class="hero__text">
+            O grafo semantico une pacientes, eventos normalizados, indicadores diarios e relacoes de proveniencia.
+            Nesta camada, o objetivo do redesign foi melhorar foco, leitura e consistencia com o restante do produto.
         </p>
     </div>
+    <aside class="hero__visual hero__visual--mini">
+        <div class="semantic-card">
+            <span>Consulta selecionada</span>
+            <strong>{{ query_name }}</strong>
+            <small>{{ results|length }} linhas retornadas</small>
+        </div>
+    </aside>
 </section>
 
-<section class="content-grid single-column">
-    <article class="panel">
+<section class="dashboard-grid dashboard-grid--semantic">
+    <article class="panel panel--soft">
         <div class="panel-heading">
-            <div>
-                <p class="eyebrow">Consultas prontas</p>
-                <h3>Escolha uma consulta</h3>
-            </div>
+            {{ section_header("Consultas prontas", "Escolha uma consulta", "A navegacao entre consultas continua igual, agora apresentada como um conjunto de acoes mais legivel.") }}
         </div>
         <div class="chip-row">
             {% for key in sample_queries.keys() %}
-            <a class="chip" href="/semantic?name={{ key }}">{{ key }}</a>
+            <a class="chip {% if key == query_name %}chip--active{% endif %}" href="/semantic?name={{ key }}">{{ key }}</a>
             {% endfor %}
         </div>
         <pre class="code-block">{{ query_text }}</pre>
@@ -29,13 +40,10 @@
 
     <article class="panel">
         <div class="panel-heading">
-            <div>
-                <p class="eyebrow">Resultados</p>
-                <h3>Bindings retornados</h3>
-            </div>
+            {{ section_header("Resultados", "Bindings retornados", "Tabela mantida com o mesmo comportamento, mas com visual mais claro e melhor ritmo de leitura.") }}
         </div>
         <div class="table-shell">
-            <table>
+            <table class="data-table">
                 <thead>
                     <tr>
                         {% if results %}
@@ -57,7 +65,9 @@
                         </tr>
                         {% endfor %}
                     {% else %}
-                        <tr><td>Nenhum resultado para a consulta selecionada.</td></tr>
+                        <tr>
+                            <td>{{ empty_state("Sem bindings", "Execute uma consulta pronta para visualizar resultados do grafo.") }}</td>
+                        </tr>
                     {% endif %}
                 </tbody>
             </table>
@@ -65,4 +75,3 @@
     </article>
 </section>
 {% endblock %}
-
