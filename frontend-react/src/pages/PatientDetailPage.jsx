@@ -296,13 +296,6 @@ export default function PatientDetailPage() {
     return Array.from(new Set([...fromIndicators, ...fromEvents])).sort();
   }, [data, glucoseEventsByDate]);
 
-  const selectedDayIndicator = useMemo(() => {
-    if (!data || !selectedDay) {
-      return null;
-    }
-    return data.daily_indicators.find((indicator) => indicator.date === selectedDay) || null;
-  }, [data, selectedDay]);
-
   const selectedDayEvents = useMemo(() => {
     if (!selectedDay) {
       return [];
@@ -318,19 +311,6 @@ export default function PatientDetailPage() {
     const glucoseValues = selectedDayEvents
       .map((event) => event.glucose_mg_dl)
       .filter((value) => value !== null && value !== undefined);
-
-    if (selectedDayIndicator) {
-      return {
-        date: selectedDay,
-        measurementCount: glucoseValues.length,
-        avgGlucose: selectedDayIndicator.avg_glucose,
-        pctHypo: selectedDayIndicator.pct_hypo,
-        pctInRange: selectedDayIndicator.pct_in_range,
-        pctHyper: selectedDayIndicator.pct_hyper,
-        lowEventsCount: selectedDayIndicator.low_events_count,
-        highEventsCount: selectedDayIndicator.high_events_count
-      };
-    }
 
     if (!glucoseValues.length) {
       return null;
@@ -351,7 +331,7 @@ export default function PatientDetailPage() {
       lowEventsCount: hypoCount,
       highEventsCount: hyperCount
     };
-  }, [selectedDay, selectedDayEvents, selectedDayIndicator]);
+  }, [selectedDay, selectedDayEvents]);
 
   const distributionData = useMemo(() => {
     if (!data) {
@@ -465,6 +445,7 @@ export default function PatientDetailPage() {
   useEffect(() => {
     if (!availableDayDates.length) {
       setSelectedDay("");
+      setViewMode("period");
       return;
     }
 
@@ -472,7 +453,10 @@ export default function PatientDetailPage() {
       return;
     }
 
-    setSelectedDay(availableDayDates[availableDayDates.length - 1]);
+    if (selectedDay) {
+      setSelectedDay("");
+    }
+    setViewMode("period");
   }, [availableDayDates, selectedDay]);
 
   const hasPendingFilterChange = Boolean(
@@ -493,6 +477,8 @@ export default function PatientDetailPage() {
 
     if (next.toString() !== searchParams.toString()) {
       lastResolvedRequestRef.current = "";
+      setSelectedDay("");
+      setViewMode("period");
       setSearchParams(next);
     }
   }
@@ -546,6 +532,11 @@ export default function PatientDetailPage() {
   function handleSelectDay(dateValue) {
     setSelectedDay(dateValue);
     setViewMode("day");
+  }
+
+  function handleShowPeriod() {
+    setViewMode("period");
+    setSelectedDay("");
   }
 
   return (
@@ -721,18 +712,19 @@ export default function PatientDetailPage() {
               <button
                 type="button"
                 className={`react-chip${!isDayMode ? " is-active" : ""}`}
-                onClick={() => setViewMode("period")}
+                onClick={handleShowPeriod}
               >
                 Período
               </button>
-              <button
-                type="button"
-                className={`react-chip${isDayMode ? " is-active" : ""}`}
-                onClick={() => selectedDay && setViewMode("day")}
-                disabled={!selectedDay}
-              >
-                Dia selecionado
-              </button>
+              {selectedDay ? (
+                <button
+                  type="button"
+                  className={`react-chip${isDayMode ? " is-active" : ""}`}
+                  onClick={() => setViewMode("day")}
+                >
+                  Dia selecionado
+                </button>
+              ) : null}
             </div>
           </div>
           <div className="react-chart">
