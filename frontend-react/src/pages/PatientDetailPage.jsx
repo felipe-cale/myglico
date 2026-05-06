@@ -550,8 +550,8 @@ export default function PatientDetailPage() {
           <p className="react-eyebrow">Detalhe do paciente</p>
           <h1>{patient.display_name}</h1>
           <p>
-            Este painel consolida o período selecionado para apoiar a leitura clínica, com atualização dinâmica dos
-            indicadores e gráficos.
+            Este painel consolida o período selecionado a partir do core clínico, com atualização dinâmica dos
+            indicadores, registros e gráficos.
           </p>
           <div className="react-actions">
             <Link to="/" className="react-button react-button--ghost">
@@ -959,32 +959,41 @@ export default function PatientDetailPage() {
           </div>
           {isCompactMobile ? (
             <div className="react-mobile-list" aria-label="Eventos recentes">
-              {recentEvents.map((event) => (
-                <article key={`${event.occurred_at}-${event.event_type}`} className="react-mobile-card">
-                  <div className="react-mobile-card__header">
-                    <div>
-                      <span className="react-mobile-card__eyebrow">Quando</span>
-                      <h3>{formatDateTime(event.occurred_at)}</h3>
+              {recentEvents.map((event) => {
+                const eventTypeLabel = event.event_type_label || event.event_type || "-";
+                const eventSubtypeLabel = event.event_subtype_label || event.event_subtype || "-";
+                const contextLabel = event.context_label_display || event.context_label || "-";
+                const timestampQualityLabel = event.timestamp_quality_label || event.timestamp_quality || "-";
+
+                return (
+                  <article key={`${event.occurred_at}-${event.event_type}`} className="react-mobile-card">
+                    <div className="react-mobile-card__header">
+                      <div>
+                        <span className="react-mobile-card__eyebrow">Quando</span>
+                        <h3>{formatDateTime(event.occurred_at)}</h3>
+                      </div>
+                      <span className="react-mobile-card__badge" title={event.event_type || ""}>
+                        {eventTypeLabel}
+                      </span>
                     </div>
-                    <span className="react-mobile-card__badge">{event.event_type}</span>
-                  </div>
-                  <div className="react-mobile-card__grid">
-                    <MobileDetailField label="Subtipo" value={event.event_subtype || "-"} />
-                    <MobileDetailField
-                      label="Valor"
-                      value={
-                        event.glucose_mg_dl != null
-                          ? `${formatNumber(event.glucose_mg_dl)} mg/dL`
-                          : event.numeric_value != null
-                            ? formatNumber(event.numeric_value)
-                            : "-"
-                      }
-                    />
-                    <MobileDetailField label="Contexto" value={event.context_label || "-"} />
-                    <MobileDetailField label="Confiabilidade" value={event.timestamp_quality} />
-                  </div>
-                </article>
-              ))}
+                    <div className="react-mobile-card__grid">
+                      <MobileDetailField label="Subtipo" value={eventSubtypeLabel} />
+                      <MobileDetailField
+                        label="Valor"
+                        value={
+                          event.glucose_mg_dl != null
+                            ? `${formatNumber(event.glucose_mg_dl)} mg/dL`
+                            : event.numeric_value != null
+                              ? formatNumber(event.numeric_value)
+                              : "-"
+                        }
+                      />
+                      <MobileDetailField label="Contexto" value={contextLabel} />
+                      <MobileDetailField label="Confiabilidade" value={timestampQualityLabel} />
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           ) : (
             <div className="react-table-shell">
@@ -1000,22 +1009,29 @@ export default function PatientDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentEvents.map((event) => (
-                    <tr key={`${event.occurred_at}-${event.event_type}`}>
-                      <td>{formatDateTime(event.occurred_at)}</td>
-                      <td>{event.event_type}</td>
-                      <td>{event.event_subtype || "-"}</td>
-                      <td>
-                        {event.glucose_mg_dl != null
-                          ? `${formatNumber(event.glucose_mg_dl)} mg/dL`
-                          : event.numeric_value != null
-                            ? formatNumber(event.numeric_value)
-                            : "-"}
-                      </td>
-                      <td>{event.context_label || "-"}</td>
-                      <td>{event.timestamp_quality}</td>
-                    </tr>
-                  ))}
+                  {recentEvents.map((event) => {
+                    const eventTypeLabel = event.event_type_label || event.event_type || "-";
+                    const eventSubtypeLabel = event.event_subtype_label || event.event_subtype || "-";
+                    const contextLabel = event.context_label_display || event.context_label || "-";
+                    const timestampQualityLabel = event.timestamp_quality_label || event.timestamp_quality || "-";
+
+                    return (
+                      <tr key={`${event.occurred_at}-${event.event_type}`}>
+                        <td>{formatDateTime(event.occurred_at)}</td>
+                        <td title={event.event_type || ""}>{eventTypeLabel}</td>
+                        <td title={event.event_subtype || ""}>{eventSubtypeLabel}</td>
+                        <td>
+                          {event.glucose_mg_dl != null
+                            ? `${formatNumber(event.glucose_mg_dl)} mg/dL`
+                            : event.numeric_value != null
+                              ? formatNumber(event.numeric_value)
+                              : "-"}
+                        </td>
+                        <td title={event.context_label || ""}>{contextLabel}</td>
+                        <td title={event.timestamp_quality || ""}>{timestampQualityLabel}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -3,34 +3,13 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 
 const navigation = [
   { to: "/", label: "Visao geral" },
-  { to: "/semantic", label: "Semantica" }
+  { to: "/semantic", label: "Conhecimento" }
 ];
 
-function resolveLegacyHref() {
-  if (typeof window === "undefined") {
-    return "/";
-  }
-
-  if (import.meta.env.VITE_LEGACY_URL) {
-    return import.meta.env.VITE_LEGACY_URL;
-  }
-
-  const { origin, pathname, protocol, hostname, port } = window.location;
-
-  if (pathname.startsWith("/react")) {
-    return `${origin}/`;
-  }
-
-  if (port === "8000") {
-    return `${protocol}//${hostname}:8001/`;
-  }
-
-  return `${origin}/`;
-}
+const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 
 export default function AppShell({ children }) {
   const location = useLocation();
-  const legacyHref = resolveLegacyHref();
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -95,21 +74,18 @@ export default function AppShell({ children }) {
           ))}
         </nav>
         <div className="react-drawer__actions">
-          <span className="react-pill">MVP academico</span>
-          <a className="react-legacy-link" href={legacyHref}>
-            Versao anterior
-          </a>
+          <span className="react-pill">Painel ativo</span>
         </div>
       </aside>
       <div className="react-shell__container">
         <header className="react-topbar">
           <Link className="react-brand" to="/">
             <span className="react-brand__mark">
-              <img src="/static/img/myglico-mark.svg" alt="" />
+              <img src={assetUrl("img/myglico-mark.svg")} alt="" />
             </span>
             <span>
               <strong>MyGlico</strong>
-              <small>Diario glicemico inteligente com analytics em tempo real</small>
+              <small>Acompanhamento glicêmico com visão clara e contínua</small>
             </span>
           </Link>
           <button
@@ -137,10 +113,7 @@ export default function AppShell({ children }) {
               ))}
             </nav>
             <div className="react-topbar__actions">
-              <span className="react-pill">MVP academico</span>
-              <a className="react-legacy-link" href={legacyHref}>
-                Versao anterior
-              </a>
+              <span className="react-pill">Painel ativo</span>
             </div>
           </div>
         </header>
@@ -148,11 +121,10 @@ export default function AppShell({ children }) {
         <footer className="react-footer">
           <div>
             <strong>MyGlico</strong>
-            <p>Camada React principal do MVP com FastAPI, indicadores glicemicos, proveniencia e semantica.</p>
+            <p>Uma experiência pensada para acompanhar pessoas, reconhecer mudanças relevantes e apoiar decisões com mais contexto.</p>
           </div>
           <div className="react-footer__links">
-            <a href={legacyHref}>Abrir interface legada</a>
-            <Link to="/semantic">Explorar workspace semantico</Link>
+            <Link to="/semantic">Explorar base de conhecimento</Link>
           </div>
         </footer>
       </div>

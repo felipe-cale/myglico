@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
+from hashlib import sha256
 from pathlib import Path
 import subprocess
 
 from prov.model import ProvDocument
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.entities import AnalyticsRun, ImportBatch
+from app.models.entities import AnalysisRun, DataSource, GlucoseRecordSource, ImportBatch, ProvenanceArtifact, RawImportRecord
 
 
 settings = get_settings()
@@ -28,6 +31,10 @@ def _git_revision() -> str:
         return "unknown"
 
 
+def _file_hash(path: str | Path) -> str:
+    return sha256(Path(path).read_bytes()).hexdigest()
+
+
 def _base_document() -> ProvDocument:
     document = ProvDocument()
     document.add_namespace("myg", settings.semantic_base_uri)
@@ -36,95 +43,114 @@ def _base_document() -> ProvDocument:
     return document
 
 
-def write_import_provenance(
-    import_batch: ImportBatch,
-    patient_file_names: list[str],
-    data_codes_path: Path,
-    domain_description_path: Path,
-) -> tuple[str, str]:
+def _register_artifact(
+    db: Session,
+    owner_type: str,
+    owner_id: str,
+    artifact_type: str,
+    artifact_format: str,
+    path: str,
+) -> ProvenanceArtifact:
+    artifact = ProvenanceArtifact(
+        owner_type=owner_type,
+        owner_id=owner_id,
+        artifact_type=artifact_type,
+        format=artifact_format,
+        path=path,
+        content_hash=_file_hash(path),
+        hash_algorithm="sha256",
+        status="completed",
+    )
+    db.add(artifact)
+    db.flush()
+    return artifact
+
+
+def write_import_provenance(db: Session, import_batch: ImportBatch) -> tuple[str, str]:
     document = _base_document()
     now = datetime.utcnow().isoformat()
     revision = _git_revision()
+    data_source = db.get(DataSource, import_batch.data_source_id)
+    raw_count = db.scalar(select(func.count(RawImportRecord.id)).where(RawImportRecord.import_batch_id == import_batch.id)) or 0
+    glucose_count = (
+        db.scalar(select(func.count(GlucoseRecordSource.id)).where(GlucoseRecordSource.import_batch_id == import_batch.id))
+        or 0
+    )
 
-    importer = document.agent("ex:myglico-importer", {"prov:label": "MyGlico UCI importer"})
+    importer = document.agent("ex:myglico-importer", {"prov:label": "MyGlico dataset importer"})
     software = document.agent("ex:git-revision", {"prov:label": revision})
-    source_zip = document.entity("ex:uci-diabetes-zip", {"prov:label": import_batch.source_url})
-    data_codes = document.entity("ex:data-codes", {"prov:label": str(data_codes_path)})
-    domain = document.entity("ex:domain-description", {"prov:label": str(domain_description_path)})
-    raw_table = document.entity(f"ex:raw-events-{import_batch.id}", {"prov:label": "raw_events"})
-    normalized_table = document.entity(f"ex:normalized-events-{import_batch.id}", {"prov:label": "normalized_events"})
+    source_attrs = {
+        "prov:label": data_source.name if data_source else "unknown",
+        "mygv:sourceType": data_source.source_type if data_source else "dataset",
+    }
+    if data_source and data_source.version:
+        source_attrs["mygv:version"] = data_source.version
+    source_entity = document.entity(f"ex:data-source-{data_source.id if data_source else 'unknown'}", source_attrs)
+    raw_records = document.entity(
+        f"ex:raw-import-records-{import_batch.id}",
+        {"prov:label": "raw_import_records", "mygv:recordCount": raw_count},
+    )
+    glucose_records = document.entity(
+        f"ex:glucose-records-{import_batch.id}",
+        {"prov:label": "glucose_records", "mygv:recordCount": glucose_count},
+    )
 
-    download = document.activity(f"ex:download-{import_batch.id}", now)
-    extract = document.activity(f"ex:extract-{import_batch.id}", now)
-    parse = document.activity(f"ex:parse-{import_batch.id}", now)
-    normalize = document.activity(f"ex:normalize-{import_batch.id}", now)
-    load = document.activity(f"ex:load-{import_batch.id}", now)
-
-    for activity in [download, extract, parse, normalize, load]:
-        document.wasAssociatedWith(activity, importer)
-    document.wasAssociatedWith(load, software)
-
-    document.used(extract, source_zip)
-    document.used(parse, data_codes)
-    document.used(parse, domain)
-    document.used(parse, source_zip)
-    document.used(normalize, raw_table)
-    document.used(load, normalized_table)
-    document.wasGeneratedBy(raw_table, parse)
-    document.wasGeneratedBy(normalized_table, normalize)
-    document.wasDerivedFrom(normalized_table, raw_table)
-    document.wasDerivedFrom(raw_table, source_zip)
-    for file_name in patient_file_names[:10]:
-        document.entity(f"ex:{file_name}", {"prov:label": file_name})
+    import_activity = document.activity(f"ex:dataset-import-{import_batch.id}", now)
+    normalize_activity = document.activity(f"ex:dataset-normalization-{import_batch.id}", now)
+    document.wasAssociatedWith(import_activity, importer)
+    document.wasAssociatedWith(import_activity, software)
+    document.wasAssociatedWith(normalize_activity, importer)
+    document.used(import_activity, source_entity)
+    document.wasGeneratedBy(raw_records, import_activity)
+    document.used(normalize_activity, raw_records)
+    document.wasGeneratedBy(glucose_records, normalize_activity)
+    document.wasDerivedFrom(glucose_records, raw_records)
 
     json_path = settings.provenance_dir / f"import-{import_batch.id}.json"
     ttl_path = settings.provenance_dir / f"import-{import_batch.id}.ttl"
     document.serialize(json_path, format="json")
     document.serialize(ttl_path, format="rdf", rdf_format="ttl")
+    _register_artifact(db, "import_batch", import_batch.id, "provenance", "json", str(json_path))
+    _register_artifact(db, "import_batch", import_batch.id, "provenance", "ttl", str(ttl_path))
     return str(json_path), str(ttl_path)
 
 
-def write_analytics_provenance(
-    analytics_run: AnalyticsRun,
-    import_batch: ImportBatch,
-    semantic_ttl_path: str,
-    indicator_count: int,
-) -> tuple[str, str]:
+def write_analytics_provenance(db: Session, analytics_run: AnalysisRun) -> tuple[str, str]:
     document = _base_document()
     now = datetime.utcnow().isoformat()
     revision = _git_revision()
 
     analyst = document.agent("ex:myglico-analytics", {"prov:label": "MyGlico analytics service"})
     software = document.agent("ex:analytics-git-revision", {"prov:label": revision})
-    normalized_table = document.entity(
-        f"ex:normalized-events-{import_batch.id}",
-        {"prov:label": "normalized_events", "mygv:recordCount": import_batch.normalized_record_count},
+    input_entity = document.entity(
+        f"ex:glucose-record-set-{analytics_run.id}",
+        {"prov:label": "glucose_records", "mygv:fingerprint": analytics_run.input_fingerprint},
     )
-    indicator_table = document.entity(
+    indicator_entity = document.entity(
         f"ex:daily-indicators-{analytics_run.id}",
-        {"prov:label": "daily_indicators", "mygv:recordCount": indicator_count},
+        {"prov:label": "daily_indicators", "mygv:fingerprint": analytics_run.output_fingerprint},
     )
-    semantic_graph = document.entity(f"ex:semantic-graph-{analytics_run.id}", {"prov:label": semantic_ttl_path})
+    config_entity = document.entity(
+        f"ex:analysis-config-{analytics_run.id}",
+        {"prov:label": analytics_run.algorithm_name, "mygv:algorithmVersion": analytics_run.algorithm_version},
+    )
 
-    compute = document.activity(f"ex:compute-indicators-{analytics_run.id}", now)
+    compute = document.activity(f"ex:compute-daily-indicators-{analytics_run.id}", now)
     anomaly = document.activity(f"ex:detect-anomalies-{analytics_run.id}", now)
     clustering = document.activity(f"ex:cluster-days-{analytics_run.id}", now)
-    export = document.activity(f"ex:semantic-export-{analytics_run.id}", now)
-
-    for activity in [compute, anomaly, clustering, export]:
+    for activity in [compute, anomaly, clustering]:
         document.wasAssociatedWith(activity, analyst)
         document.wasAssociatedWith(activity, software)
+        document.used(activity, input_entity)
+        document.used(activity, config_entity)
 
-    document.used(compute, normalized_table)
-    document.used(anomaly, indicator_table)
-    document.used(clustering, indicator_table)
-    document.used(export, indicator_table)
-    document.wasGeneratedBy(indicator_table, compute)
-    document.wasGeneratedBy(semantic_graph, export)
-    document.wasDerivedFrom(semantic_graph, indicator_table)
+    document.wasGeneratedBy(indicator_entity, compute)
+    document.wasDerivedFrom(indicator_entity, input_entity)
 
     json_path = settings.provenance_dir / f"analytics-{analytics_run.id}.json"
     ttl_path = settings.provenance_dir / f"analytics-{analytics_run.id}.ttl"
     document.serialize(json_path, format="json")
     document.serialize(ttl_path, format="rdf", rdf_format="ttl")
+    _register_artifact(db, "analysis_run", analytics_run.id, "provenance", "json", str(json_path))
+    _register_artifact(db, "analysis_run", analytics_run.id, "provenance", "ttl", str(ttl_path))
     return str(json_path), str(ttl_path)

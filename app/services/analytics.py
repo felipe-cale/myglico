@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, time, timedelta
+from hashlib import sha256
+from importlib.metadata import PackageNotFoundError, version
+import platform
+import subprocess
 
 import numpy as np
 import pandas as pd
@@ -10,10 +14,53 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.entities import AnalyticsRun, DailyIndicator, ImportBatch, NormalizedEvent
+from app.models.entities import AnalysisOutbox, AnalysisRun, DailyIndicator, DailyMetricsCurrent, GlucoseRecord, ProvenanceEvent
 
 
 settings = get_settings()
+
+
+def _git_revision() -> str:
+    try:
+        return (
+            subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL)
+            .decode("utf-8")
+            .strip()
+        )
+    except Exception:
+        return "unknown"
+
+
+def _package_version(package_name: str) -> str:
+    try:
+        return version(package_name)
+    except PackageNotFoundError:
+        return "unknown"
+
+
+def _environment_snapshot() -> dict[str, object]:
+    return {
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+        "database": settings.database_url.split(":", 1)[0],
+        "library_versions": {
+            "numpy": _package_version("numpy"),
+            "pandas": _package_version("pandas"),
+            "scikit_learn": _package_version("scikit-learn"),
+            "sqlalchemy": _package_version("sqlalchemy"),
+        },
+    }
+
+
+def _analysis_parameters() -> dict[str, object]:
+    return {
+        "hypo_threshold": settings.default_hypo_threshold,
+        "pre_meal_range": [settings.pre_meal_min, settings.pre_meal_max],
+        "post_meal_upper_bound": settings.post_meal_max,
+        "generic_upper_bound": settings.generic_max,
+        "anomaly_detector": {"name": "IsolationForest", "random_state": 42},
+        "clustering": {"name": "KMeans", "max_clusters": 3, "random_state": 42},
+    }
 
 
 def _upper_bound_for_context(context: str | None) -> float:
@@ -34,26 +81,94 @@ def _in_range(glucose: float, context: str | None) -> bool:
     return settings.default_hypo_threshold <= glucose <= settings.generic_max
 
 
-def _prepare_glucose_frame(db: Session, import_batch_id: str) -> pd.DataFrame:
-    rows = db.execute(
-        select(
-            NormalizedEvent.id,
-            NormalizedEvent.patient_id,
-            NormalizedEvent.event_date,
-            NormalizedEvent.event_time,
-            NormalizedEvent.context_label,
-            NormalizedEvent.glucose_mg_dl,
-        ).where(
-            NormalizedEvent.import_batch_id == import_batch_id,
-            NormalizedEvent.is_glucose.is_(True),
-            NormalizedEvent.glucose_mg_dl.is_not(None),
+def _date_bounds(start_date: date | None, end_date: date | None) -> tuple[datetime | None, datetime | None]:
+    if start_date is None or end_date is None:
+        return None, None
+    return datetime.combine(start_date, time.min), datetime.combine(end_date + timedelta(days=1), time.min)
+
+
+def _records_fingerprint(records: list[GlucoseRecord]) -> str:
+    digest = sha256()
+    for record in sorted(records, key=lambda item: (item.patient_id, item.measured_at, item.id)):
+        digest.update(
+            "|".join(
+                [
+                    record.id,
+                    record.patient_id,
+                    record.measured_at.isoformat(),
+                    str(record.glucose_mg_dl),
+                    record.context_label or "",
+                    record.updated_at.isoformat() if record.updated_at else "",
+                ]
+            ).encode("utf-8")
         )
-    ).all()
-    if not rows:
+    return digest.hexdigest()
+
+
+def _payload_fingerprint(payload: object) -> str:
+    return sha256(repr(payload).encode("utf-8")).hexdigest()
+
+
+def mark_analysis_pending(
+    db: Session,
+    patient_id: str,
+    target_date: date,
+    trigger_type: str,
+) -> None:
+    existing = db.scalar(
+        select(AnalysisOutbox).where(
+            AnalysisOutbox.patient_id == patient_id,
+            AnalysisOutbox.start_date == target_date,
+            AnalysisOutbox.end_date == target_date,
+            AnalysisOutbox.status.in_(["pending", "processing"]),
+        )
+    )
+    if existing is None:
+        db.add(
+            AnalysisOutbox(
+                patient_id=patient_id,
+                start_date=target_date,
+                end_date=target_date,
+                trigger_type=trigger_type,
+            )
+        )
+
+    current = db.scalar(
+        select(DailyMetricsCurrent).where(
+            DailyMetricsCurrent.patient_id == patient_id,
+            DailyMetricsCurrent.metric_date == target_date,
+        )
+    )
+    if current is None:
+        db.add(
+            DailyMetricsCurrent(
+                patient_id=patient_id,
+                metric_date=target_date,
+                freshness_status="stale",
+            )
+        )
+    else:
+        current.freshness_status = "stale"
+        current.updated_at = datetime.utcnow()
+
+
+def _prepare_glucose_frame(records: list[GlucoseRecord]) -> pd.DataFrame:
+    if not records:
         return pd.DataFrame()
 
-    frame = pd.DataFrame(rows, columns=["event_id", "patient_id", "event_date", "event_time", "context_label", "glucose_mg_dl"])
-    frame["glucose_mg_dl"] = frame["glucose_mg_dl"].astype(float)
+    frame = pd.DataFrame(
+        [
+            {
+                "record_id": record.id,
+                "patient_id": record.patient_id,
+                "event_date": record.measured_at.date(),
+                "event_time": record.measured_at.time(),
+                "context_label": record.context_label,
+                "glucose_mg_dl": float(record.glucose_mg_dl),
+            }
+            for record in records
+        ]
+    )
     frame["is_hypo"] = frame["glucose_mg_dl"] < settings.default_hypo_threshold
     frame["is_in_range"] = frame.apply(lambda row: _in_range(row["glucose_mg_dl"], row["context_label"]), axis=1)
     frame["is_hyper"] = frame.apply(
@@ -66,49 +181,25 @@ def _prepare_glucose_frame(db: Session, import_batch_id: str) -> pd.DataFrame:
     return frame
 
 
-def compute_analytics(db: Session, import_batch: ImportBatch) -> AnalyticsRun:
-    glucose_frame = _prepare_glucose_frame(db, import_batch.id)
-    analytics_run = AnalyticsRun(
-        import_batch_id=import_batch.id,
-        version="v1",
-        status="running",
-        config_json={
-            "hypo_threshold": settings.default_hypo_threshold,
-            "pre_meal_range": [settings.pre_meal_min, settings.pre_meal_max],
-            "post_meal_upper_bound": settings.post_meal_max,
-            "generic_upper_bound": settings.generic_max,
-        },
-    )
-    db.add(analytics_run)
-    db.flush()
-
-    if glucose_frame.empty:
-        analytics_run.status = "completed"
-        analytics_run.finished_at = datetime.utcnow()
-        db.commit()
-        db.refresh(analytics_run)
-        return analytics_run
-
+def _summary_rows_from_frame(frame: pd.DataFrame) -> list[dict[str, object]]:
     summary_rows: list[dict[str, object]] = []
-    grouped = glucose_frame.groupby(["patient_id", "event_date"], sort=True)
+    grouped = frame.groupby(["patient_id", "event_date"], sort=True)
     for (patient_id, indicator_date), group in grouped:
         pre_group = group[group["is_pre_meal"]]
         post_group = group[group["is_post_meal"]]
         avg = group["glucose_mg_dl"].mean()
-        median = group["glucose_mg_dl"].median()
         std = group["glucose_mg_dl"].std(ddof=0)
-        cv = float(std / avg) if avg else None
         summary_rows.append(
             {
-                "patient_id": int(patient_id),
+                "patient_id": str(patient_id),
                 "indicator_date": indicator_date,
                 "glucose_event_count": int(len(group)),
                 "avg_glucose": float(avg),
-                "median_glucose": float(median),
+                "median_glucose": float(group["glucose_mg_dl"].median()),
                 "min_glucose": float(group["glucose_mg_dl"].min()),
                 "max_glucose": float(group["glucose_mg_dl"].max()),
                 "std_glucose": float(std) if not np.isnan(std) else None,
-                "coefficient_of_variation": cv,
+                "coefficient_of_variation": float(std / avg) if avg else None,
                 "pct_hypo": float(group["is_hypo"].mean() * 100.0),
                 "pct_in_range": float(group["is_in_range"].mean() * 100.0),
                 "pct_hyper": float(group["is_hyper"].mean() * 100.0),
@@ -125,8 +216,12 @@ def compute_analytics(db: Session, import_batch: ImportBatch) -> AnalyticsRun:
                 },
             }
         )
+    return summary_rows
 
-    summary_frame = pd.DataFrame(summary_rows)
+
+def _apply_advanced_analytics(summary_frame: pd.DataFrame) -> pd.DataFrame:
+    if summary_frame.empty:
+        return summary_frame
 
     for _, patient_frame in summary_frame.groupby("patient_id"):
         feature_columns = ["avg_glucose", "std_glucose", "pct_hypo", "pct_hyper", "glucose_event_count"]
@@ -141,14 +236,148 @@ def compute_analytics(db: Session, import_batch: ImportBatch) -> AnalyticsRun:
             cluster_count = min(3, len(patient_frame))
             kmeans = KMeans(n_clusters=cluster_count, n_init=10, random_state=42)
             summary_frame.loc[patient_frame.index, "cluster_label"] = kmeans.fit_predict(features)
+    return summary_frame
 
-    db.execute(delete(DailyIndicator).where(DailyIndicator.analytics_run_id == analytics_run.id))
-    for row in summary_frame.to_dict(orient="records"):
-        db.add(DailyIndicator(analytics_run_id=analytics_run.id, **row))
 
-    analytics_run.status = "completed"
-    analytics_run.finished_at = datetime.utcnow()
+def _upsert_daily_metrics(db: Session, rows: list[dict[str, object]], fingerprints_by_day: dict[tuple[str, date], str]) -> None:
+    for row in rows:
+        patient_id = str(row["patient_id"])
+        metric_date = row["indicator_date"]
+        current = db.scalar(
+            select(DailyMetricsCurrent).where(
+                DailyMetricsCurrent.patient_id == patient_id,
+                DailyMetricsCurrent.metric_date == metric_date,
+            )
+        )
+        values = {
+            "glucose_event_count": row["glucose_event_count"],
+            "avg_glucose": row["avg_glucose"],
+            "min_glucose": row["min_glucose"],
+            "max_glucose": row["max_glucose"],
+            "pct_hypo": row["pct_hypo"],
+            "pct_in_range": row["pct_in_range"],
+            "pct_hyper": row["pct_hyper"],
+            "low_events_count": row["low_events_count"],
+            "high_events_count": row["high_events_count"],
+            "freshness_status": "fresh",
+            "input_fingerprint": fingerprints_by_day.get((patient_id, metric_date)),
+            "updated_at": datetime.utcnow(),
+        }
+        if current is None:
+            db.add(DailyMetricsCurrent(patient_id=patient_id, metric_date=metric_date, **values))
+        else:
+            for key, value in values.items():
+                setattr(current, key, value)
+
+
+def compute_analytics(
+    db: Session,
+    patient_id: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    trigger_type: str = "script",
+) -> AnalysisRun:
+    query = select(GlucoseRecord).order_by(GlucoseRecord.patient_id, GlucoseRecord.measured_at, GlucoseRecord.id)
+    if patient_id:
+        query = query.where(GlucoseRecord.patient_id == patient_id)
+    start_dt, end_dt_exclusive = _date_bounds(start_date, end_date)
+    if start_dt and end_dt_exclusive:
+        query = query.where(GlucoseRecord.measured_at >= start_dt, GlucoseRecord.measured_at < end_dt_exclusive)
+
+    records = db.scalars(query).all()
+    input_fingerprint = _records_fingerprint(records)
+    analysis_run = AnalysisRun(
+        patient_id=patient_id,
+        start_date=start_date,
+        end_date=end_date,
+        status="running",
+        trigger_type=trigger_type,
+        algorithm_name="daily_glycemic_summary",
+        algorithm_version="v2",
+        parameters_json=_analysis_parameters(),
+        environment_json=_environment_snapshot(),
+        code_version=_git_revision(),
+        input_fingerprint=input_fingerprint,
+    )
+    db.add(analysis_run)
+    db.flush()
+
+    frame = _prepare_glucose_frame(records)
+    if frame.empty:
+        analysis_run.status = "completed"
+        analysis_run.finished_at = datetime.utcnow()
+        analysis_run.output_fingerprint = _payload_fingerprint([])
+        db.add(
+            ProvenanceEvent(
+                activity_type="compute_daily_indicators",
+                entity_type="analysis_run",
+                entity_id=analysis_run.id,
+                source_type="glucose_records",
+                occurred_at=datetime.utcnow(),
+                prov_json={
+                    "activity": "compute_daily_indicators",
+                    "used": "glucose_records",
+                    "wasGeneratedBy": analysis_run.id,
+                },
+                metadata_json={"record_count": 0},
+                content_hash=analysis_run.output_fingerprint,
+            )
+        )
+        db.commit()
+        db.refresh(analysis_run)
+        return analysis_run
+
+    summary_rows = _summary_rows_from_frame(frame)
+    summary_frame = _apply_advanced_analytics(pd.DataFrame(summary_rows))
+    rows = summary_frame.to_dict(orient="records")
+
+    fingerprints_by_day: dict[tuple[str, date], str] = {}
+    for (row_patient_id, event_date), group in frame.groupby(["patient_id", "event_date"], sort=True):
+        day_records = [record for record in records if record.patient_id == row_patient_id and record.measured_at.date() == event_date]
+        fingerprints_by_day[(str(row_patient_id), event_date)] = _records_fingerprint(day_records)
+
+    _upsert_daily_metrics(db, rows, fingerprints_by_day)
+
+    db.execute(delete(DailyIndicator).where(DailyIndicator.analysis_run_id == analysis_run.id))
+    for row in rows:
+        db.add(DailyIndicator(analysis_run_id=analysis_run.id, **row))
+
+    outbox_query = select(AnalysisOutbox).where(AnalysisOutbox.status.in_(["pending", "processing"]))
+    if patient_id:
+        outbox_query = outbox_query.where(AnalysisOutbox.patient_id == patient_id)
+    if start_date and end_date:
+        outbox_query = outbox_query.where(AnalysisOutbox.start_date >= start_date, AnalysisOutbox.end_date <= end_date)
+    for outbox_item in db.scalars(outbox_query).all():
+        outbox_item.status = "completed"
+        outbox_item.processed_at = datetime.utcnow()
+
+    output_fingerprint = _payload_fingerprint(rows)
+    analysis_run.status = "completed"
+    analysis_run.finished_at = datetime.utcnow()
+    analysis_run.output_fingerprint = output_fingerprint
+    db.add(
+        ProvenanceEvent(
+            activity_type="compute_daily_indicators",
+            entity_type="analysis_run",
+            entity_id=analysis_run.id,
+            source_type="glucose_records",
+            occurred_at=datetime.utcnow(),
+            prov_json={
+                "entity": {"daily_indicators": {"prov:type": "mygv:DailyIndicatorSet"}},
+                "activity": {"compute_daily_indicators": {"prov:type": "mygv:AnalyticsActivity"}},
+                "used": {"compute_daily_indicators": "glucose_records"},
+                "wasGeneratedBy": {"daily_indicators": "compute_daily_indicators"},
+                "wasDerivedFrom": {"daily_indicators": "glucose_records"},
+            },
+            metadata_json={
+                "input_fingerprint": input_fingerprint,
+                "output_fingerprint": output_fingerprint,
+                "record_count": len(records),
+                "indicator_count": len(rows),
+            },
+            content_hash=output_fingerprint,
+        )
+    )
     db.commit()
-    db.refresh(analytics_run)
-    return analytics_run
-
+    db.refresh(analysis_run)
+    return analysis_run

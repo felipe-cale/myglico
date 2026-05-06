@@ -251,8 +251,7 @@ input {
   background: linear-gradient(135deg, var(--react-blue), var(--react-green));
 }
 
-.react-pill,
-.react-legacy-link {
+.react-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -260,17 +259,8 @@ input {
   padding: 0 0.95rem;
   border-radius: 999px;
   font-weight: 700;
-}
-
-.react-pill {
   color: var(--react-green-deep);
   background: rgba(30, 171, 105, 0.12);
-}
-
-.react-legacy-link {
-  color: var(--react-blue-deep);
-  border: 1px solid var(--react-border);
-  background: rgba(255, 255, 255, 0.92);
 }
 
 .react-main,
@@ -543,20 +533,123 @@ input {
   align-items: flex-start;
 }
 
+.react-panel__header-copy {
+  min-width: 0;
+  max-width: 52rem;
+}
+
 .react-panel__footer {
   margin-top: 1rem;
   align-items: center;
   color: var(--react-muted);
 }
 
+.react-patient-toolbar {
+  width: min(100%, 30rem);
+  margin-left: auto;
+  display: grid;
+  gap: 0.8rem;
+  justify-items: stretch;
+}
+
+.react-patient-filter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.react-select-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.react-select-field span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--react-muted);
+}
+
+.react-select-field select {
+  min-height: 3rem;
+  width: 100%;
+  padding: 0 2.7rem 0 1rem;
+  border-radius: 20px;
+  border: 1px solid var(--react-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 251, 254, 0.94));
+  color: var(--react-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--react-blue-deep) 50%),
+    linear-gradient(135deg, var(--react-blue-deep) 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.2rem) calc(50% - 0.12rem),
+    calc(100% - 0.82rem) calc(50% - 0.12rem);
+  background-size: 0.42rem 0.42rem, 0.42rem 0.42rem;
+  background-repeat: no-repeat;
+}
+
+.react-select-field select:focus {
+  outline: none;
+  border-color: rgba(22, 124, 217, 0.35);
+  box-shadow:
+    0 0 0 4px rgba(39, 183, 231, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.react-help-button {
+  width: 3rem;
+  height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  border: 1px solid var(--react-border);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--react-blue-deep);
+  font-size: 1.05rem;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(16, 59, 97, 0.08);
+}
+
+.react-help-button:hover,
+.react-help-button:focus-visible {
+  outline: none;
+  border-color: rgba(22, 124, 217, 0.3);
+  box-shadow: 0 14px 28px rgba(16, 59, 97, 0.12);
+  transform: translateY(-1px);
+}
+
+.react-search {
+  min-width: 0;
+}
+
+.react-search--patients {
+  width: 100%;
+}
+
 .react-search input,
 .react-filter-form input {
   min-height: 3rem;
+  width: 100%;
   padding: 0 1rem;
-  border-radius: 18px;
+  border-radius: 20px;
   border: 1px solid var(--react-border);
   background: rgba(255, 255, 255, 0.95);
   color: var(--react-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.react-search input:focus,
+.react-filter-form input:focus {
+  outline: none;
+  border-color: rgba(22, 124, 217, 0.35);
+  box-shadow:
+    0 0 0 4px rgba(39, 183, 231, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .react-panel--filter {
@@ -681,52 +774,192 @@ input {
 
 .react-patient-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.1rem;
 }
 
 .react-patient-card {
   display: grid;
-  gap: 0.9rem;
-  padding: 1.1rem;
-  border-radius: 24px;
-  border: 1px solid rgba(22, 124, 217, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 251, 254, 0.92));
-}
-
-.react-patient-card__top {
-  display: flex;
-  justify-content: space-between;
   gap: 1rem;
-  color: var(--react-muted);
+  padding: 1.15rem;
+  border-radius: 26px;
+  border: 1px solid rgba(22, 124, 217, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 251, 254, 0.94)),
+    radial-gradient(circle at top right, rgba(39, 183, 231, 0.08), transparent 34%);
+  box-shadow: 0 18px 36px rgba(16, 59, 97, 0.08);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
 
-.react-patient-card__file {
-  font-weight: 700;
+.react-patient-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(22, 124, 217, 0.2);
+  box-shadow: 0 24px 44px rgba(16, 59, 97, 0.12);
+}
+
+.react-patient-card__signal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  width: fit-content;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.react-patient-card__signal--stable {
+  color: var(--react-green-deep);
+  background: rgba(30, 171, 105, 0.12);
+}
+
+.react-patient-card__signal--warning {
+  color: #a8641b;
+  background: rgba(244, 169, 61, 0.16);
+}
+
+.react-patient-card__signal--alert {
+  color: #a2384d;
+  background: rgba(227, 93, 115, 0.14);
+}
+
+.react-patient-card__identity {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
 }
 
 .react-patient-card h3 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.32rem;
+  line-height: 1.15;
 }
 
-.react-patient-card dl {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+.react-patient-card__identity p {
   margin: 0;
+  color: var(--react-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-.react-patient-card dt {
-  font-size: 0.76rem;
+.react-patient-card__short-id {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  color: var(--react-blue-deep);
+}
+
+.react-patient-code {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.8rem 0.9rem;
+  border-radius: 18px;
+  border: 1px solid rgba(22, 124, 217, 0.1);
+  background: linear-gradient(180deg, rgba(250, 253, 255, 0.98), rgba(244, 251, 254, 0.94));
+}
+
+.react-patient-code__content {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.react-patient-code__label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--react-muted);
 }
 
+.react-patient-code__value {
+  font-family: "Consolas", "SFMono-Regular", monospace;
+  font-size: 1.1rem;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  color: var(--react-blue-deep);
+}
+
+.react-patient-code__copy {
+  min-height: 2.35rem;
+  padding: 0 0.9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(22, 124, 217, 0.14);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--react-blue-deep);
+  font-size: 0.84rem;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(16, 59, 97, 0.08);
+}
+
+.react-patient-code__copy:hover,
+.react-patient-code__copy:focus-visible {
+  outline: none;
+  border-color: rgba(22, 124, 217, 0.28);
+  box-shadow: 0 12px 24px rgba(16, 59, 97, 0.12);
+}
+
+.react-patient-code__copy.is-copied {
+  color: var(--react-green-deep);
+  border-color: rgba(30, 171, 105, 0.22);
+  background: rgba(30, 171, 105, 0.1);
+}
+
+.react-patient-card__metrics {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.react-patient-card__metric-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.8rem 0.95rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(22, 124, 217, 0.08);
+}
+
+.react-patient-card dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--react-muted);
+  font-weight: 800;
+}
+
 .react-patient-card dd {
-  margin: 0.2rem 0 0;
+  margin: 0;
   font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.react-patient-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.9rem;
+  padding: 0.2rem 0 0;
+  color: var(--react-blue-deep);
+  font-weight: 800;
+}
+
+.react-patient-card__footer::after {
+  content: "\2192";
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
 .react-metric {
@@ -1399,6 +1632,87 @@ input {
   margin: 0;
 }
 
+.react-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(12, 34, 56, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.react-dialog {
+  width: min(100%, 34rem);
+  max-height: min(85vh, 46rem);
+  overflow: auto;
+  padding: 1.2rem;
+  border-radius: 26px;
+  border: 1px solid rgba(22, 124, 217, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(244, 251, 254, 0.97));
+  box-shadow: 0 24px 58px rgba(12, 34, 56, 0.22);
+}
+
+.react-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.react-dialog__header h3,
+.react-dialog__section h4 {
+  margin: 0;
+}
+
+.react-dialog__close {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  border: 1px solid var(--react-border);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--react-blue-deep);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.react-dialog__body {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.9rem;
+}
+
+.react-dialog__body > p,
+.react-dialog__section p,
+.react-dialog--profile-help .react-dialog__body > p,
+.react-dialog--profile-help .react-dialog__section p {
+  margin: 0;
+  color: var(--react-muted);
+  line-height: 1.65;
+  text-align: justify !important;
+  text-justify: inter-word;
+  hyphens: auto;
+  width: 100%;
+}
+
+.react-dialog__sections {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.react-dialog__section {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(22, 124, 217, 0.1);
+  background: rgba(255, 255, 255, 0.86);
+}
+
 .react-footer {
   justify-content: space-between;
   gap: 1rem;
@@ -1481,6 +1795,11 @@ input {
     display: none;
   }
 
+  .react-patient-toolbar {
+    width: 100%;
+    margin-left: 0;
+  }
+
   .react-topbar__menu-button,
   .react-drawer,
   .react-drawer__overlay {
@@ -1491,8 +1810,7 @@ input {
     display: block;
   }
 
-  .react-drawer__actions .react-pill,
-  .react-drawer__actions .react-legacy-link {
+  .react-drawer__actions .react-pill {
     justify-content: center;
   }
 
@@ -1554,6 +1872,30 @@ input {
   .react-distribution,
   .react-stat-grid {
     grid-template-columns: 1fr;
+  }
+
+  .react-patient-filter-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .react-help-button {
+    width: 2.8rem;
+    height: 2.8rem;
+    align-self: end;
+  }
+
+  .react-patient-code {
+    grid-template-columns: 1fr;
+  }
+
+  .react-patient-code__copy {
+    width: 100%;
+  }
+
+  .react-dialog {
+    width: 100%;
+    max-height: 88vh;
+    padding: 1rem;
   }
 
   .react-page--patient-detail {

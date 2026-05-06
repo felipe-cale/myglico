@@ -1,37 +1,57 @@
 services:
-  legacy:
+  db:
+    image: mysql:8.4
+    container_name: myglico-db
+    environment:
+      MYSQL_DATABASE: myglico
+      MYSQL_USER: myglico
+      MYSQL_PASSWORD: myglico
+      MYSQL_ROOT_PASSWORD: myglico_root
+    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports:
+      - "3307:3306"
+    volumes:
+      - myglico_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -umyglico -pmyglico --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: myglico-legacy
+    container_name: myglico-backend
     working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
+      MYGLICO_DATABASE_URL: "mysql+pymysql://myglico:myglico@db:3306/myglico?charset=utf8mb4"
       MYGLICO_RELOAD: "1"
       WATCHFILES_FORCE_POLLING: "true"
     command: >
       sh -lc "alembic upgrade head &&
-      python scripts/bootstrap_db.py &&
+      python scripts/import_uci_diabetes.py &&
       uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
-      --reload-dir /app/app
-      --reload-dir /app/app/templates
-      --reload-dir /app/app/static"
+      --reload-dir /app/app"
     ports:
       - "8001:8001"
     volumes:
       - .:/app
 
-  react:
+  frontend:
     build:
       context: .
       dockerfile: frontend-react/Dockerfile
-    container_name: myglico-react
+    container_name: myglico-frontend
     working_dir: /workspace/frontend-react
     depends_on:
-      - legacy
+      - backend
     environment:
       CHOKIDAR_USEPOLLING: "true"
-      VITE_API_TARGET: "http://legacy:8001"
-      VITE_LEGACY_URL: "http://localhost:8001"
+      VITE_API_TARGET: "http://backend:8001"
     command: >
       sh -lc "npm install &&
       npm run dev -- --host 0.0.0.0 --port 8000"
@@ -42,4 +62,5 @@ services:
       - myglico_node_modules:/workspace/frontend-react/node_modules
 
 volumes:
+  myglico_mysql_data:
   myglico_node_modules:

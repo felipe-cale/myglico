@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from hashlib import sha256
 from pathlib import Path
 
 from rdflib import Graph, Literal, Namespace, RDF, RDFS, OWL, XSD
@@ -9,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.entities import AnalyticsRun, DailyIndicator, ImportBatch, NormalizedEvent, Patient, RawEvent
+from app.models.entities import AnalysisRun, DailyIndicator, GlucoseRecord, GlucoseRecordSource, Patient, ProvenanceArtifact
 
 
 settings = get_settings()
@@ -39,14 +40,14 @@ WHERE {
 ORDER BY ?date
 LIMIT 100
 """.strip(),
-    "slot_aligned_measurements": """
+    "dataset_measurements": """
 PREFIX mygv: <https://myglico.local/vocab/>
 SELECT ?measurement ?patient ?value
 WHERE {
   ?measurement a mygv:GlucoseMeasurement ;
                mygv:belongsToPatient ?patient ;
                mygv:glucoseValueMgDl ?value ;
-               mygv:timestampQuality "slot_aligned" .
+               mygv:sourceType "dataset" .
 }
 LIMIT 20
 """.strip(),
@@ -57,7 +58,11 @@ def _resource_namespaces() -> tuple[Namespace, Namespace]:
     return Namespace(settings.semantic_base_uri), Namespace(settings.semantic_vocab_uri)
 
 
-def build_semantic_graph(db: Session, analytics_run: AnalyticsRun) -> str:
+def _file_hash(path: str | Path) -> str:
+    return sha256(Path(path).read_bytes()).hexdigest()
+
+
+def build_semantic_graph(db: Session, analytics_run: AnalysisRun) -> str:
     resource, vocab = _resource_namespaces()
     graph = Graph()
     graph.bind("myg", resource)
@@ -68,49 +73,43 @@ def build_semantic_graph(db: Session, analytics_run: AnalyticsRun) -> str:
 
     _declare_schema(graph, vocab)
 
-    import_batch = db.get(ImportBatch, analytics_run.import_batch_id)
-    patients = db.scalars(select(Patient).order_by(Patient.id)).all()
-    events = db.scalars(
-        select(NormalizedEvent).where(NormalizedEvent.import_batch_id == analytics_run.import_batch_id).order_by(NormalizedEvent.id)
-    ).all()
-    raw_events = {raw.id: raw for raw in db.scalars(select(RawEvent).where(RawEvent.import_batch_id == analytics_run.import_batch_id)).all()}
+    patients = db.scalars(select(Patient).order_by(Patient.name)).all()
+    records = db.scalars(select(GlucoseRecord).order_by(GlucoseRecord.measured_at, GlucoseRecord.id)).all()
+    sources_by_record: dict[str, list[GlucoseRecordSource]] = {}
+    for source in db.scalars(select(GlucoseRecordSource)).all():
+        sources_by_record.setdefault(source.glucose_record_id, []).append(source)
     indicators = db.scalars(
-        select(DailyIndicator).where(DailyIndicator.analytics_run_id == analytics_run.id).order_by(DailyIndicator.patient_id, DailyIndicator.indicator_date)
+        select(DailyIndicator)
+        .where(DailyIndicator.analysis_run_id == analytics_run.id)
+        .order_by(DailyIndicator.patient_id, DailyIndicator.indicator_date)
     ).all()
 
-    import_uri = resource[f"import-batch/{import_batch.id}"]
-    analytics_uri = resource[f"analytics-run/{analytics_run.id}"]
-    graph.add((import_uri, RDF.type, vocab.ImportBatch))
-    graph.add((import_uri, RDFS.label, Literal(import_batch.source_name)))
-    graph.add((analytics_uri, RDF.type, vocab.AnalyticsRun))
-    graph.add((analytics_uri, PROV.wasDerivedFrom, import_uri))
+    analytics_uri = resource[f"analysis-run/{analytics_run.id}"]
+    graph.add((analytics_uri, RDF.type, vocab.AnalysisRun))
+    if analytics_run.input_fingerprint:
+        graph.add((analytics_uri, vocab.inputFingerprint, Literal(analytics_run.input_fingerprint)))
 
     for patient in patients:
         patient_uri = resource[f"patient/{patient.id}"]
         graph.add((patient_uri, RDF.type, vocab.Patient))
-        graph.add((patient_uri, RDFS.label, Literal(patient.display_name)))
-        graph.add((patient_uri, vocab.sourcePatientCode, Literal(patient.source_patient_code)))
+        graph.add((patient_uri, RDFS.label, Literal(patient.name)))
+        if patient.email:
+            graph.add((patient_uri, vocab.email, Literal(patient.email)))
 
-    for event in events:
-        patient_uri = resource[f"patient/{event.patient_id}"]
-        raw_event = raw_events.get(event.raw_event_id)
-        event_uri = resource[f"event/{event.id}"]
-        event_type_uri = getattr(vocab, _class_name_for_event_type(event.event_type))
-        graph.add((event_uri, RDF.type, event_type_uri))
-        graph.add((event_uri, vocab.belongsToPatient, patient_uri))
-        graph.add((event_uri, vocab.occurredAt, Literal(event.occurred_at.isoformat(), datatype=XSD.dateTime)))
-        graph.add((event_uri, vocab.timestampQuality, Literal(event.timestamp_quality)))
-        if event.glucose_mg_dl is not None:
-            graph.add((event_uri, vocab.glucoseValueMgDl, Literal(event.glucose_mg_dl, datatype=XSD.double)))
-        if event.insulin_units is not None:
-            graph.add((event_uri, vocab.insulinUnits, Literal(event.insulin_units, datatype=XSD.double)))
-        if event.context_label:
-            graph.add((event_uri, vocab.hasContext, Literal(event.context_label)))
-        if raw_event is not None:
-            raw_uri = resource[f"raw-event/{raw_event.id}"]
-            graph.add((raw_uri, RDF.type, vocab.RawEvent))
-            graph.add((raw_uri, RDFS.label, Literal(raw_event.raw_payload)))
-            graph.add((event_uri, PROV.wasDerivedFrom, raw_uri))
+    for record in records:
+        patient_uri = resource[f"patient/{record.patient_id}"]
+        record_uri = resource[f"glucose-record/{record.id}"]
+        graph.add((record_uri, RDF.type, vocab.GlucoseMeasurement))
+        graph.add((record_uri, vocab.belongsToPatient, patient_uri))
+        graph.add((record_uri, vocab.occurredAt, Literal(record.measured_at.isoformat(), datatype=XSD.dateTime)))
+        graph.add((record_uri, vocab.glucoseValueMgDl, Literal(record.glucose_mg_dl, datatype=XSD.double)))
+        if record.context_label:
+            graph.add((record_uri, vocab.hasContext, Literal(record.context_label)))
+        for source in sources_by_record.get(record.id, []):
+            graph.add((record_uri, vocab.sourceType, Literal(source.source_type)))
+            if source.raw_import_record_id:
+                raw_uri = resource[f"raw-import-record/{source.raw_import_record_id}"]
+                graph.add((record_uri, PROV.wasDerivedFrom, raw_uri))
 
     for indicator in indicators:
         indicator_uri = resource[f"indicator/{indicator.id}"]
@@ -128,22 +127,29 @@ def build_semantic_graph(db: Session, analytics_run: AnalyticsRun) -> str:
 
     ttl_path = settings.semantic_dir / f"semantic-{analytics_run.id}.ttl"
     graph.serialize(ttl_path, format="ttl")
+    db.add(
+        ProvenanceArtifact(
+            owner_type="analysis_run",
+            owner_id=analytics_run.id,
+            artifact_type="semantic_graph",
+            format="ttl",
+            path=str(ttl_path),
+            content_hash=_file_hash(ttl_path),
+            hash_algorithm="sha256",
+            status="completed",
+        )
+    )
+    db.flush()
     return str(ttl_path)
 
 
 def _declare_schema(graph: Graph, vocab: Namespace) -> None:
     class_names = [
         "Patient",
-        "RawEvent",
         "GlucoseMeasurement",
-        "InsulinDose",
-        "Meal",
-        "Exercise",
-        "Symptom",
-        "SpecialEvent",
         "DailyIndicator",
-        "ImportBatch",
-        "AnalyticsRun",
+        "AnalysisRun",
+        "RawImportRecord",
     ]
     for class_name in class_names:
         graph.add((vocab[class_name], RDF.type, OWL.Class))
@@ -153,7 +159,6 @@ def _declare_schema(graph: Graph, vocab: Namespace) -> None:
         "belongsToPatient",
         "occurredAt",
         "glucoseValueMgDl",
-        "insulinUnits",
         "hasContext",
         "forDate",
         "avgGlucoseMgDl",
@@ -161,21 +166,11 @@ def _declare_schema(graph: Graph, vocab: Namespace) -> None:
         "pctInRange",
         "pctHyper",
         "glucoseEventCount",
-        "timestampQuality",
-        "sourcePatientCode",
+        "sourceType",
+        "email",
+        "inputFingerprint",
     ]:
         graph.add((vocab[prop], RDF.type, RDF.Property))
-
-
-def _class_name_for_event_type(event_type: str) -> str:
-    return {
-        "glucose_measurement": "GlucoseMeasurement",
-        "insulin_dose": "InsulinDose",
-        "meal": "Meal",
-        "exercise": "Exercise",
-        "symptom": "Symptom",
-        "special_event": "SpecialEvent",
-    }.get(event_type, "RawEvent")
 
 
 @lru_cache(maxsize=4)

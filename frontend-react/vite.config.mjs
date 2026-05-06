@@ -3,8 +3,8 @@ import react from "@vitejs/plugin-react";
 
 const apiTarget = process.env.VITE_API_TARGET || "http://localhost:8001";
 
-export default defineConfig(({ command }) => ({
-  base: command === "build" ? "/react/" : "/",
+export default defineConfig(() => ({
+  base: "/",
   plugins: [react()],
   server: {
     host: "0.0.0.0",
@@ -19,10 +19,6 @@ export default defineConfig(({ command }) => ({
         changeOrigin: true
       },
       "/artifacts": {
-        target: apiTarget,
-        changeOrigin: true
-      },
-      "/static": {
         target: apiTarget,
         changeOrigin: true
       },

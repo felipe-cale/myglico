@@ -1,12 +1,33 @@
-from app.models.entities import AnalyticsRun, DailyIndicator, DataQualityIssue, ImportBatch, NormalizedEvent, Patient, RawEvent
+from app.models.entities import (
+    AnalysisOutbox,
+    AnalysisRun,
+    DailyIndicator,
+    DailyMetricsCurrent,
+    DataQualityIssue,
+    DataSource,
+    GlucoseRecord,
+    GlucoseRecordSource,
+    ImportBatch,
+    Patient,
+    PatientSourceLink,
+    ProvenanceArtifact,
+    ProvenanceEvent,
+    RawImportRecord,
+)
 
 __all__ = [
-    "AnalyticsRun",
+    "AnalysisOutbox",
+    "AnalysisRun",
     "DailyIndicator",
+    "DailyMetricsCurrent",
     "DataQualityIssue",
+    "DataSource",
+    "GlucoseRecord",
+    "GlucoseRecordSource",
     "ImportBatch",
-    "NormalizedEvent",
     "Patient",
-    "RawEvent",
+    "PatientSourceLink",
+    "ProvenanceArtifact",
+    "ProvenanceEvent",
+    "RawImportRecord",
 ]
-

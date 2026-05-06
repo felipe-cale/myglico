@@ -10,10 +10,8 @@ from app.core.config import get_settings
 
 
 settings = get_settings()
-APP_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = APP_DIR.parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
-app.include_router(router)
-app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 app.mount("/artifacts", StaticFiles(directory=str(PROJECT_DIR / "artifacts")), name="artifacts")
+app.include_router(router)

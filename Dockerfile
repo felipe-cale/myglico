@@ -11,6 +11,6 @@ WORKDIR /app
 COPY . .
 RUN pip install --upgrade pip && pip install .
 
-EXPOSE 8000
+EXPOSE 8001
 
-CMD ["sh", "-c", "alembic upgrade head && python scripts/bootstrap_db.py && if [ \"$MYGLICO_RELOAD\" = \"1\" ]; then exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app --reload-dir /app/app/templates --reload-dir /app/app/static; else exec uvicorn app.main:app --host 0.0.0.0 --port 8000; fi"]
+CMD ["sh", "-c", "alembic upgrade head && python scripts/import_uci_diabetes.py && if [ \"$MYGLICO_RELOAD\" = \"1\" ]; then exec uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload --reload-dir /app/app; else exec uvicorn app.main:app --host 0.0.0.0 --port 8001; fi"]

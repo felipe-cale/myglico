@@ -14,12 +14,15 @@ export function fetchDashboardSummary() {
   return requestJson("/api/dashboard");
 }
 
-export function fetchPatients({ page = 1, pageSize = 12, query = "" }) {
+export function fetchPatients({ page = 1, pageSize = 12, query = "", signal = "all" }) {
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("page_size", String(pageSize));
   if (query) {
     params.set("q", query);
+  }
+  if (signal && signal !== "all") {
+    params.set("signal", signal);
   }
   return requestJson(`/api/patients?${params.toString()}`);
 }
