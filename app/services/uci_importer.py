@@ -32,8 +32,15 @@ from app.models.entities import (
 
 settings = get_settings()
 UCI_DIABETES_URL = "https://archive.ics.uci.edu/static/public/34/diabetes.zip"
+# Canonical time slots observed in the UCI dataset paper-log style records.
+# They are used only to flag timestamps that align with typical meal/daypart slots
+# during provenance normalization; they do not overwrite the original recorded time.
 SLOT_TIMES = {"08:00": "breakfast", "12:00": "lunch", "18:00": "dinner", "22:00": "bedtime"}
 
+# Numeric event mapping transcribed from the UCI Diabetes dataset file
+# `Diabetes-Data/Data-Codes`. The `Domain-Description` file gives clinical context,
+# but the codebook itself is defined in `Data-Codes` under "The Code field is
+# deciphered as follows".
 CODEBOOK: dict[int, dict[str, str | bool]] = {
     33: {"event_type": "insulin_dose", "event_subtype": "regular"},
     34: {"event_type": "insulin_dose", "event_subtype": "nph"},
