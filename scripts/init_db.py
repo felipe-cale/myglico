@@ -186,7 +186,6 @@ def import_dataset_with_import_provenance(database_url: str, force: bool) -> Non
     for table_name, count in counts.items():
         print(f"  - {table_name}: {count}", flush=True)
     print(flush=True)
-    print("Analytics, semantic graph, backend and frontend were not started by this script.", flush=True)
 
 
 def main() -> None:
