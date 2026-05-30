@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { fetchPatientDetail } from "../api";
 import StateBlock from "../components/StateBlock";
+import { exportPatientReport } from "../reportExport";
 
 const PIE_COLORS = ["#e35d73", "#19a86a", "#f4a93d"];
 const HOURLY_TICKS = Array.from({ length: 24 }, (_, index) => index);
@@ -557,6 +558,13 @@ export default function PatientDetailPage() {
             <Link to="/" className="react-button react-button--ghost">
               Voltar para a visão geral
             </Link>
+            <button
+              type="button"
+              className="react-button"
+              onClick={() => exportPatientReport(data, hourlyExtremes)}
+            >
+              Exportar relatório
+            </button>
           </div>
         </div>
         <div className="react-hero__side">
