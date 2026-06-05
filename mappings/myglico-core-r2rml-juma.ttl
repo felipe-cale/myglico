@@ -1,0 +1,256 @@
+# Mapping created in the style of the provided Juma/R2RML example.
+# Simplified semantic scope:
+# Patient -> GlucoseMeasurement -> RawRecord -> DataSource.
+
+@prefix mygv: <https://w3id.org/myglico/vocab/> .
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+################################################################################
+# Patients
+################################################################################
+
+<#PatientsTriplesMap>
+rr:logicalTable [
+  rr:tableName "patients";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/patient/{id}";
+    rr:class mygv:Patient;
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant rdfs:label;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:column "name";
+    ];
+  ].
+
+<#PatientExternalCodesTriplesMap>
+rr:logicalTable [
+  rr:sqlQuery """SELECT patient_id, external_patient_code
+      FROM patient_source_links
+      WHERE external_patient_code IS NOT NULL""";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/patient/{patient_id}";
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant mygv:externalPatientCode;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:column "external_patient_code";
+    ];
+  ].
+
+################################################################################
+# Data sources and original records
+################################################################################
+
+<#DataSourcesTriplesMap>
+rr:logicalTable [
+  rr:tableName "data_sources";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/data-source/{id}";
+    rr:class mygv:DataSource;
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant mygv:sourceName;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:column "name";
+    ];
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant rdfs:label;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:column "name";
+    ];
+  ].
+
+<#RawRecordsTriplesMap>
+rr:logicalTable [
+  rr:sqlQuery """SELECT id, CONCAT(source_file, ':', source_line) AS source_record_id
+      FROM raw_import_records""";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/raw-record/{id}";
+    rr:class mygv:RawRecord;
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant mygv:sourceRecordId;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:column "source_record_id";
+    ];
+  ].
+
+<#RawRecordDataSourcesTriplesMap>
+rr:logicalTable [
+  rr:sqlQuery """SELECT r.id AS raw_record_id, b.data_source_id
+      FROM raw_import_records r
+      INNER JOIN import_batches b ON b.id = r.import_batch_id""";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/raw-record/{raw_record_id}";
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant mygv:belongsToDataSource;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:template "https://w3id.org/myglico/resource/data-source/{data_source_id}";
+    ];
+  ].
+
+################################################################################
+# Glucose measurements
+################################################################################
+
+<#GlucoseMeasurementsTriplesMap>
+rr:logicalTable [
+  rr:tableName "glucose_records";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/glucose-measurement/{id}";
+    rr:class mygv:GlucoseMeasurement;
+    rr:class mygv:CapillaryGlucoseMeasurement;
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant mygv:belongsToPatient;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:template "https://w3id.org/myglico/resource/patient/{patient_id}";
+    ];
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant mygv:glucoseValueMgDl;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:column "glucose_mg_dl";
+      rr:datatype xsd:decimal;
+    ];
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant mygv:measuredAt;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:column "measured_at";
+      rr:datatype xsd:dateTime;
+    ];
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant mygv:measurementContext;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:column "context_label";
+    ];
+  ].
+
+<#PatientMeasurementsTriplesMap>
+rr:logicalTable [
+  rr:tableName "glucose_records";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/patient/{patient_id}";
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant mygv:hasGlucoseMeasurement;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:template "https://w3id.org/myglico/resource/glucose-measurement/{id}";
+    ];
+  ].
+
+################################################################################
+# Materialized glycemic classifications
+# These maps make the classes available even without OWL reasoning in GraphDB.
+################################################################################
+
+<#HypoglycemicMeasurementsTriplesMap>
+rr:logicalTable [
+  rr:sqlQuery """SELECT id FROM glucose_records WHERE glucose_mg_dl < 70""";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/glucose-measurement/{id}";
+    rr:class mygv:HypoglycemicGlucoseMeasurement;
+  ].
+
+<#InTargetRangeMeasurementsTriplesMap>
+rr:logicalTable [
+  rr:sqlQuery """SELECT id
+      FROM glucose_records
+      WHERE glucose_mg_dl >= 70 AND glucose_mg_dl <= 180""";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/glucose-measurement/{id}";
+    rr:class mygv:InTargetRangeGlucoseMeasurement;
+  ].
+
+<#HyperglycemicMeasurementsTriplesMap>
+rr:logicalTable [
+  rr:sqlQuery """SELECT id FROM glucose_records WHERE glucose_mg_dl > 180""";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/glucose-measurement/{id}";
+    rr:class mygv:HyperglycemicGlucoseMeasurement;
+  ].
+
+################################################################################
+# Minimal provenance: normalized measurement -> original record
+################################################################################
+
+<#MeasurementDerivedFromRawRecordTriplesMap>
+rr:logicalTable [
+  rr:sqlQuery """SELECT glucose_record_id, raw_import_record_id
+      FROM glucose_record_sources
+      WHERE raw_import_record_id IS NOT NULL""";
+];
+  rr:subjectMap [
+    rr:template "https://w3id.org/myglico/resource/glucose-measurement/{glucose_record_id}";
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicateMap [
+      rr:constant mygv:derivedFromRawRecord;
+      rr:termType rr:IRI;
+    ];
+    rr:objectMap [
+      rr:template "https://w3id.org/myglico/resource/raw-record/{raw_import_record_id}";
+    ];
+  ].

@@ -1,0 +1,256 @@
+# Consultas SPARQL - MyGlico.
+# Uso no GraphDB: copie uma consulta por vez junto com os PREFIX abaixo.
+
+PREFIX mygv: <https://w3id.org/myglico/vocab/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+################################################################################
+# 01. Contagem de recursos por classe
+################################################################################
+
+SELECT ?classe (COUNT(?recurso) AS ?total)
+WHERE {
+  ?recurso a ?classe .
+}
+GROUP BY ?classe
+ORDER BY DESC(?total)
+
+################################################################################
+# 02. Pacientes e quantidade de medições
+################################################################################
+
+SELECT ?paciente ?label (COUNT(?medicao) AS ?totalMedicoes)
+WHERE {
+  ?paciente a mygv:Patient ;
+            mygv:hasGlucoseMeasurement ?medicao .
+  OPTIONAL { ?paciente rdfs:label ?label . }
+}
+GROUP BY ?paciente ?label
+ORDER BY DESC(?totalMedicoes)
+
+################################################################################
+# 03. Amostra do diário glicêmico
+################################################################################
+
+SELECT ?paciente ?medicao ?valor ?quando ?contexto
+WHERE {
+  ?medicao a mygv:GlucoseMeasurement ;
+           mygv:belongsToPatient ?paciente ;
+           mygv:glucoseValueMgDl ?valor ;
+           mygv:measuredAt ?quando .
+  OPTIONAL { ?medicao mygv:measurementContext ?contexto . }
+}
+ORDER BY ?paciente ?quando
+LIMIT 100
+
+################################################################################
+# 04. Distribuição das medições por faixa glicêmica
+################################################################################
+
+SELECT ?faixa (COUNT(?medicao) AS ?total)
+WHERE {
+  VALUES ?faixa {
+    mygv:HypoglycemicGlucoseMeasurement
+    mygv:InTargetRangeGlucoseMeasurement
+    mygv:HyperglycemicGlucoseMeasurement
+  }
+  ?medicao a ?faixa .
+}
+GROUP BY ?faixa
+ORDER BY ?faixa
+
+################################################################################
+# 05. Resumo calculado diretamente das medições por paciente
+################################################################################
+
+SELECT ?paciente
+       (COUNT(?medicao) AS ?totalMedicoes)
+       (MIN(?valor) AS ?minMgDl)
+       (AVG(?valor) AS ?mediaMgDl)
+       (MAX(?valor) AS ?maxMgDl)
+WHERE {
+  ?medicao a mygv:GlucoseMeasurement ;
+           mygv:belongsToPatient ?paciente ;
+           mygv:glucoseValueMgDl ?valor .
+}
+GROUP BY ?paciente
+ORDER BY DESC(?mediaMgDl)
+
+################################################################################
+# 06. Medições em hipoglicemia
+################################################################################
+
+SELECT ?paciente ?medicao ?valor ?quando ?contexto
+WHERE {
+  ?medicao a mygv:HypoglycemicGlucoseMeasurement ;
+           mygv:belongsToPatient ?paciente ;
+           mygv:glucoseValueMgDl ?valor ;
+           mygv:measuredAt ?quando .
+  OPTIONAL { ?medicao mygv:measurementContext ?contexto . }
+}
+ORDER BY ?valor ?quando
+LIMIT 100
+
+################################################################################
+# 07. Medições em hiperglicemia
+################################################################################
+
+SELECT ?paciente ?medicao ?valor ?quando ?contexto
+WHERE {
+  ?medicao a mygv:HyperglycemicGlucoseMeasurement ;
+           mygv:belongsToPatient ?paciente ;
+           mygv:glucoseValueMgDl ?valor ;
+           mygv:measuredAt ?quando .
+  OPTIONAL { ?medicao mygv:measurementContext ?contexto . }
+}
+ORDER BY DESC(?valor)
+LIMIT 100
+
+################################################################################
+# 08. Distribuição por contexto da medição
+################################################################################
+
+SELECT ?contexto (COUNT(?medicao) AS ?total)
+WHERE {
+  ?medicao a mygv:GlucoseMeasurement .
+  OPTIONAL { ?medicao mygv:measurementContext ?contexto . }
+}
+GROUP BY ?contexto
+ORDER BY DESC(?total)
+
+################################################################################
+# 09. Auditoria da classificação materializada versus valor
+################################################################################
+
+SELECT ?problema ?medicao ?valor ?classe
+WHERE {
+  ?medicao a mygv:GlucoseMeasurement ;
+           mygv:glucoseValueMgDl ?valor ;
+           a ?classe .
+  VALUES ?classe {
+    mygv:HypoglycemicGlucoseMeasurement
+    mygv:InTargetRangeGlucoseMeasurement
+    mygv:HyperglycemicGlucoseMeasurement
+  }
+  BIND(
+    IF(?classe = mygv:HypoglycemicGlucoseMeasurement && ?valor >= 70,
+      "hipoglicemia_com_valor_maior_ou_igual_70",
+    IF(?classe = mygv:InTargetRangeGlucoseMeasurement && (?valor < 70 || ?valor > 180),
+      "faixa_alvo_fora_de_70_180",
+    IF(?classe = mygv:HyperglycemicGlucoseMeasurement && ?valor <= 180,
+      "hiperglicemia_com_valor_menor_ou_igual_180",
+      ""))) AS ?problema
+  )
+  FILTER (?problema != "")
+}
+ORDER BY ?problema ?valor
+
+################################################################################
+# 10. Cadeia completa de rastreabilidade
+################################################################################
+
+SELECT ?paciente ?medicao ?valor ?registroOriginal ?sourceRecordId ?fonte ?sourceName
+WHERE {
+  ?medicao a mygv:GlucoseMeasurement ;
+           mygv:belongsToPatient ?paciente ;
+           mygv:glucoseValueMgDl ?valor ;
+           mygv:derivedFromRawRecord ?registroOriginal .
+  ?registroOriginal a mygv:RawRecord ;
+                    mygv:sourceRecordId ?sourceRecordId ;
+                    mygv:belongsToDataSource ?fonte .
+  ?fonte a mygv:DataSource ;
+         mygv:sourceName ?sourceName .
+}
+LIMIT 100
+
+################################################################################
+# 11. Medições sem registro original rastreável
+################################################################################
+
+SELECT ?paciente ?medicao ?valor ?quando
+WHERE {
+  ?medicao a mygv:GlucoseMeasurement ;
+           mygv:belongsToPatient ?paciente ;
+           mygv:glucoseValueMgDl ?valor ;
+           mygv:measuredAt ?quando .
+  FILTER NOT EXISTS {
+    ?medicao mygv:derivedFromRawRecord ?registroOriginal .
+  }
+}
+ORDER BY ?paciente ?quando
+LIMIT 100
+
+################################################################################
+# 12. Registros originais sem medição derivada
+################################################################################
+
+SELECT ?registroOriginal ?sourceRecordId ?fonte ?sourceName
+WHERE {
+  ?registroOriginal a mygv:RawRecord ;
+                    mygv:sourceRecordId ?sourceRecordId ;
+                    mygv:belongsToDataSource ?fonte .
+  OPTIONAL { ?fonte mygv:sourceName ?sourceName . }
+  FILTER NOT EXISTS {
+    ?medicao mygv:derivedFromRawRecord ?registroOriginal .
+  }
+}
+ORDER BY ?sourceRecordId
+LIMIT 100
+
+################################################################################
+# 13. Quantidade de registros originais por fonte
+################################################################################
+
+SELECT ?fonte ?sourceName (COUNT(?registroOriginal) AS ?totalRegistros)
+WHERE {
+  ?registroOriginal a mygv:RawRecord ;
+                    mygv:belongsToDataSource ?fonte .
+  OPTIONAL { ?fonte mygv:sourceName ?sourceName . }
+}
+GROUP BY ?fonte ?sourceName
+ORDER BY DESC(?totalRegistros)
+
+################################################################################
+# 14. Subgrafo de uma medição e sua origem
+# Troque o IRI em VALUES pelo recurso desejado.
+################################################################################
+
+CONSTRUCT {
+  ?medicao ?pMedicao ?oMedicao .
+  ?registroOriginal ?pRaw ?oRaw .
+  ?fonte ?pFonte ?oFonte .
+  ?paciente ?pPaciente ?oPaciente .
+}
+WHERE {
+  VALUES ?medicao {
+    <https://w3id.org/myglico/resource/glucose-measurement/EXEMPLO>
+  }
+  ?medicao ?pMedicao ?oMedicao .
+  OPTIONAL {
+    ?medicao mygv:derivedFromRawRecord ?registroOriginal .
+    ?registroOriginal ?pRaw ?oRaw .
+    OPTIONAL {
+      ?registroOriginal mygv:belongsToDataSource ?fonte .
+      ?fonte ?pFonte ?oFonte .
+    }
+  }
+  OPTIONAL {
+    ?medicao mygv:belongsToPatient ?paciente .
+    ?paciente ?pPaciente ?oPaciente .
+  }
+}
+
+################################################################################
+# 15. ASK: existe ao menos uma cadeia completa e rastreável?
+################################################################################
+
+ASK {
+  ?medicao a mygv:GlucoseMeasurement ;
+           mygv:belongsToPatient ?paciente ;
+           mygv:derivedFromRawRecord ?registroOriginal .
+  ?registroOriginal a mygv:RawRecord ;
+                    mygv:belongsToDataSource ?fonte .
+  ?fonte a mygv:DataSource .
+}
