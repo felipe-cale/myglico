@@ -97,12 +97,15 @@ class ClinicalPdfTests(unittest.TestCase):
     def test_pdf_contains_required_sections_and_removes_source_field(self) -> None:
         context = _context([_event("2026-06-01", "08:00", 61), _event("2026-06-01", "12:00", 260)])
 
-        text = _pdf_text(build_patient_report_pdf(context))
+        pdf = build_patient_report_pdf(context)
+        text = _pdf_text(pdf)
 
         self.assertNotIn("Fonte", text)
         self.assertNotIn("Interpretação", text)
         self.assertNotIn("Conclusão interpretativa automatizada", text)
         self.assertNotIn("Confiabilidade", text)
+        self.assertIn("/XObject", text)
+        self.assertIn("/ImLogo", text)
         self.assertIn("Dias atípicos e pontos de atenção", text)
         self.assertIn("Análise detalhada do período", text)
         self.assertIn("Média glicêmica diária", text)

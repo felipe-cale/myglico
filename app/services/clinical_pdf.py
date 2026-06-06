@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from math import ceil
+from pathlib import Path
 import re
+import zlib
 
 
 PAGE_WIDTH = 595.28
@@ -23,6 +25,9 @@ COLOR_MUTED = (0.33, 0.40, 0.49)
 COLOR_BORDER = (0.79, 0.84, 0.89)
 COLOR_PANEL = (0.97, 0.98, 0.99)
 COLOR_BLUE = (0.12, 0.46, 0.72)
+COLOR_BRAND_GREEN = (0.14, 0.70, 0.44)
+COLOR_BRAND_CYAN = (0.50, 0.79, 0.96)
+COLOR_BRAND_YELLOW = (1.0, 0.82, 0.35)
 COLOR_HYPO = (0.79, 0.23, 0.31)
 COLOR_TARGET = (0.09, 0.53, 0.35)
 COLOR_HYPER = (0.78, 0.47, 0.09)
@@ -34,6 +39,9 @@ THRESHOLDS = [
     ("Hiperglicemia", "> 180 mg/dL", COLOR_HYPER),
     ("Risco elevado", ">= 250 mg/dL", COLOR_CRITICAL),
 ]
+
+LOGO_IMAGE_PATH = Path(__file__).resolve().parents[2] / "frontend-react" / "public" / "img" / "myglico-logo.png"
+_PNG_IMAGE_CACHE: dict[tuple[Path, int], PdfImage | None] = {}
 
 
 def _pdf_literal(value: object) -> bytes:
@@ -369,12 +377,113 @@ def build_attention_days(context: dict[str, object]) -> list[DailyGlucoseSummary
     return [summary for summary in build_daily_glucose_summaries(context) if summary.is_attention]
 
 
+@dataclass(slots=True)
+class PdfImage:
+    name: str
+    width: int
+    height: int
+    rgb: bytes
+    alpha: bytes | None = None
+
+
+def _png_scanline_filter(filter_type: int, raw: bytearray, previous: bytes, bpp: int) -> bytes:
+    result = bytearray(raw)
+    for index in range(len(result)):
+        left = result[index - bpp] if index >= bpp else 0
+        up = previous[index] if previous else 0
+        up_left = previous[index - bpp] if previous and index >= bpp else 0
+        if filter_type == 1:
+            result[index] = (result[index] + left) & 0xFF
+        elif filter_type == 2:
+            result[index] = (result[index] + up) & 0xFF
+        elif filter_type == 3:
+            result[index] = (result[index] + ((left + up) // 2)) & 0xFF
+        elif filter_type == 4:
+            predictor = left + up - up_left
+            pa = abs(predictor - left)
+            pb = abs(predictor - up)
+            pc = abs(predictor - up_left)
+            paeth = left if pa <= pb and pa <= pc else up if pb <= pc else up_left
+            result[index] = (result[index] + paeth) & 0xFF
+    return bytes(result)
+
+
+def _load_png_image(path: Path, *, max_width: int = 420) -> PdfImage | None:
+    cache_key = (path, max_width)
+    if cache_key in _PNG_IMAGE_CACHE:
+        return _PNG_IMAGE_CACHE[cache_key]
+    if not path.exists():
+        _PNG_IMAGE_CACHE[cache_key] = None
+        return None
+    data = path.read_bytes()
+    if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        _PNG_IMAGE_CACHE[cache_key] = None
+        return None
+    offset = 8
+    width = height = color_type = bit_depth = None
+    compressed = bytearray()
+    while offset + 8 <= len(data):
+        length = int.from_bytes(data[offset : offset + 4], "big")
+        chunk_type = data[offset + 4 : offset + 8]
+        chunk_data = data[offset + 8 : offset + 8 + length]
+        offset += 12 + length
+        if chunk_type == b"IHDR":
+            width = int.from_bytes(chunk_data[0:4], "big")
+            height = int.from_bytes(chunk_data[4:8], "big")
+            bit_depth = chunk_data[8]
+            color_type = chunk_data[9]
+        elif chunk_type == b"IDAT":
+            compressed.extend(chunk_data)
+        elif chunk_type == b"IEND":
+            break
+    if not width or not height or bit_depth != 8 or color_type not in (2, 6):
+        _PNG_IMAGE_CACHE[cache_key] = None
+        return None
+
+    channels = 4 if color_type == 6 else 3
+    stride = width * channels
+    raw = zlib.decompress(bytes(compressed))
+    rows: list[bytes] = []
+    previous = bytes(stride)
+    cursor = 0
+    for _ in range(height):
+        filter_type = raw[cursor]
+        cursor += 1
+        row = _png_scanline_filter(filter_type, bytearray(raw[cursor : cursor + stride]), previous, channels)
+        cursor += stride
+        rows.append(row)
+        previous = row
+
+    scale = min(1.0, max_width / width)
+    target_width = max(1, int(width * scale))
+    target_height = max(1, int(height * scale))
+    rgb = bytearray()
+    alpha = bytearray() if channels == 4 else None
+    for target_y in range(target_height):
+        source_y = min(height - 1, int(target_y / scale)) if scale < 1 else target_y
+        row = rows[source_y]
+        for target_x in range(target_width):
+            source_x = min(width - 1, int(target_x / scale)) if scale < 1 else target_x
+            pixel = source_x * channels
+            rgb.extend(row[pixel : pixel + 3])
+            if alpha is not None:
+                alpha.append(row[pixel + 3])
+    image = PdfImage(name="ImLogo", width=target_width, height=target_height, rgb=bytes(rgb), alpha=bytes(alpha) if alpha is not None else None)
+    _PNG_IMAGE_CACHE[cache_key] = image
+    return image
+
+
 class PdfDocument:
     def __init__(self) -> None:
         self.pages: list[tuple[bytes, float, float]] = []
+        self.images: dict[str, PdfImage] = {}
 
     def add_page(self, content: bytes, width: float, height: float) -> None:
         self.pages.append((content, width, height))
+
+    def add_image(self, image: PdfImage | None) -> None:
+        if image:
+            self.images[image.name] = image
 
     def render(self) -> bytes:
         objects: dict[int, bytes] = {
@@ -384,6 +493,27 @@ class PdfDocument:
         }
         page_refs: list[str] = []
         next_object = 5
+        xobject_entries: list[str] = []
+        for image in self.images.values():
+            mask_object = None
+            if image.alpha is not None:
+                mask_object = next_object
+                next_object += 1
+                mask_data = zlib.compress(image.alpha)
+                objects[mask_object] = (
+                    f"<< /Type /XObject /Subtype /Image /Width {image.width} /Height {image.height} "
+                    f"/ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /Length {len(mask_data)} >>\nstream\n"
+                ).encode("ascii") + mask_data + b"\nendstream"
+            image_object = next_object
+            next_object += 1
+            image_data = zlib.compress(image.rgb)
+            smask = f" /SMask {mask_object} 0 R" if mask_object else ""
+            objects[image_object] = (
+                f"<< /Type /XObject /Subtype /Image /Width {image.width} /Height {image.height} "
+                f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode{smask} /Length {len(image_data)} >>\nstream\n"
+            ).encode("ascii") + image_data + b"\nendstream"
+            xobject_entries.append(f"/{image.name} {image_object} 0 R")
+        xobject_resource = f"/XObject << {' '.join(xobject_entries)} >> " if xobject_entries else ""
         for content, page_width, page_height in self.pages:
             content_object = next_object
             next_object += 1
@@ -392,7 +522,7 @@ class PdfDocument:
             objects[content_object] = b"<< /Length " + str(len(content)).encode("ascii") + b" >>\nstream\n" + content + b"endstream"
             objects[page_object] = (
                 f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_width:.2f} {page_height:.2f}] "
-                f"/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents {content_object} 0 R >>"
+                f"/Resources << /Font << /F1 3 0 R /F2 4 0 R >> {xobject_resource}>> /Contents {content_object} 0 R >>"
             ).encode("ascii")
             page_refs.append(f"{page_object} 0 R")
 
@@ -505,6 +635,9 @@ class PdfPage:
             f"{x + control:.2f} {y - radius:.2f} {x + radius:.2f} {y - control:.2f} {x + radius:.2f} {y:.2f} c B"
         )
 
+    def image(self, name: str, x: float, y: float, width: float, height: float) -> None:
+        self.command(f"q {width:.2f} 0 0 {height:.2f} {x:.2f} {y:.2f} cm /{name} Do Q")
+
     def render(self) -> bytes:
         return b"".join(self.commands)
 
@@ -531,6 +664,7 @@ class ClinicalReportPdf:
             page_height=PAGE_HEIGHT,
             daily_summaries=build_daily_glucose_summaries(context),
         )
+        report.document.add_image(_load_png_image(LOGO_IMAGE_PATH))
         report._new_page()
         return report
 
@@ -582,9 +716,9 @@ class ClinicalReportPdf:
         patient = self.context["patient"]
         filters = self.context["filters"]
         period = f"{_format_date(filters.get('start_date'))} a {_format_date(filters.get('end_date'))}"
-        self.page.text(MARGIN_X, self.y, "MyGlico", size=10, bold=True, color=COLOR_BLUE)
-        self.page.text(MARGIN_X + 64, self.y, "Relatório clínico glicêmico", size=8.2, bold=True, color=COLOR_TEXT)
-        self.page.text(MARGIN_X + 64, self.y - 11, f"{patient.display_name} | {period}", size=7.8, color=COLOR_MUTED)
+        self._myglico_logo(MARGIN_X, self.y + 3, scale=0.34)
+        self.page.text(MARGIN_X + 44, self.y, "Relatório clínico glicêmico", size=8.2, bold=True, color=COLOR_TEXT)
+        self.page.text(MARGIN_X + 44, self.y - 11, f"{patient.display_name} | {period}", size=7.8, color=COLOR_MUTED)
         self.page.text(self.page_width - MARGIN_X - 58, self.y, f"Página {self.page_number}", size=7.8, color=COLOR_MUTED)
         self.page.line(MARGIN_X, self.y - 19, self.page_width - MARGIN_X, self.y - 19, color=COLOR_BORDER, width=0.6)
         self.y -= 36
@@ -597,6 +731,28 @@ class ClinicalReportPdf:
             current_y -= line_height
         return current_y
 
+    def _myglico_logo(self, x: float, y: float, *, scale: float = 1.0, wordmark: bool = True) -> None:
+        if "ImLogo" in self.document.images:
+            width = 96 * scale
+            height = width * self.document.images["ImLogo"].height / self.document.images["ImLogo"].width
+            self.page.image("ImLogo", x, y - height, width, height)
+            return
+        icon = 22 * scale
+        book_x = x
+        book_y = y - icon + 2 * scale
+        self.page.rect(book_x, book_y, icon * 0.55, icon * 0.70, fill=(1, 1, 1), stroke=COLOR_BRAND_GREEN)
+        self.page.line(book_x + 4 * scale, book_y + icon * 0.50, book_x + icon * 0.42, book_y + icon * 0.50, color=COLOR_BRAND_CYAN, width=1.2 * scale)
+        self.page.line(book_x + 4 * scale, book_y + icon * 0.37, book_x + icon * 0.42, book_y + icon * 0.37, color=COLOR_BORDER, width=1.0 * scale)
+        self.page.line(book_x + 4 * scale, book_y + icon * 0.24, book_x + icon * 0.32, book_y + icon * 0.24, color=COLOR_BORDER, width=1.0 * scale)
+        meter_cx = x + icon * 0.64
+        meter_cy = y - icon * 0.47
+        self.page.circle(meter_cx, meter_cy, icon * 0.24, fill=(0.90, 0.97, 1.0), stroke=COLOR_BLUE)
+        self.page.rect(meter_cx - icon * 0.13, meter_cy + icon * 0.05, icon * 0.26, icon * 0.10, fill=(1, 1, 1), stroke=COLOR_BRAND_CYAN)
+        self.page.circle(meter_cx, meter_cy - icon * 0.10, icon * 0.065, fill=COLOR_BRAND_YELLOW, stroke=COLOR_BLUE)
+        self.page.circle(x + icon * 0.88, y - icon * 0.06, icon * 0.06, fill=COLOR_BRAND_YELLOW, stroke=COLOR_BRAND_YELLOW)
+        if wordmark:
+            self.page.text(x + icon + 7 * scale, y - 5 * scale, "MyGlico", size=11 * scale, bold=True, color=COLOR_BLUE)
+
     def _header(self) -> None:
         patient = self.context["patient"]
         filters = self.context["filters"]
@@ -604,9 +760,10 @@ class ClinicalReportPdf:
         generated_at = datetime.now().strftime("%d/%m/%Y %H:%M")
 
         self.page.rect(0, self.page_height - 104, self.page_width, 104, fill=(0.94, 0.98, 1.0))
-        self.page.text(MARGIN_X, self.page_height - 36, "MyGlico", size=11, bold=True, color=COLOR_BLUE)
-        self.page.text(MARGIN_X, self.page_height - 64, "Relatório clínico glicêmico", size=24, bold=True, color=(0.05, 0.13, 0.22))
-        self.page.text(MARGIN_X, self.page_height - 82, "Acompanhamento glicêmico com base no detalhamento do paciente", size=9.2, color=COLOR_MUTED)
+        self._myglico_logo(MARGIN_X, self.page_height - 24, scale=0.82)
+        title_x = MARGIN_X + 112
+        self.page.text(title_x, self.page_height - 48, "Relatório clínico glicêmico", size=20, bold=True, color=(0.05, 0.13, 0.22))
+        self.page.text(title_x, self.page_height - 66, "Acompanhamento glicêmico com base no detalhamento do paciente", size=8.8, color=COLOR_MUTED)
         self.page.rect(self.page_width - MARGIN_X - 134, self.page_height - 76, 134, 42, fill=(1, 1, 1), stroke=COLOR_BORDER)
         self.page.text(self.page_width - MARGIN_X - 124, self.page_height - 50, "Data da geração", size=7.6, bold=True, color=COLOR_MUTED)
         self.page.text(self.page_width - MARGIN_X - 124, self.page_height - 64, generated_at, size=10.2, bold=True, color=COLOR_TEXT)
