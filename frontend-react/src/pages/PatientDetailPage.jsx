@@ -563,7 +563,7 @@ export default function PatientDetailPage() {
               Voltar para a visão geral
             </Link>
             <a className="react-button" href={reportUrl || "#"} target="_blank" rel="noreferrer">
-              Baixar PDF clínico
+              Baixar Relatório Glicêmico
             </a>
           </div>
         </div>
