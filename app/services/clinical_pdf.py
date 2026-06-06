@@ -41,7 +41,7 @@ THRESHOLDS = [
     ("Risco elevado", ">= 250 mg/dL", COLOR_CRITICAL),
 ]
 
-LOGO_IMAGE_PATH = Path(__file__).resolve().parents[2] / "frontend-react" / "public" / "img" / "myglico-logo.png"
+LOGO_IMAGE_PATH = Path(__file__).resolve().parents[2] / "frontend-react" / "public" / "img" / "myglico-logo-report.png"
 REPORT_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 _PNG_IMAGE_CACHE: dict[tuple[Path, int], PdfImage | None] = {}
 
@@ -377,6 +377,10 @@ def build_daily_glucose_summaries(context: dict[str, object]) -> list[DailyGluco
 
 def build_attention_days(context: dict[str, object]) -> list[DailyGlucoseSummary]:
     return [summary for summary in build_daily_glucose_summaries(context) if summary.is_attention]
+
+
+def preload_report_assets() -> None:
+    _load_png_image(LOGO_IMAGE_PATH)
 
 
 @dataclass(slots=True)

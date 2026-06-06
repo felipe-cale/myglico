@@ -12,7 +12,7 @@ from app.db.session import get_db
 from app.models.entities import Patient
 from app.services.clinical_pdf import build_patient_report_pdf, patient_report_filename
 from app.services.manual_entry import create_manual_glucose_record, create_patient
-from app.services.reports import get_dashboard_context, get_dashboard_summary, get_paginated_patients, get_patient_detail_context
+from app.services.reports import get_dashboard_context, get_dashboard_summary, get_paginated_patients, get_patient_detail_context, get_patient_report_context
 from app.services.semantic import SAMPLE_QUERIES, execute_sparql
 
 
@@ -129,7 +129,7 @@ def api_patient_report_pdf(
     if start_date > end_date:
         raise HTTPException(status_code=400, detail="start_date must be before or equal to end_date.")
 
-    context = get_patient_detail_context(db, patient_id, start_date=start_date, end_date=end_date)
+    context = get_patient_report_context(db, patient_id, start_date=start_date, end_date=end_date)
     if context is None:
         raise HTTPException(status_code=404, detail="Patient not found.")
 

@@ -438,6 +438,25 @@ def _serialize_record(record: GlucoseRecord) -> dict[str, object]:
     }
 
 
+def _serialize_report_record(record: GlucoseRecord) -> dict[str, object]:
+    event_type = "glucose_measurement"
+    event_subtype = record.context_label
+    context_label = record.context_label
+    return {
+        "occurred_at": record.measured_at.isoformat(),
+        "event_date": record.measured_at.date().isoformat(),
+        "event_time": record.measured_at.strftime("%H:%M"),
+        "event_type": event_type,
+        "event_type_label": _enum_label(event_type, EVENT_TYPE_LABELS),
+        "event_subtype": event_subtype,
+        "event_subtype_label": _enum_label(event_subtype, EVENT_SUBTYPE_LABELS),
+        "numeric_value": record.glucose_mg_dl,
+        "glucose_mg_dl": record.glucose_mg_dl,
+        "context_label": context_label,
+        "context_label_display": _enum_label(context_label, CONTEXT_LABELS),
+    }
+
+
 def get_dashboard_context(db: Session) -> dict[str, object]:
     summary = get_dashboard_summary(db)
     patients_page = get_paginated_patients(db, page=1, page_size=70)
@@ -597,6 +616,95 @@ def get_patient_detail_context(
         "glucose_events_json": [_serialize_record(record) for record in glucose_records],
         "recent_events_json": [_serialize_record(record) for record in recent_records],
         "line_chart_points": build_line_chart_points([row.get("avg_glucose") or 0 for row in daily_indicators_json]),
+    }
+
+
+def get_patient_report_context(
+    db: Session,
+    patient_id: str,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> dict[str, object] | None:
+    patient = db.get(Patient, patient_id)
+    if patient is None:
+        return None
+
+    latest_run = get_latest_analytics_run(db)
+    metric_bounds = db.execute(
+        select(func.min(DailyMetricsCurrent.metric_date), func.max(DailyMetricsCurrent.metric_date)).where(
+            DailyMetricsCurrent.patient_id == patient_id,
+        )
+    ).one()
+    record_bounds = db.execute(
+        select(func.min(GlucoseRecord.measured_at), func.max(GlucoseRecord.measured_at)).where(
+            GlucoseRecord.patient_id == patient_id,
+        )
+    ).one()
+    record_start = record_bounds[0].date() if record_bounds[0] else None
+    record_end = record_bounds[1].date() if record_bounds[1] else None
+    available_start = metric_bounds[0] or record_start
+    available_end = metric_bounds[1] or record_end
+    resolved_start, resolved_end = _resolve_date_window(available_start, available_end, start_date, end_date)
+
+    indicator_query = None
+    if latest_run:
+        indicator_query = (
+            select(DailyIndicator)
+            .where(DailyIndicator.analysis_run_id == latest_run.id, DailyIndicator.patient_id == patient_id)
+            .order_by(DailyIndicator.indicator_date)
+        )
+        if resolved_start and resolved_end:
+            indicator_query = indicator_query.where(
+                DailyIndicator.indicator_date >= resolved_start,
+                DailyIndicator.indicator_date <= resolved_end,
+            )
+    indicators = db.scalars(indicator_query).all() if indicator_query is not None else []
+
+    metric_query = select(DailyMetricsCurrent).where(DailyMetricsCurrent.patient_id == patient_id).order_by(DailyMetricsCurrent.metric_date)
+    if resolved_start and resolved_end:
+        metric_query = metric_query.where(
+            DailyMetricsCurrent.metric_date >= resolved_start,
+            DailyMetricsCurrent.metric_date <= resolved_end,
+        )
+    metrics = db.scalars(metric_query).all()
+
+    glucose_query = select(GlucoseRecord).where(GlucoseRecord.patient_id == patient_id).order_by(GlucoseRecord.measured_at)
+    if resolved_start and resolved_end:
+        start_dt = datetime.combine(resolved_start, time.min)
+        end_dt = datetime.combine(resolved_end + timedelta(days=1), time.min)
+        glucose_query = glucose_query.where(GlucoseRecord.measured_at >= start_dt, GlucoseRecord.measured_at < end_dt)
+    glucose_records = db.scalars(glucose_query).all()
+
+    summary_source = indicators if indicators else metrics
+    avg_values = [row.avg_glucose for row in summary_source if row.avg_glucose is not None]
+    summary = {
+        "days_observed": len(summary_source),
+        "avg_glucose": round(mean(avg_values), 2) if avg_values else None,
+        "pct_hypo": round(mean([row.pct_hypo for row in summary_source]), 2) if summary_source else 0.0,
+        "pct_in_range": round(mean([row.pct_in_range for row in summary_source]), 2) if summary_source else 0.0,
+        "pct_hyper": round(mean([row.pct_hyper for row in summary_source]), 2) if summary_source else 0.0,
+        "anomaly_days": sum(1 for row in indicators if row.anomaly_flag),
+        "glucose_measurements": len(glucose_records),
+    }
+
+    cluster_profiles = _build_cluster_profile_map(indicators)
+    daily_indicators_json = (
+        [_serialize_indicator(indicator, cluster_profiles) for indicator in indicators]
+        if indicators
+        else [_serialize_metric(metric) for metric in metrics]
+    )
+
+    return {
+        "patient": patient,
+        "filters": {
+            "available_start_date": available_start.isoformat() if available_start else None,
+            "available_end_date": available_end.isoformat() if available_end else None,
+            "start_date": resolved_start.isoformat() if resolved_start else None,
+            "end_date": resolved_end.isoformat() if resolved_end else None,
+        },
+        "summary": summary,
+        "daily_indicators_json": daily_indicators_json,
+        "glucose_events_json": [_serialize_report_record(record) for record in glucose_records],
     }
 
 
