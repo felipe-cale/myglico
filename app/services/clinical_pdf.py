@@ -840,10 +840,10 @@ class ClinicalReportPdf:
         y180 = self._chart_y(HYPER_LIMIT, min_value, max_value, plot_bottom, plot_height)
         y250 = self._chart_y(CRITICAL_HYPER_LIMIT, min_value, max_value, plot_bottom, plot_height)
 
-        self.page.rect(left, plot_bottom, plot_width, max(y70 - plot_bottom, 0), fill=(0.99, 0.92, 0.93))
-        self.page.rect(left, y70, plot_width, max(y180 - y70, 0), fill=(0.92, 0.98, 0.95))
-        self.page.rect(left, y180, plot_width, max(y250 - y180, 0), fill=(1.0, 0.96, 0.88))
-        self.page.rect(left, y250, plot_width, max(plot_bottom + plot_height - y250, 0), fill=(0.95, 0.92, 1.0))
+        self.page.rect(left, plot_bottom, plot_width, max(y70 - plot_bottom, 0), fill=(0.985, 0.985, 0.985))
+        self.page.rect(left, y70, plot_width, max(y180 - y70, 0), fill=(0.945, 0.975, 0.962))
+        self.page.rect(left, y180, plot_width, max(y250 - y180, 0), fill=(0.968, 0.972, 0.976))
+        self.page.rect(left, y250, plot_width, max(plot_bottom + plot_height - y250, 0), fill=(0.952, 0.958, 0.968))
         self.page.rect(left, plot_bottom, plot_width, plot_height, stroke=COLOR_BORDER)
 
         for limit, color, label in [
@@ -853,7 +853,7 @@ class ClinicalReportPdf:
         ]:
             y = self._chart_y(limit, min_value, max_value, plot_bottom, plot_height)
             self.page.line(left, y, right, y, color=color, width=1.1, dashed=True)
-            self.page.text(left + 4, y + 4, f"{label} mg/dL", size=7.3, bold=True, color=COLOR_TEXT)
+            self.page.text(left + 4, y + 4, f"{label} mg/dL", size=8.0, bold=True, color=COLOR_TEXT)
 
         coords: list[tuple[float, float]] = []
         for index, (_, value) in enumerate(points):
@@ -863,16 +863,16 @@ class ClinicalReportPdf:
         self.page.polyline(coords, color=(0.42, 0.50, 0.58), width=0.75)
         for (_, value), (x, y) in zip(points, coords):
             classification, color = _classify_glucose(value)
-            radius = 3.8 if classification in {"Hipoglicemia", "Risco elevado"} else 3.2
+            radius = 4.2 if classification in {"Hipoglicemia", "Risco elevado"} else 3.6
             self.page.circle(x, y, radius, fill=color, stroke=(1, 1, 1))
             if classification in {"Hipoglicemia", "Risco elevado"}:
-                self.page.text(x + 4, y + 4, _format_number(value), size=6.4, bold=True, color=COLOR_TEXT)
+                self.page.text(x + 5, y + 4, _format_number(value), size=7.0, bold=True, color=COLOR_TEXT)
 
         step = max(1, ceil(len(points) / 7))
         for index, (label, _) in enumerate(points):
             if index in (0, len(points) - 1) or index % step == 0:
                 x, _ = coords[index]
-                self.page.text(x - 12, bottom + 7, label, size=7, color=COLOR_MUTED)
+                self.page.text(x - 12, bottom + 7, label, size=7.6, color=COLOR_MUTED)
         self._legend_line(bottom - 12)
         self.y = bottom - 32
 
@@ -912,7 +912,12 @@ class ClinicalReportPdf:
             rows.append([f"{hour:02d}h", low, critical, note])
         if not rows:
             rows = [["-", 0, 0, "Sem ocorrências críticas no período"]]
-        self._table(["Horário", "< 70 mg/dL", ">= 250 mg/dL", "Observação"], rows, [72, 82, 92, 277], font_size=7.7)
+        self._table(
+            ["Horário", "< 70 mg/dL", ">= 250 mg/dL", "Observação"],
+            rows,
+            [82, 110, 120, self.content_width - 312],
+            font_size=8.4,
+        )
 
     def _daily_table(self) -> None:
         self._section_title("Indicadores diários consolidados", keep_with=64)
@@ -931,7 +936,14 @@ class ClinicalReportPdf:
             ]
             for item in self.daily_summaries
         ]
-        self._table(headers, rows, [54, 30, 48, 42, 42, 48, 50, 48, 153], font_size=6.7, row_flags=[item.is_attention for item in self.daily_summaries])
+        self._table(
+            headers,
+            rows,
+            [64, 38, 62, 54, 54, 62, 68, 62, self.content_width - 462],
+            font_size=7.6,
+            row_flags=[item.is_attention for item in self.daily_summaries],
+            flag_fill=(0.965, 0.975, 0.985),
+        )
 
     def _attention_days_table(self) -> None:
         self._section_title("Dias atípicos e pontos de atenção", keep_with=74)
@@ -960,8 +972,8 @@ class ClinicalReportPdf:
         self._table(
             ["Data", "Alerta", "Motivo", "Média", "Mín/Máx", "Qtd", "H/F/Hiper", "Extremos", "Contexto"],
             rows,
-            [50, 88, 112, 45, 58, 28, 70, 52, 72],
-            font_size=6.2,
+            [56, 130, 185, 48, 68, 32, 88, 62, self.content_width - 669],
+            font_size=6.9,
             row_flags=[True for _ in rows],
         )
 
@@ -979,7 +991,12 @@ class ClinicalReportPdf:
                     str(event.get("context_label_display") or event.get("context_label") or "-"),
                 ]
             )
-        self._table(["Quando", "Tipo", "Subtipo", "Valor", "Contexto"], rows, [92, 94, 124, 74, self.content_width - 385], font_size=6.9)
+        self._table(
+            ["Quando", "Tipo", "Subtipo", "Valor", "Contexto"],
+            rows,
+            [106, 96, 136, 76, self.content_width - 414],
+            font_size=7.3,
+        )
 
     def _daily_point(self, event: dict[str, object], left: float, bottom: float, width: float, height: float, min_value: float, max_value: float) -> tuple[float, float]:
         x = left + (_event_time_minutes(event) / (24 * 60)) * width
@@ -1108,8 +1125,10 @@ class ClinicalReportPdf:
         *,
         font_size: float = 7.8,
         row_flags: list[bool] | None = None,
+        flag_fill: tuple[float, float, float] = (1.0, 0.975, 0.93),
     ) -> None:
-        header_height = 18
+        header_font_size = max(7.5, font_size + 0.2)
+        header_height = max(18, header_font_size + 10.5)
         line_height = font_size + 2.4
         x_positions = [MARGIN_X]
         for width in widths[:-1]:
@@ -1119,7 +1138,7 @@ class ClinicalReportPdf:
             self._ensure(header_height + 18)
             self.page.rect(MARGIN_X, self.y - header_height, sum(widths), header_height, fill=(0.95, 0.97, 0.99), stroke=COLOR_BORDER)
             for x, header in zip(x_positions, headers):
-                self.page.text(x + 4, self.y - 12, header, size=7.5, bold=True, color=COLOR_MUTED)
+                self.page.text(x + 4, self.y - 12, header, size=header_font_size, bold=True, color=COLOR_MUTED)
             self.y -= header_height
 
         draw_header()
@@ -1134,7 +1153,7 @@ class ClinicalReportPdf:
                 draw_header()
             is_flagged = bool(row_flags[row_index]) if row_flags and row_index < len(row_flags) else False
             if is_flagged:
-                self.page.rect(MARGIN_X, self.y - row_height, sum(widths), row_height, fill=(1.0, 0.975, 0.93))
+                self.page.rect(MARGIN_X, self.y - row_height, sum(widths), row_height, fill=flag_fill)
                 self.page.rect(MARGIN_X, self.y - row_height, 2.2, row_height, fill=COLOR_HYPER)
             elif row_index % 2 == 1:
                 self.page.rect(MARGIN_X, self.y - row_height, sum(widths), row_height, fill=(0.99, 0.995, 1.0))
