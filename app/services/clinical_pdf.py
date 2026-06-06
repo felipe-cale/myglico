@@ -6,6 +6,7 @@ from math import ceil
 from pathlib import Path
 import re
 import zlib
+from zoneinfo import ZoneInfo
 
 
 PAGE_WIDTH = 595.28
@@ -41,6 +42,7 @@ THRESHOLDS = [
 ]
 
 LOGO_IMAGE_PATH = Path(__file__).resolve().parents[2] / "frontend-react" / "public" / "img" / "myglico-logo.png"
+REPORT_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 _PNG_IMAGE_CACHE: dict[tuple[Path, int], PdfImage | None] = {}
 
 
@@ -717,7 +719,7 @@ class ClinicalReportPdf:
         filters = self.context["filters"]
         period = f"{_format_date(filters.get('start_date'))} a {_format_date(filters.get('end_date'))}"
         self._myglico_logo(MARGIN_X, self.y + 3, scale=0.34)
-        self.page.text(MARGIN_X + 44, self.y, "Relatório clínico glicêmico", size=8.2, bold=True, color=COLOR_TEXT)
+        self.page.text(MARGIN_X + 44, self.y, "Relatório glicêmico", size=8.2, bold=True, color=COLOR_TEXT)
         self.page.text(MARGIN_X + 44, self.y - 11, f"{patient.display_name} | {period}", size=7.8, color=COLOR_MUTED)
         self.page.text(self.page_width - MARGIN_X - 58, self.y, f"Página {self.page_number}", size=7.8, color=COLOR_MUTED)
         self.page.line(MARGIN_X, self.y - 19, self.page_width - MARGIN_X, self.y - 19, color=COLOR_BORDER, width=0.6)
@@ -757,25 +759,22 @@ class ClinicalReportPdf:
         patient = self.context["patient"]
         filters = self.context["filters"]
         summary = self.context["summary"]
-        generated_at = datetime.now().strftime("%d/%m/%Y %H:%M")
+        generated_at = datetime.now(REPORT_TIMEZONE).strftime("%d/%m/%Y %H:%M")
 
         self.page.rect(0, self.page_height - 104, self.page_width, 104, fill=(0.94, 0.98, 1.0))
         self._myglico_logo(MARGIN_X, self.page_height - 24, scale=0.82)
         title_x = MARGIN_X + 112
-        self.page.text(title_x, self.page_height - 48, "Relatório clínico glicêmico", size=20, bold=True, color=(0.05, 0.13, 0.22))
-        self.page.text(title_x, self.page_height - 66, "Acompanhamento glicêmico com base no detalhamento do paciente", size=8.8, color=COLOR_MUTED)
+        self.page.text(title_x, self.page_height - 48, "Relatório glicêmico", size=20, bold=True, color=(0.05, 0.13, 0.22))
+        self.page.text(title_x, self.page_height - 66, "Resumo do controle glicêmico no período analisado", size=8.8, color=COLOR_MUTED)
         self.page.rect(self.page_width - MARGIN_X - 134, self.page_height - 76, 134, 42, fill=(1, 1, 1), stroke=COLOR_BORDER)
         self.page.text(self.page_width - MARGIN_X - 124, self.page_height - 50, "Data da geração", size=7.6, bold=True, color=COLOR_MUTED)
         self.page.text(self.page_width - MARGIN_X - 124, self.page_height - 64, generated_at, size=10.2, bold=True, color=COLOR_TEXT)
         self.y = self.page_height - 128
         self._identification_panel(generated_at)
-        self._space(8)
+        self._space(16)
 
         period = f"{_format_date(filters.get('start_date'))} a {_format_date(filters.get('end_date'))}"
-        intro = (
-            f"Este laudo consolida o período {period}, com {summary.get('glucose_measurements', '-')} medições "
-            "e os mesmos indicadores exibidos no detalhamento do paciente."
-        )
+        intro = f"Relatório glicêmico referente ao período de {period}, gerado para apoio à revisão clínica."
         self.y = self._wrapped_text(MARGIN_X, self.y, intro, self.content_width, size=8.8, color=COLOR_MUTED)
         self._space(10)
         self._summary_cards()
@@ -1101,6 +1100,43 @@ class ClinicalReportPdf:
             row_flags=[item.is_attention for item in self.daily_summaries],
             flag_fill=(0.965, 0.975, 0.985),
         )
+        self._attention_marker_legend()
+
+    def _attention_marker_legend(self) -> None:
+        legend_height = 24
+        self._ensure(legend_height + 10)
+        self._space(4)
+
+        top = self.y
+        self.page.rect(
+            MARGIN_X,
+            top - legend_height,
+            self.content_width,
+            legend_height,
+            fill=(1, 1, 1),
+            stroke=COLOR_BORDER,
+        )
+
+        # Mesmo marcador lateral usado nas linhas da tabela com ponto de atenção.
+        self.page.rect(MARGIN_X + 8, top - 18, 2.2, 12, fill=COLOR_HYPER)
+
+        self.page.text(
+            MARGIN_X + 18,
+            top - 14,
+            "Traço lateral bege/laranja: dia com ponto de atenção",
+            size=7.8,
+            bold=True,
+            color=COLOR_TEXT,
+        )
+        self.page.text(
+            MARGIN_X + 280,
+            top - 14,
+            "Indica dias que atingiram critérios automáticos de alerta.",
+            size=7.4,
+            color=COLOR_MUTED,
+        )
+
+        self.y -= legend_height + 8
 
     def _attention_days_table(self) -> None:
         self._section_title("Dias atípicos e pontos de atenção", keep_with=74)
