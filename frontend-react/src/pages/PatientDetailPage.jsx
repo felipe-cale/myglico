@@ -971,7 +971,6 @@ export default function PatientDetailPage() {
                 const eventTypeLabel = event.event_type_label || event.event_type || "-";
                 const eventSubtypeLabel = event.event_subtype_label || event.event_subtype || "-";
                 const contextLabel = event.context_label_display || event.context_label || "-";
-                const timestampQualityLabel = event.timestamp_quality_label || event.timestamp_quality || "-";
 
                 return (
                   <article key={`${event.occurred_at}-${event.event_type}`} className="react-mobile-card">
@@ -997,7 +996,6 @@ export default function PatientDetailPage() {
                         }
                       />
                       <MobileDetailField label="Contexto" value={contextLabel} />
-                      <MobileDetailField label="Confiabilidade" value={timestampQualityLabel} />
                     </div>
                   </article>
                 );
@@ -1013,7 +1011,6 @@ export default function PatientDetailPage() {
                     <th>Subtipo</th>
                     <th>Valor</th>
                     <th>Contexto</th>
-                    <th>Confiabilidade</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1021,7 +1018,6 @@ export default function PatientDetailPage() {
                     const eventTypeLabel = event.event_type_label || event.event_type || "-";
                     const eventSubtypeLabel = event.event_subtype_label || event.event_subtype || "-";
                     const contextLabel = event.context_label_display || event.context_label || "-";
-                    const timestampQualityLabel = event.timestamp_quality_label || event.timestamp_quality || "-";
 
                     return (
                       <tr key={`${event.occurred_at}-${event.event_type}`}>
@@ -1036,7 +1032,6 @@ export default function PatientDetailPage() {
                               : "-"}
                         </td>
                         <td title={event.context_label || ""}>{contextLabel}</td>
-                        <td title={event.timestamp_quality || ""}>{timestampQualityLabel}</td>
                       </tr>
                     );
                   })}
