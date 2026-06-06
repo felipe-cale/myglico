@@ -16,9 +16,8 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { fetchPatientDetail } from "../api";
+import { fetchPatientDetail, patientReportPdfUrl } from "../api";
 import StateBlock from "../components/StateBlock";
-import { exportPatientReport } from "../reportExport";
 
 const PIE_COLORS = ["#e35d73", "#19a86a", "#f4a93d"];
 const HOURLY_TICKS = Array.from({ length: 24 }, (_, index) => index);
@@ -540,6 +539,11 @@ export default function PatientDetailPage() {
     setSelectedDay("");
   }
 
+  const reportUrl = patientReportPdfUrl(patient.id, {
+    startDate: filters.start_date,
+    endDate: filters.end_date
+  });
+
   return (
     <div className="react-page react-page--patient-detail">
       <section className="react-hero react-hero--compact">
@@ -558,13 +562,9 @@ export default function PatientDetailPage() {
             <Link to="/" className="react-button react-button--ghost">
               Voltar para a visão geral
             </Link>
-            <button
-              type="button"
-              className="react-button"
-              onClick={() => exportPatientReport(data, hourlyExtremes)}
-            >
-              Exportar relatório
-            </button>
+            <a className="react-button" href={reportUrl || "#"} target="_blank" rel="noreferrer">
+              Baixar PDF clínico
+            </a>
           </div>
         </div>
         <div className="react-hero__side">

@@ -39,6 +39,18 @@ export function fetchPatientDetail(patientId, { startDate, endDate } = {}) {
   return requestJson(`/api/patients/${patientId}${suffix}`);
 }
 
+export function patientReportPdfUrl(patientId, { startDate, endDate }) {
+  if (!patientId || !startDate || !endDate) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate
+  });
+  return `/api/patients/${encodeURIComponent(patientId)}/report.pdf?${params.toString()}`;
+}
+
 export function fetchSemanticQueries() {
   return requestJson("/api/semantic/queries");
 }

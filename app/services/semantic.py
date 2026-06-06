@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path
@@ -62,6 +63,10 @@ def _file_hash(path: str | Path) -> str:
     return sha256(Path(path).read_bytes()).hexdigest()
 
 
+def _decimal_literal(value: float) -> Literal:
+    return Literal(Decimal(str(value)), datatype=XSD.decimal)
+
+
 def build_semantic_graph(db: Session, analytics_run: AnalysisRun) -> str:
     resource, vocab = _resource_namespaces()
     graph = Graph()
@@ -102,7 +107,7 @@ def build_semantic_graph(db: Session, analytics_run: AnalysisRun) -> str:
         graph.add((record_uri, RDF.type, vocab.GlucoseMeasurement))
         graph.add((record_uri, vocab.belongsToPatient, patient_uri))
         graph.add((record_uri, vocab.occurredAt, Literal(record.measured_at.isoformat(), datatype=XSD.dateTime)))
-        graph.add((record_uri, vocab.glucoseValueMgDl, Literal(record.glucose_mg_dl, datatype=XSD.double)))
+        graph.add((record_uri, vocab.glucoseValueMgDl, _decimal_literal(record.glucose_mg_dl)))
         if record.context_label:
             graph.add((record_uri, vocab.hasContext, Literal(record.context_label)))
         for source in sources_by_record.get(record.id, []):
@@ -118,10 +123,10 @@ def build_semantic_graph(db: Session, analytics_run: AnalysisRun) -> str:
         graph.add((indicator_uri, vocab.belongsToPatient, patient_uri))
         graph.add((indicator_uri, vocab.forDate, Literal(indicator.indicator_date.isoformat(), datatype=XSD.date)))
         if indicator.avg_glucose is not None:
-            graph.add((indicator_uri, vocab.avgGlucoseMgDl, Literal(indicator.avg_glucose, datatype=XSD.double)))
-        graph.add((indicator_uri, vocab.pctHypo, Literal(indicator.pct_hypo, datatype=XSD.double)))
-        graph.add((indicator_uri, vocab.pctInRange, Literal(indicator.pct_in_range, datatype=XSD.double)))
-        graph.add((indicator_uri, vocab.pctHyper, Literal(indicator.pct_hyper, datatype=XSD.double)))
+            graph.add((indicator_uri, vocab.avgGlucoseMgDl, _decimal_literal(indicator.avg_glucose)))
+        graph.add((indicator_uri, vocab.pctHypo, _decimal_literal(indicator.pct_hypo)))
+        graph.add((indicator_uri, vocab.pctInRange, _decimal_literal(indicator.pct_in_range)))
+        graph.add((indicator_uri, vocab.pctHyper, _decimal_literal(indicator.pct_hyper)))
         graph.add((indicator_uri, vocab.glucoseEventCount, Literal(indicator.glucose_event_count, datatype=XSD.integer)))
         graph.add((indicator_uri, PROV.wasGeneratedBy, analytics_uri))
 
