@@ -1,5 +1,5 @@
 # Mapping created in the style of the provided Juma/R2RML example.
-# Simplified semantic scope:
+# Simplified semantic scope: 
 # Patient -> GlucoseMeasurement -> RawRecord -> DataSource.
 
 @prefix mygv: <https://w3id.org/myglico/vocab/> .

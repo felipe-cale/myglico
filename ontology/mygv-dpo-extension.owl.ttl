@@ -1,286 +1,310 @@
+@prefix : <https://w3id.org/myglico/ontology/mygv-dpo-extension#> .
+@prefix dbo: <http://dbpedia.org/ontology/> .
 @prefix dct: <http://purl.org/dc/terms/> .
 @prefix dpo: <http://purl.org/twc/dpo/ont/> .
-@prefix mygv: <https://w3id.org/myglico/vocab/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix mygv: <https://w3id.org/myglico/vocab/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://w3id.org/myglico/ontology/mygv-dpo-extension> .
 
-<https://w3id.org/myglico/ontology/mygv-dpo-extension>
-    a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/myglico/ontology/mygv-dpo-extension/1.0.0> ;
-    owl:imports
-        <http://purl.org/twc/dpo/ont/diabetes_pharmacology_ontology.ttl> ,
-        <http://www.w3.org/ns/prov-o> ;
-    dct:created "2026-06-04"^^xsd:date ;
-    dct:creator "Felipe Rodrigues Calé" ;
-    dct:title "MYGV: ontologia para diário glicêmico rastreável"@pt ;
-    dct:title "MYGV: Ontology for Traceable Glycemic Diaries"@en ;
-    dct:description "Vocabulário do MyGlico para representar pacientes pseudonimizados, medições de glicemia capilar, classificações por faixa glicêmica e a origem dos registros convertidos para RDF."@pt ;
-    dct:description "MyGlico vocabulary for representing pseudonymized patients, capillary blood glucose measurements, glycemic range classifications, and the origin of records converted to RDF."@en .
+<https://w3id.org/myglico/ontology/mygv-dpo-extension> rdf:type owl:Ontology ;
+                                                        owl:versionIRI <https://w3id.org/myglico/ontology/mygv-dpo-extension/1.0.0> ;
+                                                        owl:imports dpo:diabetes_pharmacology_ontology.ttl ,
+                                                                    <http://www.w3.org/ns/prov-o> ;
+                                                        dct:created "2026-06-04"^^xsd:date ;
+                                                        dct:creator "Felipe Rodrigues Calé" ;
+                                                        dct:description "MyGlico vocabulary for representing pseudonymized patients, capillary blood glucose measurements, glycemic range classifications, and the origin of records converted to RDF."@en ,
+                                                                        "MyGlico vocabulary for representing pseudonymized patients, capillary blood glucose measurements, glycemic range classifications, and the provenance of records converted to RDF."@en ;
+                                                        dct:title "MYGV: An Ontology for a Traceable Glycemic Diary"@en ,
+                                                                  "MYGV: Ontology for Traceable Glycemic Diaries"@en .
 
 #################################################################
-# Classes
+#    Datatypes
 #################################################################
 
-mygv:Patient
-    a owl:Class ;
-    rdfs:label "Paciente pseudonimizado"@pt ;
-    rdfs:label "Pseudonymized patient"@en ;
-    rdfs:comment "Representa uma pessoa acompanhada pelo MyGlico por meio de um identificador pseudonimizado."@pt ;
-    rdfs:comment "Represents a person monitored by MyGlico through a pseudonymized identifier."@en .
+###  http://www.w3.org/2001/XMLSchema#date
+xsd:date rdf:type rdfs:Datatype .
 
-mygv:GlucoseMeasurement
-    a owl:Class ;
-    rdfs:label "Medição glicêmica"@pt ;
-    rdfs:label "Glucose measurement"@en ;
-    rdfs:subClassOf
-        dpo:BloodGlucoseMeasurement ,
-        prov:Entity ,
-        [
-            a owl:Restriction ;
-            owl:onProperty mygv:glucoseValueMgDl ;
-            owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
-            owl:onDataRange xsd:decimal
-        ] ;
-    rdfs:comment "Representa uma medição individual de glicose registrada no diário glicêmico do MyGlico."@pt ;
-    rdfs:comment "Represents an individual glucose measurement recorded in the MyGlico glycemic diary."@en .
 
-mygv:CapillaryGlucoseMeasurement
-    a owl:Class ;
-    rdfs:label "Medição de glicemia capilar"@pt ;
-    rdfs:label "Capillary blood glucose measurement"@en ;
-    rdfs:subClassOf mygv:GlucoseMeasurement ;
-    rdfs:comment "Representa uma medição de glicose obtida por automonitoramento de glicemia capilar."@pt ;
-    rdfs:comment "Represents a glucose measurement obtained through capillary blood glucose self-monitoring."@en .
+###  https://w3id.org/myglico/vocab/HyperglycemicMgDlRange
+mygv:HyperglycemicMgDlRange rdf:type rdfs:Datatype ;
+                            rdfs:comment "Define valores glicêmicos superiores a 180 mg/dL."@pt ,
+                                         "Defines glucose values above 180 mg/dL."@en ;
+                            rdfs:label "Faixa de hiperglicemia em mg/dL"@pt ,
+                                       "Hyperglycemic range in mg/dL"@en ;
+                            owl:equivalentClass [ rdf:type rdfs:Datatype ;
+                                                  owl:onDatatype xsd:decimal ;
+                                                  owl:withRestrictions ( [ xsd:minExclusive 180
+                                                                         ]
+                                                                       )
+                                                ] .
 
-mygv:HypoglycemicGlucoseMeasurement
-    a owl:Class ;
-    rdfs:label "Medição glicêmica em hipoglicemia"@pt ;
-    rdfs:label "Hypoglycemic glucose measurement"@en ;
-    rdfs:subClassOf mygv:GlucoseMeasurement ;
-    owl:equivalentClass [
-        a owl:Class ;
-        owl:intersectionOf (
-            mygv:GlucoseMeasurement
-            [
-                a owl:Restriction ;
-                owl:onProperty mygv:glucoseValueMgDl ;
-                owl:someValuesFrom mygv:HypoglycemicMgDlRange
-            ]
-        )
-    ] ;
-    rdfs:comment "Representa uma medição glicêmica com valor inferior a 70 mg/dL."@pt ;
-    rdfs:comment "Represents a glucose measurement with a value below 70 mg/dL."@en .
 
-mygv:InTargetRangeGlucoseMeasurement
-    a owl:Class ;
-    rdfs:label "Medição glicêmica em faixa alvo"@pt ;
-    rdfs:label "Glucose measurement in target range"@en ;
-    rdfs:subClassOf mygv:GlucoseMeasurement ;
-    owl:equivalentClass [
-        a owl:Class ;
-        owl:intersectionOf (
-            mygv:GlucoseMeasurement
-            [
-                a owl:Restriction ;
-                owl:onProperty mygv:glucoseValueMgDl ;
-                owl:someValuesFrom mygv:TargetMgDlRange
-            ]
-        )
-    ] ;
-    rdfs:comment "Representa uma medição glicêmica com valor entre 70 e 180 mg/dL, inclusive."@pt ;
-    rdfs:comment "Represents a glucose measurement with a value from 70 to 180 mg/dL inclusive."@en .
+###  https://w3id.org/myglico/vocab/HypoglycemicMgDlRange
+mygv:HypoglycemicMgDlRange rdf:type rdfs:Datatype ;
+                           rdfs:comment "Define valores glicêmicos inferiores a 70 mg/dL."@pt ,
+                                        "Defines glucose values below 70 mg/dL."@en ;
+                           rdfs:label "Faixa de hipoglicemia em mg/dL"@pt ,
+                                      "Hypoglycemic range in mg/dL"@en ;
+                           owl:equivalentClass [ rdf:type rdfs:Datatype ;
+                                                 owl:onDatatype xsd:decimal ;
+                                                 owl:withRestrictions ( [ xsd:maxExclusive 70
+                                                                        ]
+                                                                      )
+                                               ] .
 
-mygv:HyperglycemicGlucoseMeasurement
-    a owl:Class ;
-    rdfs:label "Medição glicêmica em hiperglicemia"@pt ;
-    rdfs:label "Hyperglycemic glucose measurement"@en ;
-    rdfs:subClassOf mygv:GlucoseMeasurement ;
-    owl:equivalentClass [
-        a owl:Class ;
-        owl:intersectionOf (
-            mygv:GlucoseMeasurement
-            [
-                a owl:Restriction ;
-                owl:onProperty mygv:glucoseValueMgDl ;
-                owl:someValuesFrom mygv:HyperglycemicMgDlRange
-            ]
-        )
-    ] ;
-    rdfs:comment "Representa uma medição glicêmica com valor superior a 180 mg/dL."@pt ;
-    rdfs:comment "Represents a glucose measurement with a value above 180 mg/dL."@en .
 
-[
-    a owl:AllDisjointClasses ;
-    owl:members (
-        mygv:HypoglycemicGlucoseMeasurement
-        mygv:InTargetRangeGlucoseMeasurement
-        mygv:HyperglycemicGlucoseMeasurement
-    )
+###  https://w3id.org/myglico/vocab/TargetMgDlRange
+mygv:TargetMgDlRange rdf:type rdfs:Datatype ;
+                     rdfs:comment "Define valores glicêmicos entre 70 e 180 mg/dL, inclusive."@pt ,
+                                  "Defines glucose values from 70 to 180 mg/dL inclusive."@en ;
+                     rdfs:label "Faixa alvo em mg/dL"@pt ,
+                                "Target range in mg/dL"@en ;
+                     owl:equivalentClass [ rdf:type rdfs:Datatype ;
+                                           owl:onDatatype xsd:decimal ;
+                                           owl:withRestrictions ( [ xsd:minInclusive 70
+                                                                  ]
+                                                                  [ xsd:maxInclusive 180
+                                                                  ]
+                                                                )
+                                         ] .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  https://w3id.org/myglico/vocab/belongsToDataSource
+mygv:belongsToDataSource rdf:type owl:ObjectProperty ;
+                         rdfs:subPropertyOf prov:hadPrimarySource ;
+                         rdfs:domain mygv:RawRecord ;
+                         rdfs:range mygv:DataSource ;
+                         rdfs:comment "Identifica a fonte de dados responsável por fornecer um registro original."@pt ,
+                                      "Identifies the data source responsible for providing an original record."@en ;
+                         rdfs:label "belongs to data source"@en ,
+                                    "pertence à fonte de dados"@pt .
+
+
+###  https://w3id.org/myglico/vocab/belongsToPatient
+mygv:belongsToPatient rdf:type owl:ObjectProperty ;
+                      owl:inverseOf mygv:hasGlucoseMeasurement ;
+                      rdfs:domain mygv:GlucoseMeasurement ;
+                      rdfs:range mygv:Patient ;
+                      rdfs:comment "Identifica o paciente associado a uma medição glicêmica."@pt ,
+                                   "Identifies the patient associated with a glucose measurement."@en ;
+                      rdfs:label "belongs to patient"@en ,
+                                 "pertence ao paciente"@pt .
+
+
+###  https://w3id.org/myglico/vocab/derivedFromRawRecord
+mygv:derivedFromRawRecord rdf:type owl:ObjectProperty ;
+                          rdfs:subPropertyOf prov:wasDerivedFrom ;
+                          rdfs:domain mygv:GlucoseMeasurement ;
+                          rdfs:range mygv:RawRecord ;
+                          rdfs:comment "Relaciona uma medição glicêmica publicada em RDF ao registro original do qual foi derivada."@pt ,
+                                       "Relates an RDF-published glucose measurement to the original record from which it was derived."@en ;
+                          rdfs:label "derivada do registro original"@pt ,
+                                     "derived from original record"@en .
+
+
+###  https://w3id.org/myglico/vocab/hasGlucoseMeasurement
+mygv:hasGlucoseMeasurement rdf:type owl:ObjectProperty ;
+                           rdfs:domain mygv:Patient ;
+                           rdfs:range mygv:GlucoseMeasurement ;
+                           rdfs:comment "Relaciona um paciente às suas medições glicêmicas."@pt ,
+                                        "Relates a patient to their glucose measurements."@en ;
+                           rdfs:label "has glucose measurement"@en ,
+                                      "tem medição glicêmica"@pt .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  https://w3id.org/myglico/vocab/externalPatientCode
+mygv:externalPatientCode rdf:type owl:DatatypeProperty ;
+                         rdfs:domain mygv:Patient ;
+                         rdfs:range xsd:string ;
+                         rdfs:comment "Records the pseudonymized code used to identify the patient in the data source."@en ,
+                                      "Registra o código pseudonimizado utilizado para identificar o paciente na fonte de dados."@pt ;
+                         rdfs:label "código externo pseudonimizado do paciente"@pt ,
+                                    "external pseudonymized patient code"@en .
+
+
+###  https://w3id.org/myglico/vocab/glucoseValueMgDl
+mygv:glucoseValueMgDl rdf:type owl:DatatypeProperty ;
+                      rdfs:domain mygv:GlucoseMeasurement ;
+                      rdfs:range xsd:decimal ;
+                      rdfs:comment "Expressa o valor numérico de uma medição glicêmica em miligramas por decilitro."@pt ,
+                                   "Expresses the numeric value of a glucose measurement in milligrams per deciliter."@en ;
+                      rdfs:label "glucose value in mg/dL"@en ,
+                                 "valor da glicemia em mg/dL"@pt .
+
+
+###  https://w3id.org/myglico/vocab/measuredAt
+mygv:measuredAt rdf:type owl:DatatypeProperty ;
+                rdfs:domain mygv:GlucoseMeasurement ;
+                rdfs:range xsd:dateTime ;
+                rdfs:comment "Informa a data e a hora associadas a uma medição glicêmica."@pt ,
+                             "Provides the date and time associated with a glucose measurement."@en ;
+                rdfs:label "measured at"@en ,
+                           "medida em"@pt .
+
+
+###  https://w3id.org/myglico/vocab/measurementContext
+mygv:measurementContext rdf:type owl:DatatypeProperty ;
+                        rdfs:domain mygv:GlucoseMeasurement ;
+                        rdfs:range rdfs:Literal ;
+                        rdfs:comment "Descreve o contexto em que uma medição glicêmica foi realizada."@pt ,
+                                     "Describes the context in which a glucose measurement was taken."@en ;
+                        rdfs:label "contexto da medição"@pt ,
+                                   "measurement context"@en .
+
+
+###  https://w3id.org/myglico/vocab/sourceName
+mygv:sourceName rdf:type owl:DatatypeProperty ;
+                rdfs:domain mygv:DataSource ;
+                rdfs:range rdfs:Literal ;
+                rdfs:comment "Informa o nome da fonte de dados."@pt ,
+                             "Provides the name of the data source."@en ;
+                rdfs:label "nome da fonte"@pt ,
+                           "source name"@en .
+
+
+###  https://w3id.org/myglico/vocab/sourceRecordId
+mygv:sourceRecordId rdf:type owl:DatatypeProperty ;
+                    rdfs:domain mygv:RawRecord ;
+                    rdfs:range xsd:string ;
+                    rdfs:comment "Records the identifier used to locate the record in its original source."@en ,
+                                 "Registra o identificador que permite localizar o registro em sua fonte original."@pt ;
+                    rdfs:label "identificador do registro original"@pt ,
+                               "original record identifier"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://dbpedia.org/ontology/Person
+dbo:Person rdf:type owl:Class .
+
+
+###  https://w3id.org/myglico/vocab/CapillaryGlucoseMeasurement
+mygv:CapillaryGlucoseMeasurement rdf:type owl:Class ;
+                                 rdfs:subClassOf mygv:GlucoseMeasurement ;
+                                 rdfs:comment "Representa uma medição de glicose obtida por automonitoramento de glicemia capilar."@pt ,
+                                              "Represents a glucose measurement obtained through capillary blood glucose self-monitoring."@en ;
+                                 rdfs:label "Capillary blood glucose measurement"@en ,
+                                            "Medição de glicemia capilar"@pt .
+
+
+###  https://w3id.org/myglico/vocab/DataSource
+mygv:DataSource rdf:type owl:Class ;
+                rdfs:subClassOf prov:Entity ;
+                rdfs:comment "Representa a fonte responsável pelo fornecimento dos registros glicêmicos originais."@pt ,
+                             "Represents the source responsible for providing the original glycemic records."@en ;
+                rdfs:label "Data source"@en ,
+                           "Fonte de dados"@pt .
+
+
+###  https://w3id.org/myglico/vocab/GlucoseMeasurement
+mygv:GlucoseMeasurement rdf:type owl:Class ;
+                        rdfs:subClassOf dpo:BloodGlucoseMeasurement ,
+                                        prov:Entity ,
+                                        [ rdf:type owl:Restriction ;
+                                          owl:onProperty mygv:glucoseValueMgDl ;
+                                          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                          owl:onDataRange xsd:decimal
+                                        ] ;
+                        rdfs:comment "Representa uma medição individual de glicose registrada no diário glicêmico do MyGlico."@pt ,
+                                     "Represents an individual glucose measurement recorded in the MyGlico glycemic diary."@en ;
+                        rdfs:label "Glucose measurement"@en ,
+                                   "Medição glicêmica"@pt .
+
+
+###  https://w3id.org/myglico/vocab/HyperglycemicGlucoseMeasurement
+mygv:HyperglycemicGlucoseMeasurement rdf:type owl:Class ;
+                                     owl:equivalentClass [ owl:intersectionOf ( mygv:GlucoseMeasurement
+                                                                                [ rdf:type owl:Restriction ;
+                                                                                  owl:onProperty mygv:glucoseValueMgDl ;
+                                                                                  owl:someValuesFrom mygv:HyperglycemicMgDlRange
+                                                                                ]
+                                                                              ) ;
+                                                           rdf:type owl:Class
+                                                         ] ;
+                                     rdfs:subClassOf mygv:GlucoseMeasurement ;
+                                     rdfs:comment "Representa uma medição glicêmica com valor superior a 180 mg/dL."@pt ,
+                                                  "Represents a glucose measurement with a value above 180 mg/dL."@en ;
+                                     rdfs:label "Hyperglycemic glucose measurement"@en ,
+                                                "Medição glicêmica em hiperglicemia"@pt .
+
+
+###  https://w3id.org/myglico/vocab/HypoglycemicGlucoseMeasurement
+mygv:HypoglycemicGlucoseMeasurement rdf:type owl:Class ;
+                                    owl:equivalentClass [ owl:intersectionOf ( mygv:GlucoseMeasurement
+                                                                               [ rdf:type owl:Restriction ;
+                                                                                 owl:onProperty mygv:glucoseValueMgDl ;
+                                                                                 owl:someValuesFrom mygv:HypoglycemicMgDlRange
+                                                                               ]
+                                                                             ) ;
+                                                          rdf:type owl:Class
+                                                        ] ;
+                                    rdfs:subClassOf mygv:GlucoseMeasurement ;
+                                    rdfs:comment "Representa uma medição glicêmica com valor inferior a 70 mg/dL."@pt ,
+                                                 "Represents a glucose measurement with a value below 70 mg/dL."@en ;
+                                    rdfs:label "Hypoglycemic glucose measurement"@en ,
+                                               "Medição glicêmica em hipoglicemia"@pt .
+
+
+###  https://w3id.org/myglico/vocab/InTargetRangeGlucoseMeasurement
+mygv:InTargetRangeGlucoseMeasurement rdf:type owl:Class ;
+                                     owl:equivalentClass [ owl:intersectionOf ( mygv:GlucoseMeasurement
+                                                                                [ rdf:type owl:Restriction ;
+                                                                                  owl:onProperty mygv:glucoseValueMgDl ;
+                                                                                  owl:someValuesFrom mygv:TargetMgDlRange
+                                                                                ]
+                                                                              ) ;
+                                                           rdf:type owl:Class
+                                                         ] ;
+                                     rdfs:subClassOf mygv:GlucoseMeasurement ;
+                                     rdfs:comment "Representa uma medição glicêmica com valor entre 70 e 180 mg/dL, inclusive."@pt ,
+                                                  "Represents a glucose measurement with a value from 70 to 180 mg/dL inclusive."@en ;
+                                     rdfs:label "Glucose measurement in target range"@en ,
+                                                "Medição glicêmica em faixa alvo"@pt .
+
+
+###  https://w3id.org/myglico/vocab/Patient
+mygv:Patient rdf:type owl:Class ;
+             rdfs:subClassOf dbo:Person ;
+             rdfs:comment "Representa uma pessoa acompanhada pelo MyGlico por meio de um identificador pseudonimizado."@pt ,
+                          "Represents a person monitored by MyGlico through a pseudonymized identifier."@en ;
+             rdfs:label "Paciente pseudonimizado"@pt ,
+                        "Pseudonymized patient"@en .
+
+
+###  https://w3id.org/myglico/vocab/RawRecord
+mygv:RawRecord rdf:type owl:Class ;
+               rdfs:subClassOf prov:Entity ;
+               rdfs:comment "Representa o registro original do qual uma medição glicêmica publicada em RDF foi derivada."@pt ,
+                            "Represents the original record from which an RDF-published glucose measurement was derived."@en ;
+               rdfs:label "Original record"@en ,
+                          "Registro original"@pt .
+
+
+#################################################################
+#    General axioms
+#################################################################
+
+[ rdf:type owl:AllDisjointClasses ;
+  owl:members ( mygv:HyperglycemicGlucoseMeasurement
+                mygv:HypoglycemicGlucoseMeasurement
+                mygv:InTargetRangeGlucoseMeasurement
+              )
 ] .
 
-mygv:DataSource
-    a owl:Class ;
-    rdfs:label "Fonte de dados"@pt ;
-    rdfs:label "Data source"@en ;
-    rdfs:subClassOf prov:Entity ;
-    rdfs:comment "Representa a fonte responsável pelo fornecimento dos registros glicêmicos originais."@pt ;
-    rdfs:comment "Represents the source responsible for providing the original glycemic records."@en .
 
-mygv:RawRecord
-    a owl:Class ;
-    rdfs:label "Registro original"@pt ;
-    rdfs:label "Original record"@en ;
-    rdfs:subClassOf prov:Entity ;
-    rdfs:comment "Representa o registro original do qual uma medição glicêmica publicada em RDF foi derivada."@pt ;
-    rdfs:comment "Represents the original record from which an RDF-published glucose measurement was derived."@en .
-
-#################################################################
-# Datatypes
-#################################################################
-
-mygv:HypoglycemicMgDlRange
-    a rdfs:Datatype ;
-    owl:equivalentClass [
-        a rdfs:Datatype ;
-        owl:onDatatype xsd:decimal ;
-        owl:withRestrictions (
-            [ xsd:maxExclusive "70"^^xsd:decimal ]
-        )
-    ] ;
-    rdfs:label "Faixa de hipoglicemia em mg/dL"@pt ;
-    rdfs:label "Hypoglycemic range in mg/dL"@en ;
-    rdfs:comment "Define valores glicêmicos inferiores a 70 mg/dL."@pt ;
-    rdfs:comment "Defines glucose values below 70 mg/dL."@en .
-
-mygv:TargetMgDlRange
-    a rdfs:Datatype ;
-    owl:equivalentClass [
-        a rdfs:Datatype ;
-        owl:onDatatype xsd:decimal ;
-        owl:withRestrictions (
-            [ xsd:minInclusive "70"^^xsd:decimal ]
-            [ xsd:maxInclusive "180"^^xsd:decimal ]
-        )
-    ] ;
-    rdfs:label "Faixa alvo em mg/dL"@pt ;
-    rdfs:label "Target range in mg/dL"@en ;
-    rdfs:comment "Define valores glicêmicos entre 70 e 180 mg/dL, inclusive."@pt ;
-    rdfs:comment "Defines glucose values from 70 to 180 mg/dL inclusive."@en .
-
-mygv:HyperglycemicMgDlRange
-    a rdfs:Datatype ;
-    owl:equivalentClass [
-        a rdfs:Datatype ;
-        owl:onDatatype xsd:decimal ;
-        owl:withRestrictions (
-            [ xsd:minExclusive "180"^^xsd:decimal ]
-        )
-    ] ;
-    rdfs:label "Faixa de hiperglicemia em mg/dL"@pt ;
-    rdfs:label "Hyperglycemic range in mg/dL"@en ;
-    rdfs:comment "Define valores glicêmicos superiores a 180 mg/dL."@pt ;
-    rdfs:comment "Defines glucose values above 180 mg/dL."@en .
-
-#################################################################
-# Object properties
-#################################################################
-
-mygv:hasGlucoseMeasurement
-    a owl:ObjectProperty ;
-    rdfs:label "tem medição glicêmica"@pt ;
-    rdfs:label "has glucose measurement"@en ;
-    rdfs:domain mygv:Patient ;
-    rdfs:range mygv:GlucoseMeasurement ;
-    owl:inverseOf mygv:belongsToPatient ;
-    rdfs:comment "Relaciona um paciente às suas medições glicêmicas."@pt ;
-    rdfs:comment "Relates a patient to their glucose measurements."@en .
-
-mygv:belongsToPatient
-    a owl:ObjectProperty ;
-    rdfs:label "pertence ao paciente"@pt ;
-    rdfs:label "belongs to patient"@en ;
-    rdfs:domain mygv:GlucoseMeasurement ;
-    rdfs:range mygv:Patient ;
-    rdfs:comment "Identifica o paciente associado a uma medição glicêmica."@pt ;
-    rdfs:comment "Identifies the patient associated with a glucose measurement."@en .
-
-mygv:derivedFromRawRecord
-    a owl:ObjectProperty ;
-    rdfs:label "derivada do registro original"@pt ;
-    rdfs:label "derived from original record"@en ;
-    rdfs:domain mygv:GlucoseMeasurement ;
-    rdfs:range mygv:RawRecord ;
-    rdfs:subPropertyOf prov:wasDerivedFrom ;
-    rdfs:comment "Relaciona uma medição glicêmica publicada em RDF ao registro original do qual foi derivada."@pt ;
-    rdfs:comment "Relates an RDF-published glucose measurement to the original record from which it was derived."@en .
-
-mygv:belongsToDataSource
-    a owl:ObjectProperty ;
-    rdfs:label "pertence à fonte de dados"@pt ;
-    rdfs:label "belongs to data source"@en ;
-    rdfs:domain mygv:RawRecord ;
-    rdfs:range mygv:DataSource ;
-    rdfs:subPropertyOf prov:hadPrimarySource ;
-    rdfs:comment "Identifica a fonte de dados responsável por fornecer um registro original."@pt ;
-    rdfs:comment "Identifies the data source responsible for providing an original record."@en .
-
-#################################################################
-# Datatype properties
-#################################################################
-
-mygv:glucoseValueMgDl
-    a owl:DatatypeProperty ;
-    rdfs:label "valor da glicemia em mg/dL"@pt ;
-    rdfs:label "glucose value in mg/dL"@en ;
-    rdfs:domain mygv:GlucoseMeasurement ;
-    rdfs:range xsd:decimal ;
-    rdfs:comment "Expressa o valor numérico de uma medição glicêmica em miligramas por decilitro."@pt ;
-    rdfs:comment "Expresses the numeric value of a glucose measurement in milligrams per deciliter."@en .
-
-mygv:measuredAt
-    a owl:DatatypeProperty ;
-    rdfs:label "medida em"@pt ;
-    rdfs:label "measured at"@en ;
-    rdfs:domain mygv:GlucoseMeasurement ;
-    rdfs:range xsd:dateTime ;
-    rdfs:comment "Informa a data e a hora associadas a uma medição glicêmica."@pt ;
-    rdfs:comment "Provides the date and time associated with a glucose measurement."@en .
-
-mygv:measurementContext
-    a owl:DatatypeProperty ;
-    rdfs:label "contexto da medição"@pt ;
-    rdfs:label "measurement context"@en ;
-    rdfs:domain mygv:GlucoseMeasurement ;
-    rdfs:range rdfs:Literal ;
-    rdfs:comment "Descreve o contexto em que uma medição glicêmica foi realizada."@pt ;
-    rdfs:comment "Describes the context in which a glucose measurement was taken."@en .
-
-mygv:externalPatientCode
-    a owl:DatatypeProperty ;
-    rdfs:label "código externo pseudonimizado do paciente"@pt ;
-    rdfs:label "external pseudonymized patient code"@en ;
-    rdfs:domain mygv:Patient ;
-    rdfs:range xsd:string ;
-    rdfs:comment "Registra o código pseudonimizado utilizado para identificar o paciente na fonte de dados."@pt ;
-    rdfs:comment "Records the pseudonymized code used to identify the patient in the data source."@en .
-
-mygv:sourceRecordId
-    a owl:DatatypeProperty ;
-    rdfs:label "identificador do registro original"@pt ;
-    rdfs:label "original record identifier"@en ;
-    rdfs:domain mygv:RawRecord ;
-    rdfs:range xsd:string ;
-    rdfs:comment "Registra o identificador que permite localizar o registro em sua fonte original."@pt ;
-    rdfs:comment "Records the identifier used to locate the record in its original source."@en .
-
-mygv:sourceName
-    a owl:DatatypeProperty ;
-    rdfs:label "nome da fonte"@pt ;
-    rdfs:label "source name"@en ;
-    rdfs:domain mygv:DataSource ;
-    rdfs:range rdfs:Literal ;
-    rdfs:comment "Informa o nome da fonte de dados."@pt ;
-    rdfs:comment "Provides the name of the data source."@en .
+###  Generated by the OWL API (version 4.5.29.2024-05-13T12:11:03Z) https://github.com/owlcs/owlapi
