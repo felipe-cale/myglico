@@ -1,5 +1,5 @@
 # Mapping created in the style of the provided Juma/R2RML example.
-# Simplified semantic scope: 
+# Simplified semantic scope:
 # Patient -> GlucoseMeasurement -> RawRecord -> DataSource.
 
 @prefix mygv: <https://w3id.org/myglico/vocab/> .
@@ -129,7 +129,12 @@ rr:logicalTable [
 
 <#GlucoseMeasurementsTriplesMap>
 rr:logicalTable [
-  rr:tableName "glucose_records";
+  rr:sqlQuery """SELECT id,
+        patient_id,
+        glucose_mg_dl,
+        DATE_FORMAT(measured_at, '%Y-%m-%dT%H:%i:%s') AS measured_at_iso,
+        context_label
+      FROM glucose_records""";
 ];
   rr:subjectMap [
     rr:template "https://w3id.org/myglico/resource/glucose-measurement/{id}";
@@ -164,7 +169,7 @@ rr:logicalTable [
       rr:termType rr:IRI;
     ];
     rr:objectMap [
-      rr:column "measured_at";
+      rr:column "measured_at_iso";
       rr:datatype xsd:dateTime;
     ];
   ];
