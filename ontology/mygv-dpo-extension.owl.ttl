@@ -13,7 +13,8 @@
 
 <https://w3id.org/myglico/ontology/mygv-dpo-extension> rdf:type owl:Ontology ;
                                                         owl:versionIRI <https://w3id.org/myglico/ontology/mygv-dpo-extension/1.0.0> ;
-                                                        owl:imports dpo:diabetes_pharmacology_ontology.ttl ,
+                                                        owl:imports <http://dbpedia.org/ontology/> ,
+                                                                    dpo:diabetes_pharmacology_ontology.ttl ,
                                                                     <http://www.w3.org/ns/prov-o> ;
                                                         dct:created "2026-06-04"^^xsd:date ;
                                                         dct:creator "Felipe Rodrigues Calé" ;
@@ -188,10 +189,6 @@ mygv:sourceRecordId rdf:type owl:DatatypeProperty ;
 #################################################################
 #    Classes
 #################################################################
-
-###  http://dbpedia.org/ontology/Person
-dbo:Person rdf:type owl:Class .
-
 
 ###  https://w3id.org/myglico/vocab/CapillaryGlucoseMeasurement
 mygv:CapillaryGlucoseMeasurement rdf:type owl:Class ;
