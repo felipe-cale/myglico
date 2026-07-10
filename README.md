@@ -177,17 +177,52 @@ React frontend and the FastAPI backend, sharing one domain (no CORS needed):
   wrapper that imports the real FastAPI app (`app/main.py`). Every other path
   falls back to `index.html` so client-side routing works on refresh.
 - `requirements.txt` (repo root) lists the backend's Python dependencies for
-  Vercel's Python runtime; keep it in sync with `pyproject.toml`.
+  Vercel's Python runtime. It's intentionally **narrower** than
+  `pyproject.toml`'s `full` extra (see next section) — keep both in sync with
+  whatever `app.main`'s request-time import graph actually needs, not with
+  the full local/Docker dependency set.
 - Set the **Root Directory** of the Vercel project to the repository root
   (not `frontend-react`) — it needs `api/`, `requirements.txt`, and `app/` in
   the same build.
 
+### Why the deployed function's dependencies are trimmed (and what that means going forward)
+
+Vercel Python functions have a **500 MB bundle size limit**. `numpy` +
+`pandas` + `scikit-learn` (used by `app/services/analytics.py` for
+clustering and anomaly detection) alone pushed a full install past 620 MB.
+Since `app.main`'s live request path never imports `analytics.py` — it's
+only reachable from `scripts/import_uci_diabetes.py` and the offline
+bootstrap — those heavy libraries were split into `pyproject.toml`'s `full`
+extra and left out of `requirements.txt` entirely. A plain `pip install .`
+(what the Vercel deploy effectively gets) installs only `fastapi`,
+`sqlalchemy`, `pymysql`, `cryptography`, `pydantic-settings`, and `rdflib`.
+
+**This is fine for demonstrating the MVP as it stands today**: the dashboard,
+patient detail, the PDF report, and creating a manual glucose record all
+work — a manual entry still writes to `analysis_outbox`/`daily_metrics_current`
+via `app/services/analysis_queue.py` (plain SQL, no ML dependency), it just
+marks the day as needing re-analysis rather than recomputing it inline.
+
+**It stops being fine the day you want that re-analysis to actually run in
+production** (recomputing clusters/anomalies after a manual entry, or
+re-running the importer against fresh data on a schedule). At that point,
+don't add `numpy`/`pandas`/`scikit-learn` back to `requirements.txt` — a
+single function can't hold both the API and the analytics stack under the
+size limit. Instead, run the analytics pipeline as a **separate deployment**:
+a small worker (Vercel Cron Job hitting its own lean function, a container
+on Railway/Fly/Render, or a scheduled script) that only does
+`compute_analytics`, reading the same cloud MySQL database. The API function
+stays as-is; the worker owns the heavy dependencies.
+
 Required environment variable:
 
 - `MYGLICO_DATABASE_URL`: connection string for the cloud MySQL instance,
-  e.g. `mysql+pymysql://user:password@host:3306/dbname`. Most managed MySQL
-  providers require TLS — check whether yours needs an `ssl_mode`/`ssl_ca`
-  query param or connection option.
+  e.g. `mysql+pymysql://user:password@host:3306/dbname`. Managed MySQL
+  providers (Aiven, PlanetScale, etc.) often document connection strings
+  with a `ssl-mode=REQUIRED`/`ssl_mode=REQUIRED` query param — PyMySQL
+  doesn't accept that as a connect argument, so `app/db/session.py` strips
+  it out of the URL and translates it into the `ssl={}` PyMySQL actually
+  understands. Paste the provider's connection string as-is.
 
 Before the first deploy (or after schema changes), run migrations and the
 dataset import **once, from your machine, against the cloud database** —
@@ -208,10 +243,12 @@ Known limitations on Vercel:
   file that isn't already committed to the repo won't have anything to read
   in production (the frontend no longer links to them, so nothing breaks in
   the UI; this only affects that unused backend surface).
-- `pandas`, `scikit-learn`, and `rdflib` are heavy dependencies for a
-  serverless function; expect a noticeably slower cold start than the local
-  Docker/uvicorn setup, and keep an eye on Vercel's function size limit if
-  you add more dependencies.
+- `rdflib` (for the semantic/SPARQL routes) is the heaviest thing left in the
+  deployed function; cold start is still slower than the local Docker/uvicorn
+  setup, but nowhere near what it was with the analytics stack included. If
+  you add a new dependency to `app/services/`, check whether it's actually
+  reachable from `app.main` before adding it to `requirements.txt` — see the
+  section above.
 
 ## Citation
 

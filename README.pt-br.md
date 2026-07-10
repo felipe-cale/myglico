@@ -181,17 +181,57 @@ CORS):
   outro caminho cai para `index.html`, o que mantém o roteamento client-side
   funcionando ao dar refresh na página.
 - `requirements.txt` (na raiz) lista as dependências Python do backend para
-  o runtime Python do Vercel; mantenha sincronizado com o `pyproject.toml`.
+  o runtime Python do Vercel. Ele é intencionalmente **mais enxuto** que o
+  extra `full` do `pyproject.toml` (veja a seção abaixo) — mantenha os dois
+  sincronizados com o que o grafo de import em tempo de execução do
+  `app.main` realmente usa, não com o conjunto completo de dependências
+  locais/Docker.
 - Configure o **Root Directory** do projeto no Vercel para a raiz do
   repositório (não `frontend-react`) — ele precisa de `api/`,
   `requirements.txt` e `app/` no mesmo build.
 
+### Por que as dependências da função implantada são enxutas (e o que isso significa daqui pra frente)
+
+Funções Python do Vercel têm um **limite de 500 MB** de tamanho de pacote.
+`numpy` + `pandas` + `scikit-learn` (usados por `app/services/analytics.py`
+para clusterização e detecção de anomalias) sozinhos empurravam uma
+instalação completa pra além de 620 MB. Como o caminho de execução ao vivo
+do `app.main` nunca importa `analytics.py` — ele só é alcançado por
+`scripts/import_uci_diabetes.py` e pelo bootstrap offline —, essas
+bibliotecas pesadas foram movidas pro extra `full` do `pyproject.toml` e
+ficaram de fora do `requirements.txt` por completo. Um `pip install .` puro
+(o que o deploy do Vercel efetivamente recebe) instala só `fastapi`,
+`sqlalchemy`, `pymysql`, `cryptography`, `pydantic-settings` e `rdflib`.
+
+**Isso é suficiente pra demonstrar o MVP como está hoje**: o painel, o
+detalhe do paciente, o relatório em PDF e a criação de um registro manual de
+glicemia funcionam normalmente — uma entrada manual continua gravando em
+`analysis_outbox`/`daily_metrics_current` via
+`app/services/analysis_queue.py` (SQL puro, sem dependência de ML), só que
+marcando o dia como "precisa reanálise" em vez de recalcular na hora.
+
+**Isso deixa de ser suficiente no dia em que você quiser que essa reanálise
+rode de fato em produção** (recalcular clusters/anomalias depois de uma
+entrada manual, ou rodar o importador contra dados novos periodicamente).
+Nesse momento, não volte a colocar `numpy`/`pandas`/`scikit-learn` no
+`requirements.txt` — uma única função não comporta a API e a stack de
+analytics juntas dentro do limite de tamanho. Em vez disso, rode o pipeline
+de analytics como um **deploy separado**: um worker pequeno (um Cron Job do
+Vercel batendo numa função própria e enxuta, um container no
+Railway/Fly/Render, ou um script agendado) que só faz `compute_analytics`,
+lendo do mesmo banco MySQL na nuvem. A função da API continua como está; o
+worker fica com as dependências pesadas.
+
 Variável de ambiente obrigatória:
 
 - `MYGLICO_DATABASE_URL`: string de conexão do MySQL na nuvem, por exemplo
-  `mysql+pymysql://usuario:senha@host:3306/nome_do_banco`. A maioria dos
-  provedores de MySQL gerenciado exige TLS — confira se o seu precisa de um
-  parâmetro `ssl_mode`/`ssl_ca` na string de conexão.
+  `mysql+pymysql://usuario:senha@host:3306/nome_do_banco`. Provedores de
+  MySQL gerenciado (Aiven, PlanetScale etc.) costumam documentar a string de
+  conexão com um parâmetro `ssl-mode=REQUIRED`/`ssl_mode=REQUIRED` — o
+  PyMySQL não aceita isso como argumento de conexão, então
+  `app/db/session.py` remove esse parâmetro da URL e traduz pra `ssl={}`,
+  que é o que o PyMySQL realmente entende. Cole a string de conexão do
+  provedor exatamente como ela vem.
 
 Antes do primeiro deploy (ou depois de mudanças de schema), rode as
 migrations e o import do dataset **uma vez, da sua máquina, contra o banco
@@ -212,10 +252,12 @@ Limitações conhecidas no Vercel:
   arquivo em `/artifacts/*` que não esteja versionado no repositório não vão
   ter nada pra ler em produção (o frontend não linka mais pra eles, então
   nada quebra na interface; afeta só essa superfície do backend hoje sem uso).
-- `pandas`, `scikit-learn` e `rdflib` são dependências pesadas para uma
-  função serverless; espere um cold start bem mais lento que o setup local
-  em Docker/uvicorn, e fique de olho no limite de tamanho de função do
-  Vercel se adicionar mais dependências.
+- `rdflib` (usado pelas rotas semânticas/SPARQL) é a dependência mais pesada
+  que sobrou na função implantada; o cold start ainda é mais lento que o
+  setup local em Docker/uvicorn, mas bem longe do que era com a stack de
+  analytics incluída. Se adicionar uma dependência nova em `app/services/`,
+  confira se ela é realmente alcançável a partir do `app.main` antes de
+  colocá-la no `requirements.txt` — veja a seção acima.
 
 ## Citação
 
