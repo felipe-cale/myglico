@@ -1,5 +1,6 @@
 # MyGlico MVP
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21299080.svg)](https://doi.org/10.5281/zenodo.21299080)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 **Português** | [English](README.md)
@@ -270,8 +271,10 @@ MYGLICO_DATABASE_URL="mysql+pymysql://usuario:senha@host:3306/nome_do_banco" pyt
 
 Se você usar este repositório, cite-o usando o arquivo
 [`CITATION.cff`](CITATION.cff) — o GitHub renderiza um botão
-**"Cite this repository"** a partir dele. Um DOI (Zenodo) será adicionado
-assim que um release for arquivado.
+**"Cite this repository"** a partir dele — ou pelo registro arquivado no
+Zenodo: **10.5281/zenodo.21299080** (concept DOI, sempre resolve para o
+release mais recente; a versão v0.1.0 é `10.5281/zenodo.21299081`). Veja o
+[registro no Zenodo](https://doi.org/10.5281/zenodo.21299080).
 
 ## Licença
 

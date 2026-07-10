@@ -17,10 +17,18 @@ authors:
     affiliation: "Universidade Federal do Rio de Janeiro (UFRJ) — Programa de Pós-Graduação em Informática (PPGI)"
     # orcid: "https://orcid.org/0000-0000-0000-0000"  # opcional
 version: 0.1.0
-date-released: "2026-07-09"
+date-released: "2026-07-10"
 url: "https://github.com/cale-minds/myglico"
 repository-code: "https://github.com/cale-minds/myglico"
 license: Apache-2.0
+
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.21299081"
+    description: "Archived snapshot of this specific software version (v0.1.0) on Zenodo."
+  - type: doi
+    value: "10.5281/zenodo.21299080"
+    description: "Concept DOI representing all versions; always resolves to the latest archived release."
 
 keywords:
   - glycemic monitoring
