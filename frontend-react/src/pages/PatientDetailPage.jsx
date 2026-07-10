@@ -535,6 +535,14 @@ export default function PatientDetailPage() {
   const pieOuterRadius = isCompactMobile ? 72 : 80;
   const axisTickStyle = { fontSize: isCompactMobile ? 11 : 12 };
   const hourlyAxisTickStyle = { fontSize: isCompactMobile ? 9 : 10 };
+  const hourlyAxisTicks = isCompactMobile
+    ? Array.from(
+        new Set([
+          ...HOURLY_TICKS.filter((hour) => hour % 3 === 0),
+          ...hourlyExtremes.filter((item) => item.lowCount > 0 || item.highCount > 0).map((item) => item.hour)
+        ])
+      ).sort((a, b) => a - b)
+    : HOURLY_TICKS;
   const trendLegendItems = [
     {
       label: isDayMode ? t("patientDetail.trend.legendDayCurve") : t("patientDetail.trend.legendDailyAvg"),
@@ -712,7 +720,7 @@ export default function PatientDetailPage() {
                 <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
                 <XAxis
                   dataKey="hour"
-                  ticks={HOURLY_TICKS}
+                  ticks={hourlyAxisTicks}
                   interval={0}
                   tickFormatter={(value) => `${value}h`}
                   tick={hourlyAxisTickStyle}
