@@ -1,0 +1,274 @@
+{
+  "common": {
+    "all": "All",
+    "yes": "Yes",
+    "no": "No",
+    "dash": "-",
+    "explain": "Explain {{label}}"
+  },
+  "languageSwitcher": {
+    "label": "Language"
+  },
+  "appShell": {
+    "brandTagline": "Glucose tracking with a clear, continuous view",
+    "menu": "Menu",
+    "closeMenu": "Close menu",
+    "openMenu": "Open menu",
+    "mobileNavLabel": "Mobile navigation",
+    "navLabel": "React navigation",
+    "nav": {
+      "overview": "Overview"
+    },
+    "footerText": "An experience designed to follow patients, recognize meaningful changes, and support decisions with more context."
+  },
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "signal": {
+    "stable": "In-Range Profile",
+    "attention": "Hyperglycemic Profile",
+    "oscillation": "Hypoglycemic Profile"
+  },
+  "clusterProfile": {
+    "group": "Group {{n}}",
+    "hipo_frequente": {
+      "label": "Frequent hypoglycemia profile",
+      "description": "Days with more readings below 70 mg/dL."
+    },
+    "hiper_predominante": {
+      "label": "Hyperglycemia-predominant profile",
+      "description": "Days with a predominance of readings above target."
+    },
+    "estavel": {
+      "label": "Stable profile",
+      "description": "Days with more time in range and less variation."
+    },
+    "variavel": {
+      "label": "Variable profile",
+      "description": "Days with more pronounced glucose oscillation."
+    },
+    "intermediario": {
+      "label": "Intermediate profile",
+      "description": "Days with mixed behavior."
+    }
+  },
+  "enums": {
+    "eventType": {
+      "glucose_measurement": "Glucose measurement",
+      "insulin_dose": "Insulin dose",
+      "symptom": "Symptom",
+      "meal": "Meal",
+      "exercise": "Exercise",
+      "special_event": "Special event",
+      "unknown": "Unknown"
+    },
+    "eventSubtype": {
+      "regular": "Regular insulin",
+      "nph": "NPH insulin",
+      "ultralente": "Ultralente insulin",
+      "unspecified": "Unspecified",
+      "pre_breakfast": "Before breakfast",
+      "post_breakfast": "After breakfast",
+      "pre_lunch": "Before lunch",
+      "post_lunch": "After lunch",
+      "pre_supper": "Before dinner",
+      "post_supper": "After dinner",
+      "pre_snack": "Before snack",
+      "hypoglycemic_symptom": "Hypoglycemia symptom",
+      "typical_meal": "Typical meal",
+      "more_than_usual_meal": "Larger than usual meal",
+      "less_than_usual_meal": "Smaller than usual meal",
+      "typical_exercise": "Typical exercise",
+      "more_than_usual_exercise": "More exercise than usual",
+      "less_than_usual_exercise": "Less exercise than usual",
+      "unspecified_special_event": "Unspecified special event",
+      "unknown": "Unknown"
+    },
+    "context": {
+      "unspecified": "No context provided",
+      "pre_breakfast": "Before breakfast",
+      "post_breakfast": "After breakfast",
+      "pre_lunch": "Before lunch",
+      "post_lunch": "After lunch",
+      "pre_supper": "Before dinner",
+      "post_supper": "After dinner",
+      "pre_snack": "Before snack"
+    }
+  },
+  "overview": {
+    "hero": {
+      "badgeDaily": "Daily tracking",
+      "badgeClinical": "Clinical insight",
+      "badgeContinuous": "Continuous view",
+      "title": "Track glucose health with more clarity",
+      "body": "Quickly see who is being monitored, spot important patterns, and dig into each person's readings with enough context to support safe decisions.",
+      "imageAlt": "MyGlico identity"
+    },
+    "summaryLoading": { "title": "Loading dashboard", "description": "We're preparing the latest view of the monitored base." },
+    "summaryError": { "title": "Couldn't load the dashboard", "description": "We had a problem building this environment's initial summary." },
+    "metrics": {
+      "patients": { "label": "Patients monitored", "helper": "Base ready for continuous tracking." },
+      "records": { "label": "Glucose records", "helper": "Readings available for review and comparison." },
+      "days": { "label": "Days analyzed", "helper": "Periods consolidated for clinical review." },
+      "issues": { "label": "Quality alerts", "helper": "Points that deserve validation or review." }
+    },
+    "patients": {
+      "eyebrow": "Patients monitored",
+      "title": "Find a patient in seconds",
+      "body": "Search by patient name or code and quickly open the individual dashboard of whoever needs your attention.",
+      "filterLabel": "Filter by profile",
+      "filterAriaLabel": "Filter patients by profile",
+      "helpButtonAriaLabel": "Explain filter profiles",
+      "searchPlaceholder": "Search by name or code",
+      "searchAriaLabel": "Search patient",
+      "loading": { "title": "Loading patients", "description": "We're updating the list of monitored people." },
+      "error": { "title": "Couldn't load the list", "description": "There was a problem fetching this environment's patients." },
+      "patientCode": "Patient code",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyAriaLabel": "Copy code {{code}}",
+      "daysObserved": "{{count}} days with readings available",
+      "avgPeriod": "Period average",
+      "timeInLow": "Time in low",
+      "timeInHigh": "Time in high",
+      "openPatientPanel": "Open patient dashboard",
+      "footerCount": "Page {{page}} of {{pages}}, with {{count}} patients found.",
+      "emptyFilter": { "title": "No patients in this filter", "description": "Try another status or adjust the search to widen the results." },
+      "emptyAll": { "title": "No patients found", "description": "Try searching by another name or identifier to continue." }
+    },
+    "profileHelp": {
+      "eyebrow": "Filter help",
+      "closeAriaLabel": "Close profile explanation",
+      "all": {
+        "title": "Filter profiles",
+        "intro": "The profiles below organize the list by the predominant glucose pattern in the analyzed period. They work as a visual triage and do not replace clinical assessment.",
+        "sections": [
+          { "title": "In-Range Profile", "body": "Groups patients who did not reach the hyperglycemic or hypoglycemic profile thresholds. In the app's metrics, the reference range considers 70 to 180 mg/dL for general readings, 80 to 130 mg/dL for pre-meal readings, and values below 180 mg/dL for post-meal readings." },
+          { "title": "Hyperglycemic Profile", "body": "Applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher. Time in high considers readings at or above 130 mg/dL in pre-meal measurements and at or above 180 mg/dL in post-meal measurements or without specific context." },
+          { "title": "Hypoglycemic Profile", "body": "Applied when time in low is 10% or higher in the period. Time in low considers readings below 70 mg/dL." }
+        ]
+      },
+      "stable": {
+        "title": "In-Range Profile",
+        "intro": "This filter shows patients who stayed outside the hyperglycemic and hypoglycemic profile criteria in the current screening.",
+        "sections": [
+          { "title": "Reference range", "body": "The reference used in the metrics considers 70 to 180 mg/dL for general readings, 80 to 130 mg/dL for pre-meal readings, and values below 180 mg/dL for post-meal readings." },
+          { "title": "How the filter applies here", "body": "The patient stays in this group when the period's average glucose is below 185 mg/dL and time in low is below 10%." }
+        ]
+      },
+      "attention": {
+        "title": "Hyperglycemic Profile",
+        "intro": "This filter highlights patients with a predominance of elevated readings in the analyzed period.",
+        "sections": [
+          { "title": "Classification threshold", "body": "The profile is applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher." },
+          { "title": "What counts as high", "body": "Time in high considers readings at or above 130 mg/dL in pre-meal measurements and at or above 180 mg/dL in post-meal measurements or without specific context." }
+        ]
+      },
+      "oscillation": {
+        "title": "Hypoglycemic Profile",
+        "intro": "This filter highlights patients with a more significant recurrence of low readings in the period.",
+        "sections": [
+          { "title": "Classification threshold", "body": "The profile is applied when time in low is 10% or higher in the period." },
+          { "title": "What counts as low", "body": "Time in low considers readings below 70 mg/dL." }
+        ]
+      }
+    }
+  },
+  "patientDetail": {
+    "loading": { "title": "Loading patient dashboard", "description": "We're preparing the indicators and clinical visualization." },
+    "error": { "title": "Couldn't load this patient", "description": "We had a problem building this patient's analytical breakdown." },
+    "hero": {
+      "eyebrow": "Patient detail",
+      "measurementsBadge": "{{count}} measurements",
+      "body": "This dashboard consolidates the selected period from the clinical core, with dynamic updates to indicators, records, and charts.",
+      "backToOverview": "Back to overview",
+      "downloadReport": "Download Glucose Report",
+      "periodAnalyzed": "Period analyzed",
+      "defaultWindow": "Default 30-day window from the most recent available date."
+    },
+    "filter": {
+      "eyebrow": "Time filter",
+      "title": "Refine the analysis window",
+      "body": "Select the desired range and apply the filter to update the analysis.",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "apply": "Filter",
+      "invalidRange": "The start date cannot be later than the end date."
+    },
+    "distribution": {
+      "eyebrow": "Distribution",
+      "titlePeriod": "Glucose range",
+      "titleDay": "Range for {{date}}",
+      "hypo": "Low",
+      "inRange": "In range",
+      "hyper": "High"
+    },
+    "extremeEvents": {
+      "eyebrow": "Extreme events",
+      "title": "Critical occurrences by time of day",
+      "tooltipEvents": "{{count}} events"
+    },
+    "trend": {
+      "eyebrow": "Glucose trend",
+      "titleDay": "Day's glucose curve",
+      "titlePeriod": "Period daily average",
+      "bodyDay": "Hourly view of the readings for {{date}}, focused on glucose variation throughout the day.",
+      "bodyPeriod": "Select a day on the chart or the timeline below to open the detailed view without leaving the page.",
+      "chipPeriod": "Period",
+      "chipSelectedDay": "Selected day",
+      "legendDailyAvg": "Daily average",
+      "legendDayCurve": "Glucose curve",
+      "legendHypo": "Hypoglycemia < 70 mg/dL",
+      "legendHyperTarget": "High target 180 mg/dL",
+      "legendHighRisk": "Risk > 250 mg/dL",
+      "seriesAverage": "Average",
+      "seriesGlucose": "Glucose",
+      "insufficientData": { "title": "Not enough readings for the selected day", "description": "There aren't enough glucose measurements to build the hourly view for this day." },
+      "dayStripAriaLabel": "Available days in the period",
+      "chartLegendAriaLabel": "Glucose chart legend"
+    },
+    "sidebar": {
+      "eyebrowDay": "Daily focus",
+      "eyebrowPeriod": "Clinical summary",
+      "titlePeriod": "Period view",
+      "bodyDay": "Summary of the main signals observed on the selected day.",
+      "bodyPeriod": "Synthesis of the most relevant indicators for a quick clinical review."
+    },
+    "stats": {
+      "measurements": { "label": "Measurements", "helper": "readings for the day" },
+      "avgDay": { "label": "Day average" },
+      "pctHypoDay": { "label": "% in low", "helper": "{{count}} events" },
+      "pctInRangeDay": { "label": "% in range", "helper": "day's distribution" },
+      "pctHyperDay": { "label": "% in high", "helper": "{{count}} events" },
+      "daysObserved": { "label": "Days observed", "helper": "days with readings" },
+      "avgGlucose": { "label": "Average glucose", "helper": "period average" },
+      "pctHypoPeriod": { "label": "% in low", "helper": "readings below 70 mg/dL" },
+      "pctInRangePeriod": { "label": "% in range", "helper": "readings in range" },
+      "pctHyperPeriod": { "label": "% in high", "helper": "above target" },
+      "anomalyDays": { "label": "Atypical days", "helper": "flagged by the analysis" }
+    },
+    "dailyIndicators": {
+      "eyebrow": "Daily indicators",
+      "title": "Daily trend for the period",
+      "date": "Date",
+      "avg": "Average",
+      "pctHypo": "% Low",
+      "pctInRange": "% Range",
+      "pctHyper": "% High",
+      "anomaly": "Atypical",
+      "profile": "Day profile",
+      "badgeAtypical": "Atypical",
+      "badgeStable": "Stable"
+    },
+    "recentEvents": {
+      "eyebrow": "Recent events",
+      "title": "Latest records for the period",
+      "when": "When",
+      "type": "Type",
+      "subtype": "Subtype",
+      "value": "Value",
+      "context": "Context"
+    }
+  }
+}

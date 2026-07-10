@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-
-const navigation = [
-  { to: "/", label: "Visao geral" },
-  { to: "/semantic", label: "Conhecimento" }
-];
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 
 export default function AppShell({ children }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const navigation = [{ to: "/", label: t("appShell.nav.overview") }];
 
   useEffect(() => {
     setMenuOpen(false);
@@ -44,24 +44,24 @@ export default function AppShell({ children }) {
       <button
         type="button"
         className={`react-drawer__overlay${menuOpen ? " is-open" : ""}`}
-        aria-label="Fechar menu"
+        aria-label={t("appShell.closeMenu")}
         aria-hidden={!menuOpen}
         tabIndex={menuOpen ? 0 : -1}
         onClick={() => setMenuOpen(false)}
       />
       <aside className={`react-drawer${menuOpen ? " is-open" : ""}`} aria-hidden={!menuOpen}>
         <div className="react-drawer__header">
-          <strong>Menu</strong>
+          <strong>{t("appShell.menu")}</strong>
           <button
             type="button"
             className="react-drawer__close"
-            aria-label="Fechar menu"
+            aria-label={t("appShell.closeMenu")}
             onClick={() => setMenuOpen(false)}
           >
             ×
           </button>
         </div>
-        <nav className="react-drawer__nav" aria-label="Navegacao mobile">
+        <nav className="react-drawer__nav" aria-label={t("appShell.mobileNavLabel")}>
           {navigation.map((item) => (
             <NavLink
               key={item.to}
@@ -74,7 +74,7 @@ export default function AppShell({ children }) {
           ))}
         </nav>
         <div className="react-drawer__actions">
-          <span className="react-pill">Painel ativo</span>
+          <LanguageSwitcher />
         </div>
       </aside>
       <div className="react-shell__container">
@@ -85,13 +85,13 @@ export default function AppShell({ children }) {
             </span>
             <span>
               <strong>MyGlico</strong>
-              <small>Acompanhamento glicêmico com visão clara e contínua</small>
+              <small>{t("appShell.brandTagline")}</small>
             </span>
           </Link>
           <button
             type="button"
             className="react-topbar__menu-button"
-            aria-label="Abrir menu"
+            aria-label={t("appShell.openMenu")}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(true)}
           >
@@ -100,7 +100,7 @@ export default function AppShell({ children }) {
             <span />
           </button>
           <div className="react-topbar__content">
-            <nav className="react-nav" aria-label="Navegacao React">
+            <nav className="react-nav" aria-label={t("appShell.navLabel")}>
               {navigation.map((item) => (
                 <NavLink
                   key={item.to}
@@ -113,7 +113,7 @@ export default function AppShell({ children }) {
               ))}
             </nav>
             <div className="react-topbar__actions">
-              <span className="react-pill">Painel ativo</span>
+              <LanguageSwitcher />
             </div>
           </div>
         </header>
@@ -121,10 +121,7 @@ export default function AppShell({ children }) {
         <footer className="react-footer">
           <div>
             <strong>MyGlico</strong>
-            <p>Uma experiência pensada para acompanhar pessoas, reconhecer mudanças relevantes e apoiar decisões com mais contexto.</p>
-          </div>
-          <div className="react-footer__links">
-            <Link to="/semantic">Explorar base de conhecimento</Link>
+            <p>{t("appShell.footerText")}</p>
           </div>
         </footer>
       </div>

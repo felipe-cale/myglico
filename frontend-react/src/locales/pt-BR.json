@@ -1,0 +1,274 @@
+{
+  "common": {
+    "all": "Todos",
+    "yes": "Sim",
+    "no": "Não",
+    "dash": "-",
+    "explain": "Explicar {{label}}"
+  },
+  "languageSwitcher": {
+    "label": "Idioma"
+  },
+  "appShell": {
+    "brandTagline": "Acompanhamento glicêmico com visão clara e contínua",
+    "menu": "Menu",
+    "closeMenu": "Fechar menu",
+    "openMenu": "Abrir menu",
+    "mobileNavLabel": "Navegação mobile",
+    "navLabel": "Navegação React",
+    "nav": {
+      "overview": "Visão geral"
+    },
+    "footerText": "Uma experiência pensada para acompanhar pessoas, reconhecer mudanças relevantes e apoiar decisões com mais contexto."
+  },
+  "pagination": {
+    "previous": "Anterior",
+    "next": "Próxima"
+  },
+  "signal": {
+    "stable": "Perfil em Faixa",
+    "attention": "Perfil Hiperglicêmico",
+    "oscillation": "Perfil Hipoglicêmico"
+  },
+  "clusterProfile": {
+    "group": "Grupo {{n}}",
+    "hipo_frequente": {
+      "label": "Perfil com hipo frequente",
+      "description": "Dias com mais leituras abaixo de 70 mg/dL."
+    },
+    "hiper_predominante": {
+      "label": "Perfil hiper predominante",
+      "description": "Dias com predominância de leituras acima da meta."
+    },
+    "estavel": {
+      "label": "Perfil estável",
+      "description": "Dias com maior permanência em faixa e menor variação."
+    },
+    "variavel": {
+      "label": "Perfil variável",
+      "description": "Dias com oscilação glicêmica mais acentuada."
+    },
+    "intermediario": {
+      "label": "Perfil intermediário",
+      "description": "Dias com comportamento misto."
+    }
+  },
+  "enums": {
+    "eventType": {
+      "glucose_measurement": "Medição de glicose",
+      "insulin_dose": "Dose de insulina",
+      "symptom": "Sintoma",
+      "meal": "Alimentação",
+      "exercise": "Exercício",
+      "special_event": "Evento especial",
+      "unknown": "Desconhecido"
+    },
+    "eventSubtype": {
+      "regular": "Insulina regular",
+      "nph": "Insulina NPH",
+      "ultralente": "Insulina ultralente",
+      "unspecified": "Não especificado",
+      "pre_breakfast": "Antes do café da manhã",
+      "post_breakfast": "Após o café da manhã",
+      "pre_lunch": "Antes do almoço",
+      "post_lunch": "Após o almoço",
+      "pre_supper": "Antes do jantar",
+      "post_supper": "Após o jantar",
+      "pre_snack": "Antes do lanche",
+      "hypoglycemic_symptom": "Sintoma de hipoglicemia",
+      "typical_meal": "Refeição usual",
+      "more_than_usual_meal": "Refeição acima do usual",
+      "less_than_usual_meal": "Refeição abaixo do usual",
+      "typical_exercise": "Exercício usual",
+      "more_than_usual_exercise": "Exercício acima do usual",
+      "less_than_usual_exercise": "Exercício abaixo do usual",
+      "unspecified_special_event": "Evento especial não especificado",
+      "unknown": "Desconhecido"
+    },
+    "context": {
+      "unspecified": "Sem contexto informado",
+      "pre_breakfast": "Antes do café da manhã",
+      "post_breakfast": "Após o café da manhã",
+      "pre_lunch": "Antes do almoço",
+      "post_lunch": "Após o almoço",
+      "pre_supper": "Antes do jantar",
+      "post_supper": "Após o jantar",
+      "pre_snack": "Antes do lanche"
+    }
+  },
+  "overview": {
+    "hero": {
+      "badgeDaily": "Acompanhamento diário",
+      "badgeClinical": "Leitura clínica",
+      "badgeContinuous": "Visão contínua",
+      "title": "Acompanhe a saúde glicêmica com mais clareza",
+      "body": "Visualize rapidamente quem está em acompanhamento, identifique padrões importantes e aprofunde a leitura de cada pessoa com contexto suficiente para apoiar decisões seguras.",
+      "imageAlt": "Identidade MyGlico"
+    },
+    "summaryLoading": { "title": "Carregando painel", "description": "Estamos preparando a visão mais recente da base acompanhada." },
+    "summaryError": { "title": "Não foi possível carregar o painel", "description": "Tivemos um problema ao montar o resumo inicial deste ambiente." },
+    "metrics": {
+      "patients": { "label": "Pacientes acompanhados", "helper": "Base pronta para acompanhamento contínuo." },
+      "records": { "label": "Registros de glicemia", "helper": "Leituras disponíveis para consulta e comparação." },
+      "days": { "label": "Dias analisados", "helper": "Períodos consolidados para leitura clínica." },
+      "issues": { "label": "Alertas de qualidade", "helper": "Pontos que merecem validação ou revisão." }
+    },
+    "patients": {
+      "eyebrow": "Pacientes acompanhados",
+      "title": "Encontre um paciente em segundos",
+      "body": "Busque por nome ou código do paciente e abra rapidamente o painel individual de quem precisa da sua atenção.",
+      "filterLabel": "Filtrar por perfil",
+      "filterAriaLabel": "Filtrar pacientes por perfil",
+      "helpButtonAriaLabel": "Explicar perfis do filtro",
+      "searchPlaceholder": "Buscar por nome ou código",
+      "searchAriaLabel": "Buscar paciente",
+      "loading": { "title": "Carregando pacientes", "description": "Estamos atualizando a lista de pessoas acompanhadas." },
+      "error": { "title": "Não foi possível carregar a lista", "description": "Houve um problema ao trazer os pacientes deste ambiente." },
+      "patientCode": "Código do paciente",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "copyAriaLabel": "Copiar código {{code}}",
+      "daysObserved": "{{count}} dias com leituras disponíveis",
+      "avgPeriod": "Média do período",
+      "timeInLow": "Tempo em baixa",
+      "timeInHigh": "Tempo em alta",
+      "openPatientPanel": "Abrir painel do paciente",
+      "footerCount": "Página {{page}} de {{pages}}, com {{count}} pacientes encontrados.",
+      "emptyFilter": { "title": "Nenhum paciente neste filtro", "description": "Tente outro status ou ajuste a busca para ampliar os resultados." },
+      "emptyAll": { "title": "Nenhum paciente encontrado", "description": "Tente buscar por outro nome ou identificador para continuar." }
+    },
+    "profileHelp": {
+      "eyebrow": "Ajuda do filtro",
+      "closeAriaLabel": "Fechar explicação dos perfis",
+      "all": {
+        "title": "Perfis de filtro",
+        "intro": "Os perfis abaixo organizam a lista por padrão glicêmico predominante no período analisado. Eles funcionam como triagem visual e não substituem avaliação clínica.",
+        "sections": [
+          { "title": "Perfil em Faixa", "body": "Agrupa pacientes que não atingiram os limiares de perfil hiperglicêmico nem hipoglicêmico. Nas métricas da aplicação, a faixa usada como referência considera 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL nas leituras pré-refeição e valores abaixo de 180 mg/dL nas leituras pós-refeição." },
+          { "title": "Perfil Hiperglicêmico", "body": "É aplicado quando a média glicêmica do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%. O tempo em alta considera leituras iguais ou acima de 130 mg/dL nas medições pré-refeição e iguais ou acima de 180 mg/dL nas medições pós-refeição ou sem contexto específico." },
+          { "title": "Perfil Hipoglicêmico", "body": "É aplicado quando o tempo em baixa é maior ou igual a 10% no período. O tempo em baixa considera leituras abaixo de 70 mg/dL." }
+        ]
+      },
+      "stable": {
+        "title": "Perfil em Faixa",
+        "intro": "Este filtro mostra pacientes que permaneceram fora dos critérios de perfil hiperglicêmico e hipoglicêmico na triagem atual.",
+        "sections": [
+          { "title": "Faixa considerada", "body": "A referência usada nas métricas considera 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL nas leituras pré-refeição e valores abaixo de 180 mg/dL nas leituras pós-refeição." },
+          { "title": "Como o filtro entra aqui", "body": "O paciente permanece neste grupo quando a média glicêmica do período fica abaixo de 185 mg/dL e o tempo em baixa fica abaixo de 10%." }
+        ]
+      },
+      "attention": {
+        "title": "Perfil Hiperglicêmico",
+        "intro": "Este filtro destaca pacientes com predominância de leituras elevadas no período analisado.",
+        "sections": [
+          { "title": "Limiar de classificação", "body": "O perfil é aplicado quando a média glicêmica do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%." },
+          { "title": "O que conta como alta", "body": "O tempo em alta considera leituras iguais ou acima de 130 mg/dL nas medições pré-refeição e iguais ou acima de 180 mg/dL nas medições pós-refeição ou sem contexto específico." }
+        ]
+      },
+      "oscillation": {
+        "title": "Perfil Hipoglicêmico",
+        "intro": "Este filtro destaca pacientes com recorrência mais relevante de leituras em baixa no período.",
+        "sections": [
+          { "title": "Limiar de classificação", "body": "O perfil é aplicado quando o tempo em baixa é maior ou igual a 10% no período." },
+          { "title": "O que conta como baixa", "body": "O tempo em baixa considera leituras abaixo de 70 mg/dL." }
+        ]
+      }
+    }
+  },
+  "patientDetail": {
+    "loading": { "title": "Carregando painel do paciente", "description": "Estamos preparando os indicadores e a visualização clínica." },
+    "error": { "title": "Não foi possível carregar o paciente", "description": "Tivemos um problema ao montar o detalhamento analítico deste paciente." },
+    "hero": {
+      "eyebrow": "Detalhe do paciente",
+      "measurementsBadge": "{{count}} medições",
+      "body": "Este painel consolida o período selecionado a partir do core clínico, com atualização dinâmica dos indicadores, registros e gráficos.",
+      "backToOverview": "Voltar para a visão geral",
+      "downloadReport": "Baixar Relatório Glicêmico",
+      "periodAnalyzed": "Período analisado",
+      "defaultWindow": "Janela padrão de 30 dias a partir da data mais recente disponível."
+    },
+    "filter": {
+      "eyebrow": "Filtro temporal",
+      "title": "Refinar o recorte analítico",
+      "body": "Selecione o intervalo desejado e aplique o filtro para atualizar a análise.",
+      "startDate": "Data inicial",
+      "endDate": "Data final",
+      "apply": "Filtrar",
+      "invalidRange": "A data inicial não pode ser maior que a data final."
+    },
+    "distribution": {
+      "eyebrow": "Distribuição",
+      "titlePeriod": "Faixa glicêmica",
+      "titleDay": "Faixa de {{date}}",
+      "hypo": "Hipo",
+      "inRange": "Em faixa",
+      "hyper": "Hiper"
+    },
+    "extremeEvents": {
+      "eyebrow": "Eventos extremos",
+      "title": "Ocorrências críticas por horário",
+      "tooltipEvents": "{{count}} eventos"
+    },
+    "trend": {
+      "eyebrow": "Tendência glicêmica",
+      "titleDay": "Curva glicêmica do dia",
+      "titlePeriod": "Média diária do período",
+      "bodyDay": "Visualização horária das leituras de {{date}}, com foco na variação glicêmica ao longo do dia.",
+      "bodyPeriod": "Selecione um dia no gráfico ou na linha do tempo abaixo para abrir a leitura detalhada sem sair da página.",
+      "chipPeriod": "Período",
+      "chipSelectedDay": "Dia selecionado",
+      "legendDailyAvg": "Média diária",
+      "legendDayCurve": "Curva glicêmica",
+      "legendHypo": "Hipoglicemia < 70 mg/dL",
+      "legendHyperTarget": "Meta alta 180 mg/dL",
+      "legendHighRisk": "Risco > 250 mg/dL",
+      "seriesAverage": "Média",
+      "seriesGlucose": "Glicemia",
+      "insufficientData": { "title": "Sem leituras suficientes no dia selecionado", "description": "Não há medições glicêmicas suficientes para compor a visualização horária deste dia." },
+      "dayStripAriaLabel": "Dias disponíveis no período",
+      "chartLegendAriaLabel": "Legenda do gráfico glicêmico"
+    },
+    "sidebar": {
+      "eyebrowDay": "Foco diário",
+      "eyebrowPeriod": "Resumo clínico",
+      "titlePeriod": "Visão do período",
+      "bodyDay": "Resumo dos principais sinais observados no dia selecionado.",
+      "bodyPeriod": "Síntese dos indicadores mais relevantes para leitura clínica rápida."
+    },
+    "stats": {
+      "measurements": { "label": "Medições", "helper": "leituras do dia" },
+      "avgDay": { "label": "Média do dia" },
+      "pctHypoDay": { "label": "% em hipo", "helper": "{{count}} eventos" },
+      "pctInRangeDay": { "label": "% em faixa", "helper": "distribuição do dia" },
+      "pctHyperDay": { "label": "% em hiper", "helper": "{{count}} eventos" },
+      "daysObserved": { "label": "Dias observados", "helper": "dias com leituras" },
+      "avgGlucose": { "label": "Média glicêmica", "helper": "média do período" },
+      "pctHypoPeriod": { "label": "% em hipo", "helper": "leituras abaixo de 70 mg/dL" },
+      "pctInRangePeriod": { "label": "% em faixa", "helper": "leituras na faixa" },
+      "pctHyperPeriod": { "label": "% em hiper", "helper": "acima da meta" },
+      "anomalyDays": { "label": "Dias atípicos", "helper": "sinalizados pela análise" }
+    },
+    "dailyIndicators": {
+      "eyebrow": "Indicadores diários",
+      "title": "Evolução diária no período",
+      "date": "Data",
+      "avg": "Média",
+      "pctHypo": "% Hipo",
+      "pctInRange": "% Faixa",
+      "pctHyper": "% Hiper",
+      "anomaly": "Atípico",
+      "profile": "Perfil do dia",
+      "badgeAtypical": "Atípico",
+      "badgeStable": "Estável"
+    },
+    "recentEvents": {
+      "eyebrow": "Eventos recentes",
+      "title": "Últimos registros do período",
+      "when": "Quando",
+      "type": "Tipo",
+      "subtype": "Subtipo",
+      "value": "Valor",
+      "context": "Contexto"
+    }
+  }
+}

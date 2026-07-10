@@ -1,4 +1,7 @@
+import { useTranslation } from "react-i18next";
+
 export default function Pagination({ page, pages, onPageChange }) {
+  const { t } = useTranslation();
   const items = [];
   const start = Math.max(1, page - 2);
   const end = Math.min(pages, start + 4);
@@ -19,11 +22,11 @@ export default function Pagination({ page, pages, onPageChange }) {
   return (
     <div className="react-pagination">
       <button type="button" className="react-pagination__edge" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
-        Anterior
+        {t("pagination.previous")}
       </button>
       <div className="react-pagination__list">{items}</div>
       <button type="button" className="react-pagination__edge" onClick={() => onPageChange(page + 1)} disabled={page >= pages}>
-        Proxima
+        {t("pagination.next")}
       </button>
     </div>
   );

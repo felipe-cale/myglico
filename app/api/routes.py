@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -16,8 +15,6 @@ from app.services.reports import get_dashboard_context, get_dashboard_summary, g
 from app.services.semantic import SAMPLE_QUERIES, execute_sparql
 
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-REACT_DIST_DIR = BASE_DIR / "frontend-react" / "client-build"
 router = APIRouter()
 
 
@@ -32,14 +29,6 @@ class ManualGlucoseRecordPayload(BaseModel):
     context_label: str | None = Field(default=None, max_length=80)
     notes: str | None = None
     actor_user_id: str | None = Field(default=None, max_length=36)
-
-
-def _strip_react_prefix(path: str, request: Request) -> RedirectResponse:
-    query = request.url.query
-    url = f"/{path}".replace("//", "/")
-    if query:
-        url = f"{url}?{query}"
-    return RedirectResponse(url=url, status_code=307)
 
 
 @router.get("/health")
@@ -119,22 +108,29 @@ def api_patient_detail(
     }
 
 
+SUPPORTED_REPORT_LANGS = {"pt-BR", "en-US", "es"}
+
+
 @router.get("/api/patients/{patient_id}/report.pdf")
 def api_patient_report_pdf(
     patient_id: str,
     start_date: date = Query(...),
     end_date: date = Query(...),
+    lang: str = Query("pt-BR"),
     db: Session = Depends(get_db),
 ) -> Response:
     if start_date > end_date:
         raise HTTPException(status_code=400, detail="start_date must be before or equal to end_date.")
 
+    if lang not in SUPPORTED_REPORT_LANGS:
+        lang = "pt-BR"
+
     context = get_patient_report_context(db, patient_id, start_date=start_date, end_date=end_date)
     if context is None:
         raise HTTPException(status_code=404, detail="Patient not found.")
 
-    pdf = build_patient_report_pdf(context)
-    filename = patient_report_filename(context)
+    pdf = build_patient_report_pdf(context, lang=lang)
+    filename = patient_report_filename(context, lang=lang)
     return Response(
         content=pdf,
         media_type="application/pdf",
@@ -191,28 +187,3 @@ def api_semantic_query(
 @router.get("/api/semantic/queries")
 def api_semantic_queries() -> dict[str, object]:
     return {"queries": SAMPLE_QUERIES}
-
-
-@router.get("/react", include_in_schema=False)
-@router.get("/react/{full_path:path}", include_in_schema=False)
-def strip_react_prefix(request: Request, full_path: str = "") -> RedirectResponse:
-    return _strip_react_prefix(full_path, request)
-
-
-@router.get("/", response_class=HTMLResponse, include_in_schema=False)
-@router.get("/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
-def react_app(full_path: str = "") -> FileResponse:
-    requested = (REACT_DIST_DIR / full_path).resolve() if full_path else (REACT_DIST_DIR / "index.html").resolve()
-    try:
-        requested.relative_to(REACT_DIST_DIR.resolve())
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail="File not found.") from exc
-
-    if full_path and requested.exists() and requested.is_file():
-        return FileResponse(requested)
-
-    index_file = REACT_DIST_DIR / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
-
-    raise HTTPException(status_code=503, detail="React preview not built yet.")

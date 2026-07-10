@@ -14,4 +14,3 @@ artifacts/semantic/*.ttl
 dist/
 build/
 frontend-react/node_modules/
-frontend-react/client-build/

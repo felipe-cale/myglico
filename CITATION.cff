@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "MyGlico: A Traceable Glycemic Monitoring Platform with Analytics, Provenance, and Semantic Export"
+abstract: >-
+  Academic MVP built around the MyGlico project. It ingests the public UCI
+  Diabetes dataset into a relational core (patients and glucose records),
+  computes glycemic indicators and anomaly/clustering analytics, records
+  transactional provenance (PROV-JSON/PROV-TTL), exports an RDF semantic layer
+  queryable via SPARQL, and exposes all of it through a FastAPI backend and a
+  self-contained React (Vite) dashboard with pt-BR/en-US/es localization,
+  including a translatable clinical PDF report per patient.
+authors:
+  - family-names: "Calé"
+    given-names: Felipe
+    email: cale@ufrj.br
+    affiliation: "Universidade Federal do Rio de Janeiro (UFRJ) — Programa de Pós-Graduação em Informática (PPGI)"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"  # opcional
+version: 0.1.0
+date-released: "2026-07-09"
+url: "https://github.com/cale-minds/myglico"
+repository-code: "https://github.com/cale-minds/myglico"
+license: Apache-2.0
+
+keywords:
+  - glycemic monitoring
+  - diabetes
+  - provenance
+  - PROV-O
+  - RDF
+  - SPARQL
+  - FastAPI
+  - React
+  - data analytics
+  - UCI Diabetes dataset
+
+references:
+  - type: data
+    title: "Diabetes Data Set"
+    authors:
+      - name: "AIM'94 / UCI Machine Learning Repository"
+    year: 1994
+    notes: >-
+      Public dataset used as the ingestion base for this project. UCI Machine
+      Learning Repository. Confirm the official citation and license at
+      archive.ics.uci.edu.

@@ -348,14 +348,14 @@ def _classify_cluster_profile(
     cv = coefficient_of_variation or 0.0
 
     if hypo >= 15 and hyper < 35:
-        return {"label": "Perfil com hipo frequente", "description": "Dias com mais leituras abaixo de 70 mg/dL.", "tone": "rose"}
+        return {"code": "hipo_frequente", "label": "Perfil com hipo frequente", "description": "Dias com mais leituras abaixo de 70 mg/dL.", "tone": "rose"}
     if hyper >= 60 or avg >= 220:
-        return {"label": "Perfil hiper predominante", "description": "Dias com predominancia de leituras acima da meta.", "tone": "yellow"}
+        return {"code": "hiper_predominante", "label": "Perfil hiper predominante", "description": "Dias com predominancia de leituras acima da meta.", "tone": "yellow"}
     if in_range >= 45 and hypo <= 10 and hyper <= 45 and cv <= 0.28:
-        return {"label": "Perfil estavel", "description": "Dias com maior permanencia em faixa e menor variacao.", "tone": "green"}
+        return {"code": "estavel", "label": "Perfil estavel", "description": "Dias com maior permanencia em faixa e menor variacao.", "tone": "green"}
     if cv >= 0.28 or (hypo >= 8 and hyper >= 30) or (hypo + hyper >= 55):
-        return {"label": "Perfil variavel", "description": "Dias com oscilacao glicemica mais acentuada.", "tone": "slate"}
-    return {"label": "Perfil intermediario", "description": "Dias com comportamento misto.", "tone": "blue"}
+        return {"code": "variavel", "label": "Perfil variavel", "description": "Dias com oscilacao glicemica mais acentuada.", "tone": "slate"}
+    return {"code": "intermediario", "label": "Perfil intermediario", "description": "Dias com comportamento misto.", "tone": "blue"}
 
 
 def _build_cluster_profile_map(indicators: list[DailyIndicator]) -> dict[int, dict[str, str]]:
@@ -390,6 +390,7 @@ def _serialize_indicator(
         "pct_hyper": indicator.pct_hyper,
         "anomaly_flag": indicator.anomaly_flag,
         "cluster_label": indicator.cluster_label,
+        "cluster_profile_code": cluster_profile["code"] if cluster_profile else None,
         "cluster_profile_label": cluster_profile["label"] if cluster_profile else None,
         "cluster_profile_description": cluster_profile["description"] if cluster_profile else None,
         "cluster_profile_tone": cluster_profile["tone"] if cluster_profile else None,
@@ -407,6 +408,7 @@ def _serialize_metric(metric: DailyMetricsCurrent) -> dict[str, object]:
         "pct_hyper": metric.pct_hyper,
         "anomaly_flag": False,
         "cluster_label": None,
+        "cluster_profile_code": None,
         "cluster_profile_label": None,
         "cluster_profile_description": None,
         "cluster_profile_tone": None,

@@ -39,7 +39,7 @@ export function fetchPatientDetail(patientId, { startDate, endDate } = {}) {
   return requestJson(`/api/patients/${patientId}${suffix}`);
 }
 
-export function patientReportPdfUrl(patientId, { startDate, endDate }) {
+export function patientReportPdfUrl(patientId, { startDate, endDate, lang }) {
   if (!patientId || !startDate || !endDate) {
     return null;
   }
@@ -48,13 +48,8 @@ export function patientReportPdfUrl(patientId, { startDate, endDate }) {
     start_date: startDate,
     end_date: endDate
   });
+  if (lang) {
+    params.set("lang", lang);
+  }
   return `/api/patients/${encodeURIComponent(patientId)}/report.pdf?${params.toString()}`;
-}
-
-export function fetchSemanticQueries() {
-  return requestJson("/api/semantic/queries");
-}
-
-export function fetchSemanticResult(name) {
-  return requestJson(`/api/semantic/query?name=${encodeURIComponent(name)}`);
 }

@@ -118,8 +118,7 @@ input {
 
 .react-topbar__content,
 .react-topbar__actions,
-.react-footer,
-.react-footer__links {
+.react-footer {
   display: flex;
   align-items: center;
 }
@@ -251,16 +250,76 @@ input {
   background: linear-gradient(135deg, var(--react-blue), var(--react-green));
 }
 
-.react-pill {
+.react-language-switcher {
+  position: relative;
+}
+
+.react-language-switcher__trigger {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.45rem;
   min-height: 2.6rem;
-  padding: 0 0.95rem;
+  padding: 0 0.75rem;
   border-radius: 999px;
+  border: 1px solid rgba(22, 124, 217, 0.16);
+  background: #fff;
+  cursor: pointer;
   font-weight: 700;
-  color: var(--react-green-deep);
-  background: rgba(30, 171, 105, 0.12);
+  color: var(--react-text, #1c2b3a);
+}
+
+.react-language-switcher__trigger img {
+  border-radius: 3px;
+  display: block;
+}
+
+.react-language-switcher__code {
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.react-language-switcher__menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  gap: 0.15rem;
+  min-width: 176px;
+  padding: 0.4rem;
+  border-radius: 14px;
+  border: 1px solid rgba(22, 124, 217, 0.14);
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(15, 35, 60, 0.16);
+}
+
+.react-language-switcher__item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--react-text, #1c2b3a);
+}
+
+.react-language-switcher__item img {
+  border-radius: 3px;
+}
+
+.react-language-switcher__item small {
+  margin-left: auto;
+  color: var(--react-muted, #6b7c8c);
+  font-size: 0.72rem;
+}
+
+.react-language-switcher__item:hover,
+.react-language-switcher__item.is-active {
+  background: rgba(22, 124, 217, 0.1);
 }
 
 .react-main,
@@ -536,6 +595,25 @@ input {
 .react-panel__header-copy {
   min-width: 0;
   max-width: 52rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.react-panel__header-copy p {
+  margin: 0;
+}
+
+.react-panel__header--patients {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.react-panel__header--patients .react-panel__header-copy {
+  max-width: none;
+}
+
+.react-panel__header--patients .react-patient-toolbar {
+  margin-left: 0;
 }
 
 .react-panel__footer {
@@ -545,11 +623,12 @@ input {
 }
 
 .react-patient-toolbar {
-  width: min(100%, 30rem);
+  width: min(100%, 34rem);
   margin-left: auto;
-  display: grid;
-  gap: 0.8rem;
-  justify-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
 }
 
 .react-patient-filter-row {
@@ -557,6 +636,7 @@ input {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.75rem;
   align-items: end;
+  flex: 1 1 14rem;
 }
 
 .react-select-field {
@@ -628,7 +708,8 @@ input {
 }
 
 .react-search--patients {
-  width: 100%;
+  flex: 1 1 12rem;
+  width: auto;
 }
 
 .react-search input,
@@ -776,6 +857,7 @@ input {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1.1rem;
+  margin-top: 1.3rem;
 }
 
 .react-patient-card {
@@ -1655,10 +1737,18 @@ input {
 }
 
 .react-dialog__header {
+  position: sticky;
+  top: -1.2rem;
+  z-index: 2;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  margin: -1.2rem -1.2rem 0;
+  padding: 1.2rem 1.2rem 0.9rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(244, 251, 254, 0.97));
+  border-radius: 26px 26px 0 0;
+  border-bottom: 1px solid var(--react-border);
 }
 
 .react-dialog__header h3,
@@ -1683,7 +1773,6 @@ input {
 .react-dialog__body {
   display: grid;
   gap: 1rem;
-  margin-top: 0.9rem;
 }
 
 .react-dialog__body > p,
@@ -1730,16 +1819,6 @@ input {
 .react-footer p {
   margin: 0;
   max-width: 48ch;
-}
-
-.react-footer__links {
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.react-footer__links a {
-  font-weight: 700;
-  color: var(--react-blue-deep);
 }
 
 @media (max-width: 1080px) {
@@ -1810,10 +1889,6 @@ input {
     display: block;
   }
 
-  .react-drawer__actions .react-pill {
-    justify-content: center;
-  }
-
   .react-page--patient-detail .react-hero--compact {
     padding: 1.3rem;
     gap: 1.15rem;
@@ -1868,6 +1943,19 @@ input {
     max-width: none;
   }
 
+  .react-badges--overview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .react-badges--overview .react-badge {
+    white-space: nowrap;
+  }
+
+  .react-badges--overview > :first-child {
+    grid-column: 1 / -1;
+  }
+
   .react-grid--metrics,
   .react-distribution,
   .react-stat-grid {
@@ -1896,6 +1984,12 @@ input {
     width: 100%;
     max-height: 88vh;
     padding: 1rem;
+  }
+
+  .react-dialog__header {
+    top: -1rem;
+    margin: -1rem -1rem 0;
+    padding: 1rem 1rem 0.9rem;
   }
 
   .react-page--patient-detail {

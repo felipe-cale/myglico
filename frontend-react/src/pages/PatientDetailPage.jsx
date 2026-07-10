@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Bar,
   BarChart,
@@ -26,23 +27,23 @@ const HYPO_COLOR = "#e35d73";
 const HYPER_COLOR = "#f4a93d";
 const HIGH_RISK_COLOR = "#7a52cc";
 
-function formatNumber(value, suffix = "") {
+function formatNumberBase(value, suffix = "", locale = "pt-BR") {
   if (value === null || value === undefined) {
     return "-";
   }
-  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value) + suffix;
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value) + suffix;
 }
 
-function formatDate(dateValue) {
-  return new Intl.DateTimeFormat("pt-BR", {
+function formatDateBase(dateValue, locale = "pt-BR") {
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric"
   }).format(new Date(`${dateValue}T00:00:00`));
 }
 
-function formatDateTime(dateValue) {
-  return new Intl.DateTimeFormat("pt-BR", {
+function formatDateTimeBase(dateValue, locale = "pt-BR") {
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -51,21 +52,40 @@ function formatDateTime(dateValue) {
   }).format(new Date(dateValue));
 }
 
-function formatShortDate(dateValue) {
-  return new Intl.DateTimeFormat("pt-BR", {
+function formatShortDateBase(dateValue, locale = "pt-BR") {
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "2-digit"
   }).format(new Date(`${dateValue}T00:00:00`));
 }
 
-function getClusterProfileLabel(indicator) {
+function getClusterProfileLabel(indicator, t) {
+  if (indicator?.cluster_profile_code) {
+    return t(`clusterProfile.${indicator.cluster_profile_code}.label`);
+  }
   if (indicator?.cluster_profile_label) {
     return indicator.cluster_profile_label;
   }
   if (indicator?.cluster_label !== null && indicator?.cluster_label !== undefined) {
-    return `Grupo ${indicator.cluster_label}`;
+    return t("clusterProfile.group", { n: indicator.cluster_label });
   }
   return "-";
+}
+
+function getClusterProfileDescription(indicator, t) {
+  if (indicator?.cluster_profile_code) {
+    return t(`clusterProfile.${indicator.cluster_profile_code}.description`);
+  }
+  return indicator?.cluster_profile_description;
+}
+
+function enumLabel(namespace, code, fallback, t) {
+  if (!code) {
+    return fallback || "-";
+  }
+  const key = `enums.${namespace}.${code}`;
+  const translated = t(key);
+  return translated === key ? fallback || code : translated;
 }
 
 function InfoTooltip({ content, label }) {
@@ -130,18 +150,20 @@ function InfoTooltip({ content, label }) {
 }
 
 function ClusterProfileValue({ indicator, compact = false, showGroup = true }) {
-  const profileLabel = getClusterProfileLabel(indicator);
-  const profileDescription = indicator?.cluster_profile_description;
+  const { t } = useTranslation();
+  const profileLabel = getClusterProfileLabel(indicator, t);
+  const profileDescription = getClusterProfileDescription(indicator, t);
+  const hasProfile = Boolean(indicator?.cluster_profile_code || indicator?.cluster_profile_label);
   const groupLabel =
-    showGroup && indicator?.cluster_profile_label && indicator?.cluster_label !== null && indicator?.cluster_label !== undefined
-      ? `Grupo ${indicator.cluster_label}`
+    showGroup && hasProfile && indicator?.cluster_label !== null && indicator?.cluster_label !== undefined
+      ? t("clusterProfile.group", { n: indicator.cluster_label })
       : null;
 
   return (
     <span className={`react-cluster-profile${compact ? " is-compact" : ""}`}>
       <span className="react-cluster-profile__row">
         <span className="react-cluster-profile__label">{profileLabel}</span>
-        <InfoTooltip content={profileDescription} label={`Explicar ${profileLabel}`} />
+        <InfoTooltip content={profileDescription} label={t("common.explain", { label: profileLabel })} />
       </span>
       {groupLabel ? <small>{groupLabel}</small> : null}
     </span>
@@ -168,6 +190,12 @@ function MobileDetailField({ label, value, children, className = "" }) {
 }
 
 export default function PatientDetailPage() {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
+  const formatNumber = (value, suffix = "") => formatNumberBase(value, suffix, locale);
+  const formatDate = (dateValue) => formatDateBase(dateValue, locale);
+  const formatDateTime = (dateValue) => formatDateTimeBase(dateValue, locale);
+  const formatShortDate = (dateValue) => formatShortDateBase(dateValue, locale);
   const { patientId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState(null);
@@ -338,11 +366,11 @@ export default function PatientDetailPage() {
       return [];
     }
     return [
-      { name: "Hipo", value: data.summary.pct_hypo },
-      { name: "Em faixa", value: data.summary.pct_in_range },
-      { name: "Hiper", value: data.summary.pct_hyper }
+      { name: t("patientDetail.distribution.hypo"), value: data.summary.pct_hypo },
+      { name: t("patientDetail.distribution.inRange"), value: data.summary.pct_in_range },
+      { name: t("patientDetail.distribution.hyper"), value: data.summary.pct_hyper }
     ];
-  }, [data]);
+  }, [data, t]);
 
   const selectedDayDistribution = useMemo(() => {
     if (!selectedDaySummary) {
@@ -350,43 +378,43 @@ export default function PatientDetailPage() {
     }
 
     return [
-      { name: "Hipo", value: selectedDaySummary.pctHypo },
-      { name: "Em faixa", value: selectedDaySummary.pctInRange },
-      { name: "Hiper", value: selectedDaySummary.pctHyper }
+      { name: t("patientDetail.distribution.hypo"), value: selectedDaySummary.pctHypo },
+      { name: t("patientDetail.distribution.inRange"), value: selectedDaySummary.pctInRange },
+      { name: t("patientDetail.distribution.hyper"), value: selectedDaySummary.pctHyper }
     ];
-  }, [selectedDaySummary]);
+  }, [selectedDaySummary, t]);
 
   const overviewStats = useMemo(() => {
     if (isDayMode && selectedDaySummary) {
       return [
         {
-          label: "Medições",
+          label: t("patientDetail.stats.measurements.label"),
           value: selectedDaySummary.measurementCount,
-          helper: "leituras do dia",
+          helper: t("patientDetail.stats.measurements.helper"),
           tone: "blue"
         },
         {
-          label: "Média do dia",
+          label: t("patientDetail.stats.avgDay.label"),
           value: `${formatNumber(selectedDaySummary.avgGlucose)} mg/dL`,
           helper: formatShortDate(selectedDaySummary.date),
           tone: "cyan"
         },
         {
-          label: "% em hipo",
+          label: t("patientDetail.stats.pctHypoDay.label"),
           value: formatNumber(selectedDaySummary.pctHypo, "%"),
-          helper: `${selectedDaySummary.lowEventsCount} eventos`,
+          helper: t("patientDetail.stats.pctHypoDay.helper", { count: selectedDaySummary.lowEventsCount }),
           tone: "rose"
         },
         {
-          label: "% em faixa",
+          label: t("patientDetail.stats.pctInRangeDay.label"),
           value: formatNumber(selectedDaySummary.pctInRange, "%"),
-          helper: "distribuição do dia",
+          helper: t("patientDetail.stats.pctInRangeDay.helper"),
           tone: "green"
         },
         {
-          label: "% em hiper",
+          label: t("patientDetail.stats.pctHyperDay.label"),
           value: formatNumber(selectedDaySummary.pctHyper, "%"),
-          helper: `${selectedDaySummary.highEventsCount} eventos`,
+          helper: t("patientDetail.stats.pctHyperDay.helper", { count: selectedDaySummary.highEventsCount }),
           tone: "yellow"
         }
       ];
@@ -394,43 +422,43 @@ export default function PatientDetailPage() {
 
     return [
       {
-        label: "Dias observados",
+        label: t("patientDetail.stats.daysObserved.label"),
         value: summary?.days_observed ?? "-",
-        helper: "dias com leituras",
+        helper: t("patientDetail.stats.daysObserved.helper"),
         tone: "blue"
       },
       {
-        label: "Média glicêmica",
+        label: t("patientDetail.stats.avgGlucose.label"),
         value: `${formatNumber(summary?.avg_glucose)} mg/dL`,
-        helper: "média do período",
+        helper: t("patientDetail.stats.avgGlucose.helper"),
         tone: "cyan"
       },
       {
-        label: "% em hipo",
+        label: t("patientDetail.stats.pctHypoPeriod.label"),
         value: formatNumber(summary?.pct_hypo, "%"),
-        helper: "leituras abaixo de 70 mg/dL",
+        helper: t("patientDetail.stats.pctHypoPeriod.helper"),
         tone: "rose"
       },
       {
-        label: "% em faixa",
+        label: t("patientDetail.stats.pctInRangePeriod.label"),
         value: formatNumber(summary?.pct_in_range, "%"),
-        helper: "leituras na faixa",
+        helper: t("patientDetail.stats.pctInRangePeriod.helper"),
         tone: "green"
       },
       {
-        label: "% em hiper",
+        label: t("patientDetail.stats.pctHyperPeriod.label"),
         value: formatNumber(summary?.pct_hyper, "%"),
-        helper: "acima da meta",
+        helper: t("patientDetail.stats.pctHyperPeriod.helper"),
         tone: "yellow"
       },
       {
-        label: "Dias atípicos",
+        label: t("patientDetail.stats.anomalyDays.label"),
         value: summary?.anomaly_days ?? "-",
-        helper: "sinalizados pela análise",
+        helper: t("patientDetail.stats.anomalyDays.helper"),
         tone: "slate"
       }
     ];
-  }, [isDayMode, selectedDaySummary, summary]);
+  }, [isDayMode, selectedDaySummary, summary, t, locale]);
 
   const hourlyExtremes = useMemo(
     () =>
@@ -484,11 +512,11 @@ export default function PatientDetailPage() {
   }
 
   if (loading) {
-    return <StateBlock title="Carregando painel do paciente" description="Estamos preparando os indicadores e a visualização clínica." tone="info" />;
+    return <StateBlock title={t("patientDetail.loading.title")} description={t("patientDetail.loading.description")} tone="info" />;
   }
 
   if (error || !data) {
-    return <StateBlock title="Não foi possível carregar o paciente" description="Tivemos um problema ao montar o detalhamento analítico deste paciente." tone="danger" />;
+    return <StateBlock title={t("patientDetail.error.title")} description={t("patientDetail.error.description")} tone="danger" />;
   }
 
   const { patient, filters, recent_events: recentEvents } = data;
@@ -509,22 +537,22 @@ export default function PatientDetailPage() {
   const hourlyAxisTickStyle = { fontSize: isCompactMobile ? 9 : 10 };
   const trendLegendItems = [
     {
-      label: isDayMode ? "Curva glicêmica" : "Média diária",
+      label: isDayMode ? t("patientDetail.trend.legendDayCurve") : t("patientDetail.trend.legendDailyAvg"),
       color: TREND_COLOR,
       dashed: false,
     },
     {
-      label: "Hipoglicemia < 70 mg/dL",
+      label: t("patientDetail.trend.legendHypo"),
       color: HYPO_COLOR,
       dashed: true,
     },
     {
-      label: "Meta alta 180 mg/dL",
+      label: t("patientDetail.trend.legendHyperTarget"),
       color: HYPER_COLOR,
       dashed: true,
     },
     {
-      label: "Risco > 250 mg/dL",
+      label: t("patientDetail.trend.legendHighRisk"),
       color: HIGH_RISK_COLOR,
       dashed: true,
     },
@@ -541,7 +569,8 @@ export default function PatientDetailPage() {
 
   const reportUrl = patientReportPdfUrl(patient.id, {
     startDate: filters.start_date,
-    endDate: filters.end_date
+    endDate: filters.end_date,
+    lang: locale
   });
 
   return (
@@ -550,30 +579,27 @@ export default function PatientDetailPage() {
         <div className="react-hero__content">
           <div className="react-badges">
             <span className="react-badge react-badge--soft">{patient.source_file}</span>
-            <span className="react-badge react-badge--blue">{summary.glucose_measurements} medições</span>
+            <span className="react-badge react-badge--blue">{t("patientDetail.hero.measurementsBadge", { count: summary.glucose_measurements })}</span>
           </div>
-          <p className="react-eyebrow">Detalhe do paciente</p>
+          <p className="react-eyebrow">{t("patientDetail.hero.eyebrow")}</p>
           <h1>{patient.display_name}</h1>
-          <p>
-            Este painel consolida o período selecionado a partir do core clínico, com atualização dinâmica dos
-            indicadores, registros e gráficos.
-          </p>
+          <p>{t("patientDetail.hero.body")}</p>
           <div className="react-actions">
             <Link to="/" className="react-button react-button--ghost">
-              Voltar para a visão geral
+              {t("patientDetail.hero.backToOverview")}
             </Link>
             <a className="react-button" href={reportUrl || "#"} target="_blank" rel="noreferrer">
-              Baixar Relatório Glicêmico
+              {t("patientDetail.hero.downloadReport")}
             </a>
           </div>
         </div>
         <div className="react-hero__side">
           <div className="react-summary-box">
-            <span>Período analisado</span>
+            <span>{t("patientDetail.hero.periodAnalyzed")}</span>
             <strong>
               {formatDate(filters.start_date)} - {formatDate(filters.end_date)}
             </strong>
-            <small>Janela padrão de 30 dias a partir da data mais recente disponível.</small>
+            <small>{t("patientDetail.hero.defaultWindow")}</small>
           </div>
         </div>
       </section>
@@ -581,14 +607,14 @@ export default function PatientDetailPage() {
       <section className="react-panel react-panel--filter">
         <div className="react-filter-layout">
           <div className="react-filter-copy">
-            <p className="react-eyebrow">Filtro temporal</p>
-            <h2>Refinar o recorte analítico</h2>
-            <p>Selecione o intervalo desejado e aplique o filtro para atualizar a análise.</p>
+            <p className="react-eyebrow">{t("patientDetail.filter.eyebrow")}</p>
+            <h2>{t("patientDetail.filter.title")}</h2>
+            <p>{t("patientDetail.filter.body")}</p>
           </div>
           <div className="react-filter-controls">
             <form className="react-filter-form" onSubmit={applyRange}>
               <label>
-                <span>Data inicial</span>
+                <span>{t("patientDetail.filter.startDate")}</span>
                 <input
                   type="date"
                   value={draftStartDate}
@@ -598,7 +624,7 @@ export default function PatientDetailPage() {
                 />
               </label>
               <label>
-                <span>Data final</span>
+                <span>{t("patientDetail.filter.endDate")}</span>
                 <input
                   type="date"
                   value={draftEndDate}
@@ -613,9 +639,9 @@ export default function PatientDetailPage() {
                   className="react-button"
                   disabled={loading || !hasPendingFilterChange || hasInvalidRange}
                 >
-                  Filtrar
+                  {t("patientDetail.filter.apply")}
                 </button>
-                {hasInvalidRange ? <small>A data inicial não pode ser maior que a data final.</small> : null}
+                {hasInvalidRange ? <small>{t("patientDetail.filter.invalidRange")}</small> : null}
               </div>
             </form>
           </div>
@@ -626,8 +652,8 @@ export default function PatientDetailPage() {
         <article className="react-panel react-panel--summary">
           <div className="react-panel__header">
             <div>
-              <p className="react-eyebrow">Distribuição</p>
-              <h2>{isDayMode && selectedDaySummary ? `Faixa de ${formatShortDate(selectedDaySummary.date)}` : "Faixa glicêmica"}</h2>
+              <p className="react-eyebrow">{t("patientDetail.distribution.eyebrow")}</p>
+              <h2>{isDayMode && selectedDaySummary ? t("patientDetail.distribution.titleDay", { date: formatShortDate(selectedDaySummary.date) }) : t("patientDetail.distribution.titlePeriod")}</h2>
             </div>
           </div>
             <div className="react-insight-body react-insight-body--distribution">
@@ -676,8 +702,8 @@ export default function PatientDetailPage() {
         <article className="react-panel react-panel--summary react-panel--drop-hours">
           <div className="react-panel__header">
             <div>
-              <p className="react-eyebrow">Eventos extremos</p>
-              <h2>Ocorrências críticas por horário</h2>
+              <p className="react-eyebrow">{t("patientDetail.extremeEvents.eyebrow")}</p>
+              <h2>{t("patientDetail.extremeEvents.title")}</h2>
             </div>
           </div>
           <div className="react-chart react-chart--insight react-chart--drop-hours">
@@ -694,7 +720,7 @@ export default function PatientDetailPage() {
                   height={isCompactMobile ? 28 : 32}
                 />
                 <YAxis allowDecimals={false} tick={axisTickStyle} width={isCompactMobile ? 24 : 32} />
-                <Tooltip formatter={(value) => `${value} eventos`} labelFormatter={(label) => `${String(label).padStart(2, "0")}h`} />
+                <Tooltip formatter={(value) => t("patientDetail.extremeEvents.tooltipEvents", { count: value })} labelFormatter={(label) => `${String(label).padStart(2, "0")}h`} />
                 <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: isCompactMobile ? "11px" : "12px" }} />
                 <Bar dataKey="lowCount" name="< 70 mg/dL" fill="#27b7e7" radius={[8, 8, 0, 0]} />
                 <Bar dataKey="highCount" name="> 250 mg/dL" fill="#f4a93d" radius={[8, 8, 0, 0]} />
@@ -708,12 +734,12 @@ export default function PatientDetailPage() {
         <article className="react-panel react-patient-main">
           <div className="react-panel__header">
             <div>
-              <p className="react-eyebrow">Tendência glicêmica</p>
-              <h2>{isDayMode ? "Curva glicêmica do dia" : "Média diária do período"}</h2>
+              <p className="react-eyebrow">{t("patientDetail.trend.eyebrow")}</p>
+              <h2>{isDayMode ? t("patientDetail.trend.titleDay") : t("patientDetail.trend.titlePeriod")}</h2>
               <p>
                 {isDayMode && selectedDay
-                  ? `Visualização horária das leituras de ${formatDate(selectedDay)}, com foco na variação glicêmica ao longo do dia.`
-                  : "Selecione um dia no gráfico ou na linha do tempo abaixo para abrir a leitura detalhada sem sair da página."}
+                  ? t("patientDetail.trend.bodyDay", { date: formatDate(selectedDay) })
+                  : t("patientDetail.trend.bodyPeriod")}
               </p>
             </div>
             <div className="react-chip-row">
@@ -722,7 +748,7 @@ export default function PatientDetailPage() {
                 className={`react-chip${!isDayMode ? " is-active" : ""}`}
                 onClick={handleShowPeriod}
               >
-                Período
+                {t("patientDetail.trend.chipPeriod")}
               </button>
               {selectedDay ? (
                 <button
@@ -730,7 +756,7 @@ export default function PatientDetailPage() {
                   className={`react-chip${isDayMode ? " is-active" : ""}`}
                   onClick={() => setViewMode("day")}
                 >
-                  Dia selecionado
+                  {t("patientDetail.trend.chipSelectedDay")}
                 </button>
               ) : null}
             </div>
@@ -758,7 +784,7 @@ export default function PatientDetailPage() {
                   <Line
                     type="monotone"
                     dataKey="avg_glucose"
-                    name="Média"
+                    name={t("patientDetail.trend.seriesAverage")}
                     stroke={TREND_COLOR}
                     strokeWidth={3}
                     activeDot={{ r: 7, onClick: (_, __, event) => event?.stopPropagation?.() }}
@@ -804,17 +830,17 @@ export default function PatientDetailPage() {
                   <ReferenceLine y={70} stroke={HYPO_COLOR} strokeDasharray="5 5" />
                   <ReferenceLine y={180} stroke={HYPER_COLOR} strokeDasharray="5 5" />
                   <ReferenceLine y={250} stroke={HIGH_RISK_COLOR} strokeDasharray="5 5" />
-                  <Line type="monotone" dataKey="glucose_mg_dl" name="Glicemia" stroke={TREND_COLOR} strokeWidth={3} dot={{ r: 4 }} />
+                  <Line type="monotone" dataKey="glucose_mg_dl" name={t("patientDetail.trend.seriesGlucose")} stroke={TREND_COLOR} strokeWidth={3} dot={{ r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
               <StateBlock
-                title="Sem leituras suficientes no dia selecionado"
-                description="Não há medições glicêmicas suficientes para compor a visualização horária deste dia."
+                title={t("patientDetail.trend.insufficientData.title")}
+                description={t("patientDetail.trend.insufficientData.description")}
               />
             )}
           </div>
-          <div className="react-chart-legend" aria-label="Legenda do gráfico glicêmico">
+          <div className="react-chart-legend" aria-label={t("patientDetail.trend.chartLegendAriaLabel")}>
             {trendLegendItems.map((item) => (
               <div key={item.label} className="react-chart-legend__item">
                 <span
@@ -826,7 +852,7 @@ export default function PatientDetailPage() {
               </div>
             ))}
           </div>
-          <div className="react-day-strip" role="list" aria-label="Dias disponíveis no período">
+          <div className="react-day-strip" role="list" aria-label={t("patientDetail.trend.dayStripAriaLabel")}>
             {availableDayDates.map((dateValue) => (
               <button
                 key={dateValue}
@@ -845,12 +871,12 @@ export default function PatientDetailPage() {
           <article className="react-panel react-panel--summary">
             <div className="react-panel__header">
               <div>
-                <p className="react-eyebrow">{isDayMode && selectedDaySummary ? "Foco diário" : "Resumo clínico"}</p>
-                <h2>{isDayMode && selectedDaySummary ? formatDate(selectedDaySummary.date) : "Visão do período"}</h2>
+                <p className="react-eyebrow">{isDayMode && selectedDaySummary ? t("patientDetail.sidebar.eyebrowDay") : t("patientDetail.sidebar.eyebrowPeriod")}</p>
+                <h2>{isDayMode && selectedDaySummary ? formatDate(selectedDaySummary.date) : t("patientDetail.sidebar.titlePeriod")}</h2>
                 <p>
                   {isDayMode && selectedDaySummary
-                    ? "Resumo dos principais sinais observados no dia selecionado."
-                    : "Síntese dos indicadores mais relevantes para leitura clínica rápida."}
+                    ? t("patientDetail.sidebar.bodyDay")
+                    : t("patientDetail.sidebar.bodyPeriod")}
                 </p>
               </div>
             </div>
@@ -874,12 +900,12 @@ export default function PatientDetailPage() {
         <article className="react-panel react-panel--wide">
           <div className="react-panel__header">
             <div>
-              <p className="react-eyebrow">Indicadores diários</p>
-              <h2>Evolução diária no período</h2>
+              <p className="react-eyebrow">{t("patientDetail.dailyIndicators.eyebrow")}</p>
+              <h2>{t("patientDetail.dailyIndicators.title")}</h2>
             </div>
           </div>
           {isCompactMobile ? (
-            <div className="react-mobile-list" aria-label="Indicadores diários">
+            <div className="react-mobile-list" aria-label={t("patientDetail.dailyIndicators.eyebrow")}>
               {data.daily_indicators.map((indicator) => (
                 <article
                   key={indicator.date}
@@ -896,22 +922,22 @@ export default function PatientDetailPage() {
                 >
                   <div className="react-mobile-card__header">
                     <div>
-                      <span className="react-mobile-card__eyebrow">Data</span>
+                      <span className="react-mobile-card__eyebrow">{t("patientDetail.dailyIndicators.date")}</span>
                       <h3>{formatDate(indicator.date)}</h3>
                     </div>
                     <span className={`react-mobile-card__badge${indicator.anomaly_flag ? " is-alert" : ""}`}>
-                      {indicator.anomaly_flag ? "Atípico" : "Estável"}
+                      {indicator.anomaly_flag ? t("patientDetail.dailyIndicators.badgeAtypical") : t("patientDetail.dailyIndicators.badgeStable")}
                     </span>
                   </div>
                   <div className="react-mobile-card__grid">
                     <MobileDetailField
-                      label="Média"
+                      label={t("patientDetail.dailyIndicators.avg")}
                       value={indicator.avg_glucose != null ? `${formatNumber(indicator.avg_glucose)} mg/dL` : "-"}
                     />
-                    <MobileDetailField label="% Hipo" value={formatNumber(indicator.pct_hypo, "%")} />
-                    <MobileDetailField label="% Faixa" value={formatNumber(indicator.pct_in_range, "%")} />
-                    <MobileDetailField label="% Hiper" value={formatNumber(indicator.pct_hyper, "%")} />
-                    <MobileDetailField label="Perfil do dia" className="react-mobile-card__field--profile">
+                    <MobileDetailField label={t("patientDetail.dailyIndicators.pctHypo")} value={formatNumber(indicator.pct_hypo, "%")} />
+                    <MobileDetailField label={t("patientDetail.dailyIndicators.pctInRange")} value={formatNumber(indicator.pct_in_range, "%")} />
+                    <MobileDetailField label={t("patientDetail.dailyIndicators.pctHyper")} value={formatNumber(indicator.pct_hyper, "%")} />
+                    <MobileDetailField label={t("patientDetail.dailyIndicators.profile")} className="react-mobile-card__field--profile">
                       <ClusterProfileValue indicator={indicator} compact showGroup={false} />
                     </MobileDetailField>
                   </div>
@@ -923,13 +949,13 @@ export default function PatientDetailPage() {
               <table className="react-table react-table--daily-indicators">
                 <thead>
                   <tr>
-                    <th>Data</th>
-                    <th>Média</th>
-                    <th>% Hipo</th>
-                    <th>% Faixa</th>
-                    <th>% Hiper</th>
-                    <th>Atípico</th>
-                    <th>Perfil do dia</th>
+                    <th>{t("patientDetail.dailyIndicators.date")}</th>
+                    <th>{t("patientDetail.dailyIndicators.avg")}</th>
+                    <th>{t("patientDetail.dailyIndicators.pctHypo")}</th>
+                    <th>{t("patientDetail.dailyIndicators.pctInRange")}</th>
+                    <th>{t("patientDetail.dailyIndicators.pctHyper")}</th>
+                    <th>{t("patientDetail.dailyIndicators.anomaly")}</th>
+                    <th>{t("patientDetail.dailyIndicators.profile")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -944,7 +970,7 @@ export default function PatientDetailPage() {
                       <td>{formatNumber(indicator.pct_hypo, "%")}</td>
                       <td>{formatNumber(indicator.pct_in_range, "%")}</td>
                       <td>{formatNumber(indicator.pct_hyper, "%")}</td>
-                      <td>{indicator.anomaly_flag ? "Sim" : "Não"}</td>
+                      <td>{indicator.anomaly_flag ? t("common.yes") : t("common.no")}</td>
                       <td>
                         <div className="react-table-meta">
                           <ClusterProfileValue indicator={indicator} />
@@ -961,22 +987,22 @@ export default function PatientDetailPage() {
         <article className="react-panel react-panel--wide">
           <div className="react-panel__header">
             <div>
-              <p className="react-eyebrow">Eventos recentes</p>
-              <h2>Últimos registros do período</h2>
+              <p className="react-eyebrow">{t("patientDetail.recentEvents.eyebrow")}</p>
+              <h2>{t("patientDetail.recentEvents.title")}</h2>
             </div>
           </div>
           {isCompactMobile ? (
-            <div className="react-mobile-list" aria-label="Eventos recentes">
+            <div className="react-mobile-list" aria-label={t("patientDetail.recentEvents.eyebrow")}>
               {recentEvents.map((event) => {
-                const eventTypeLabel = event.event_type_label || event.event_type || "-";
-                const eventSubtypeLabel = event.event_subtype_label || event.event_subtype || "-";
-                const contextLabel = event.context_label_display || event.context_label || "-";
+                const eventTypeLabel = enumLabel("eventType", event.event_type, event.event_type_label, t);
+                const eventSubtypeLabel = enumLabel("eventSubtype", event.event_subtype, event.event_subtype_label, t);
+                const contextLabel = enumLabel("context", event.context_label, event.context_label_display, t);
 
                 return (
                   <article key={`${event.occurred_at}-${event.event_type}`} className="react-mobile-card">
                     <div className="react-mobile-card__header">
                       <div>
-                        <span className="react-mobile-card__eyebrow">Quando</span>
+                        <span className="react-mobile-card__eyebrow">{t("patientDetail.recentEvents.when")}</span>
                         <h3>{formatDateTime(event.occurred_at)}</h3>
                       </div>
                       <span className="react-mobile-card__badge" title={event.event_type || ""}>
@@ -984,9 +1010,9 @@ export default function PatientDetailPage() {
                       </span>
                     </div>
                     <div className="react-mobile-card__grid">
-                      <MobileDetailField label="Subtipo" value={eventSubtypeLabel} />
+                      <MobileDetailField label={t("patientDetail.recentEvents.subtype")} value={eventSubtypeLabel} />
                       <MobileDetailField
-                        label="Valor"
+                        label={t("patientDetail.recentEvents.value")}
                         value={
                           event.glucose_mg_dl != null
                             ? `${formatNumber(event.glucose_mg_dl)} mg/dL`
@@ -995,7 +1021,7 @@ export default function PatientDetailPage() {
                               : "-"
                         }
                       />
-                      <MobileDetailField label="Contexto" value={contextLabel} />
+                      <MobileDetailField label={t("patientDetail.recentEvents.context")} value={contextLabel} />
                     </div>
                   </article>
                 );
@@ -1006,18 +1032,18 @@ export default function PatientDetailPage() {
               <table className="react-table">
                 <thead>
                   <tr>
-                    <th>Quando</th>
-                    <th>Tipo</th>
-                    <th>Subtipo</th>
-                    <th>Valor</th>
-                    <th>Contexto</th>
+                    <th>{t("patientDetail.recentEvents.when")}</th>
+                    <th>{t("patientDetail.recentEvents.type")}</th>
+                    <th>{t("patientDetail.recentEvents.subtype")}</th>
+                    <th>{t("patientDetail.recentEvents.value")}</th>
+                    <th>{t("patientDetail.recentEvents.context")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentEvents.map((event) => {
-                    const eventTypeLabel = event.event_type_label || event.event_type || "-";
-                    const eventSubtypeLabel = event.event_subtype_label || event.event_subtype || "-";
-                    const contextLabel = event.context_label_display || event.context_label || "-";
+                    const eventTypeLabel = enumLabel("eventType", event.event_type, event.event_type_label, t);
+                    const eventSubtypeLabel = enumLabel("eventSubtype", event.event_subtype, event.event_subtype_label, t);
+                    const contextLabel = enumLabel("context", event.context_label, event.context_label_display, t);
 
                     return (
                       <tr key={`${event.occurred_at}-${event.event_type}`}>

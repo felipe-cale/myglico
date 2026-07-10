@@ -27,9 +27,5 @@ export default defineConfig(() => ({
         changeOrigin: true
       }
     }
-  },
-  build: {
-    outDir: "client-build",
-    emptyOutDir: true
   }
 }));

@@ -1,5 +1,6 @@
 import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { fetchDashboardSummary, fetchPatients } from "../api";
 import MetricCard from "../components/MetricCard";
 import Pagination from "../components/Pagination";
@@ -14,100 +15,29 @@ const JUSTIFIED_TEXT_STYLE = {
   width: "100%"
 };
 
-function formatNumber(value, suffix = "") {
+function formatNumber(value, suffix = "", locale = "pt-BR") {
   if (value === null || value === undefined) {
     return "-";
   }
-  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value) + suffix;
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value) + suffix;
 }
 
-function getPatientSignal(patient) {
-  if (patient.signal_label && patient.signal_tone) {
-    return { label: patient.signal_label, tone: patient.signal_tone };
-  }
-  if (patient.pct_hyper >= 65 || patient.avg_glucose >= 185) {
-    return { label: "Perfil Hiperglicêmico", tone: "alert" };
-  }
-  if (patient.pct_hypo >= 10) {
-    return { label: "Perfil Hipoglicêmico", tone: "warning" };
-  }
-  return { label: "Perfil em Faixa", tone: "stable" };
+function getPatientSignal(patient, t) {
+  const code =
+    patient.signal_code ||
+    (patient.pct_hyper >= 65 || patient.avg_glucose >= 185
+      ? "attention"
+      : patient.pct_hypo >= 10
+        ? "oscillation"
+        : "stable");
+  const tone = patient.signal_tone || (code === "attention" ? "alert" : code === "oscillation" ? "warning" : "stable");
+  return { label: t(`signal.${code}`), tone };
 }
-
-const PROFILE_HELP = {
-  all: {
-    title: "Perfis de filtro",
-    intro: "Os perfis abaixo organizam a lista por padrão glicêmico predominante no período analisado. Eles funcionam como triagem visual e não substituem avaliação clínica.",
-    sections: [
-      {
-        title: "Perfil em Faixa",
-        body:
-          "Agrupa pacientes que não atingiram os limiares de perfil hiperglicêmico nem hipoglicêmico. Nas métricas da aplicação, a faixa usada como referência considera 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL nas leituras pré-refeição e valores abaixo de 180 mg/dL nas leituras pós-refeição."
-      },
-      {
-        title: "Perfil Hiperglicêmico",
-        body:
-          "É aplicado quando a média glicêmica do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%. O tempo em alta considera leituras iguais ou acima de 130 mg/dL nas medições pré-refeição e iguais ou acima de 180 mg/dL nas medições pós-refeição ou sem contexto específico."
-      },
-      {
-        title: "Perfil Hipoglicêmico",
-        body:
-          "É aplicado quando o tempo em baixa é maior ou igual a 10% no período. O tempo em baixa considera leituras abaixo de 70 mg/dL."
-      }
-    ]
-  },
-  stable: {
-    title: "Perfil em Faixa",
-    intro:
-      "Este filtro mostra pacientes que permaneceram fora dos critérios de perfil hiperglicêmico e hipoglicêmico na triagem atual.",
-    sections: [
-      {
-        title: "Faixa considerada",
-        body:
-          "A referência usada nas métricas considera 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL nas leituras pré-refeição e valores abaixo de 180 mg/dL nas leituras pós-refeição."
-      },
-      {
-        title: "Como o filtro entra aqui",
-        body:
-          "O paciente permanece neste grupo quando a média glicêmica do período fica abaixo de 185 mg/dL e o tempo em baixa fica abaixo de 10%."
-      }
-    ]
-  },
-  attention: {
-    title: "Perfil Hiperglicêmico",
-    intro: "Este filtro destaca pacientes com predominância de leituras elevadas no período analisado.",
-    sections: [
-      {
-        title: "Limiar de classificação",
-        body:
-          "O perfil é aplicado quando a média glicêmica do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%."
-      },
-      {
-        title: "O que conta como alta",
-        body:
-          "O tempo em alta considera leituras iguais ou acima de 130 mg/dL nas medições pré-refeição e iguais ou acima de 180 mg/dL nas medições pós-refeição ou sem contexto específico."
-      }
-    ]
-  },
-  oscillation: {
-    title: "Perfil Hipoglicêmico",
-    intro: "Este filtro destaca pacientes com recorrência mais relevante de leituras em baixa no período.",
-    sections: [
-      {
-        title: "Limiar de classificação",
-        body: "O perfil é aplicado quando o tempo em baixa é maior ou igual a 10% no período."
-      },
-      {
-        title: "O que conta como baixa",
-        body: "O tempo em baixa considera leituras abaixo de 70 mg/dL."
-      }
-    ]
-  }
-};
 
 function FilterHelpDialog({ signal, open, onClose }) {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
-  const content = PROFILE_HELP[signal] || PROFILE_HELP.all;
+  const content = t(`overview.profileHelp.${signal}`, { returnObjects: true, defaultValue: t("overview.profileHelp.all", { returnObjects: true }) });
 
   useEffect(() => {
     if (!open) {
@@ -152,10 +82,10 @@ function FilterHelpDialog({ signal, open, onClose }) {
       >
         <div className="react-dialog__header">
           <div>
-            <p className="react-eyebrow">Ajuda do filtro</p>
+            <p className="react-eyebrow">{t("overview.profileHelp.eyebrow")}</p>
             <h3 id="profile-help-title">{content.title}</h3>
           </div>
-          <button type="button" className="react-dialog__close" onClick={onClose} aria-label="Fechar explicação dos perfis">
+          <button type="button" className="react-dialog__close" onClick={onClose} aria-label={t("overview.profileHelp.closeAriaLabel")}>
             ×
           </button>
         </div>
@@ -176,6 +106,7 @@ function FilterHelpDialog({ signal, open, onClose }) {
 }
 
 export default function OverviewPage() {
+  const { t, i18n } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [summary, setSummary] = useState(null);
   const [patients, setPatients] = useState(null);
@@ -263,17 +194,6 @@ export default function OverviewPage() {
     };
   }, [currentPage, currentQuery, currentSignal]);
 
-  const artifactLinks = useMemo(() => {
-    if (!summary) {
-      return [];
-    }
-    return [
-      { label: "Ver origem dos dados", href: summary.links.latest_batch.provenance_json },
-      { label: "Abrir histórico da análise", href: summary.links.latest_run.provenance_ttl },
-      { label: "Consultar base estruturada", href: summary.links.latest_run.semantic_ttl }
-    ].filter((item) => Boolean(item.href));
-  }, [summary]);
-
   function handlePageChange(page) {
     const next = new URLSearchParams(searchParams);
     next.set("page", String(page));
@@ -311,72 +231,61 @@ export default function OverviewPage() {
         setCopiedPatientId((current) => (current === patientId ? "" : current));
       }, 1800);
     } catch (error) {
-      console.error("Nao foi possivel copiar o codigo do paciente.", error);
+      console.error("Could not copy the patient code.", error);
     }
   }
 
   const visiblePatients = useMemo(() => patients?.patients || [], [patients]);
 
   const signalFilters = [
-    { value: "all", label: "Todos" },
-    { value: "stable", label: "Perfil em Faixa" },
-    { value: "attention", label: "Perfil Hiperglicêmico" },
-    { value: "oscillation", label: "Perfil Hipoglicêmico" }
+    { value: "all", label: t("common.all") },
+    { value: "stable", label: t("signal.stable") },
+    { value: "attention", label: t("signal.attention") },
+    { value: "oscillation", label: t("signal.oscillation") }
   ];
 
   return (
     <div className="react-page">
       <section className="react-hero">
         <div className="react-hero__content">
-          <div className="react-badges">
-            <span className="react-badge react-badge--brand">Acompanhamento diário</span>
-            <span className="react-badge react-badge--green">Leitura clínica</span>
-            <span className="react-badge react-badge--blue">Visão contínua</span>
-          </div>
-          <p className="react-eyebrow">Painel inicial</p>
-          <h1>Acompanhe a saúde glicêmica com mais clareza</h1>
-          <p>
-            Visualize rapidamente quem está em acompanhamento, identifique padrões importantes e aprofunde a leitura
-            de cada pessoa com contexto suficiente para apoiar decisões seguras.
-          </p>
-          <div className="react-actions">
-            {artifactLinks.map((link) => (
-              <a key={link.label} href={link.href} className="react-button react-button--ghost">
-                {link.label}
-              </a>
-            ))}
+          <h1>{t("overview.hero.title")}</h1>
+          <p>{t("overview.hero.body")}</p>
+          <div className="react-badges react-badges--overview">
+            <span className="react-badge react-badge--brand">{t("overview.hero.badgeDaily")}</span>
+            <span className="react-badge react-badge--green">{t("overview.hero.badgeClinical")}</span>
+            <span className="react-badge react-badge--blue">{t("overview.hero.badgeContinuous")}</span>
           </div>
         </div>
         <div className="react-hero__visual">
-          <img src={assetUrl("img/myglico-logo.png")} alt="Identidade MyGlico" />
+          <img src={assetUrl("img/myglico-logo.png")} alt={t("overview.hero.imageAlt")} />
         </div>
       </section>
 
       {loadingSummary ? (
-        <StateBlock title="Carregando painel" description="Estamos preparando a visão mais recente da base acompanhada." tone="info" />
+        <StateBlock title={t("overview.summaryLoading.title")} description={t("overview.summaryLoading.description")} tone="info" />
       ) : summaryError ? (
-        <StateBlock title="Nao foi possivel carregar o painel" description="Tivemos um problema ao montar o resumo inicial deste ambiente." tone="danger" />
+        <StateBlock title={t("overview.summaryError.title")} description={t("overview.summaryError.description")} tone="danger" />
       ) : (
         <section className="react-grid react-grid--metrics">
-          <MetricCard label="Pessoas acompanhadas" value={summary.metrics.patient_count} helper="Base pronta para acompanhamento contínuo." tone="blue" />
-          <MetricCard label="Registros de glicemia" value={summary.metrics.normalized_count} helper="Leituras disponíveis para consulta e comparação." tone="cyan" />
-          <MetricCard label="Dias analisados" value={summary.metrics.indicator_count} helper="Períodos consolidados para leitura clínica." tone="green" />
-          <MetricCard label="Alertas de qualidade" value={summary.metrics.issue_count} helper="Pontos que merecem validação ou revisão." tone="yellow" />
+          <MetricCard label={t("overview.metrics.patients.label")} value={summary.metrics.patient_count} helper={t("overview.metrics.patients.helper")} tone="blue" />
+          <MetricCard label={t("overview.metrics.records.label")} value={summary.metrics.normalized_count} helper={t("overview.metrics.records.helper")} tone="cyan" />
+          <MetricCard label={t("overview.metrics.days.label")} value={summary.metrics.indicator_count} helper={t("overview.metrics.days.helper")} tone="green" />
+          <MetricCard label={t("overview.metrics.issues.label")} value={summary.metrics.issue_count} helper={t("overview.metrics.issues.helper")} tone="yellow" />
         </section>
       )}
 
       <section className="react-panel">
-        <div className="react-panel__header">
+        <div className="react-panel__header react-panel__header--patients">
           <div className="react-panel__header-copy">
-            <p className="react-eyebrow">Pessoas acompanhadas</p>
-            <h2>Encontre um paciente em segundos</h2>
-            <p>Busque por nome ou código do paciente e abra rapidamente o painel individual de quem precisa da sua atenção.</p>
+            <p className="react-eyebrow">{t("overview.patients.eyebrow")}</p>
+            <h2>{t("overview.patients.title")}</h2>
+            <p>{t("overview.patients.body")}</p>
           </div>
           <div className="react-patient-toolbar">
             <div className="react-patient-filter-row">
               <label className="react-select-field">
-                <span>Filtrar por perfil</span>
-                <select value={currentSignal} onChange={(event) => handleSignalChange(event.target.value)} aria-label="Filtrar pacientes por perfil">
+                <span>{t("overview.patients.filterLabel")}</span>
+                <select value={currentSignal} onChange={(event) => handleSignalChange(event.target.value)} aria-label={t("overview.patients.filterAriaLabel")}>
                   {signalFilters.map((filter) => (
                     <option key={filter.value} value={filter.value}>
                       {filter.label}
@@ -387,7 +296,7 @@ export default function OverviewPage() {
               <button
                 type="button"
                 className="react-help-button"
-                aria-label="Explicar perfis do filtro"
+                aria-label={t("overview.patients.helpButtonAriaLabel")}
                 onClick={() => setHelpOpen(true)}
               >
                 ?
@@ -398,22 +307,22 @@ export default function OverviewPage() {
                 type="search"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="Buscar por nome ou código"
-                aria-label="Buscar paciente"
+                placeholder={t("overview.patients.searchPlaceholder")}
+                aria-label={t("overview.patients.searchAriaLabel")}
               />
             </div>
           </div>
         </div>
 
         {loadingPatients ? (
-          <StateBlock title="Carregando pacientes" description="Estamos atualizando a lista de pessoas acompanhadas." tone="info" />
+          <StateBlock title={t("overview.patients.loading.title")} description={t("overview.patients.loading.description")} tone="info" />
         ) : patientsError ? (
-          <StateBlock title="Nao foi possivel carregar a lista" description="Houve um problema ao trazer os pacientes deste ambiente." tone="danger" />
+          <StateBlock title={t("overview.patients.error.title")} description={t("overview.patients.error.description")} tone="danger" />
         ) : patients && patients.patients.length ? (
           <>
             <div className="react-patient-grid">
               {visiblePatients.map((patient) => {
-                const signal = getPatientSignal(patient);
+                const signal = getPatientSignal(patient, t);
                 const copied = copiedPatientId === patient.id;
                 return (
                   <article key={patient.id} className="react-patient-card">
@@ -421,37 +330,37 @@ export default function OverviewPage() {
                       <h3>{patient.display_name}</h3>
                       <div className="react-patient-code">
                         <div className="react-patient-code__content">
-                          <span className="react-patient-code__label">Código do paciente</span>
+                          <span className="react-patient-code__label">{t("overview.patients.patientCode")}</span>
                           <strong className="react-patient-code__value">{patient.short_id}</strong>
                         </div>
                         <button
                           type="button"
                           className={`react-patient-code__copy${copied ? " is-copied" : ""}`}
-                          aria-label={`Copiar código ${patient.short_id}`}
+                          aria-label={t("overview.patients.copyAriaLabel", { code: patient.short_id })}
                           onClick={() => handleCopyShortId(patient.id, patient.short_id)}
                         >
-                          {copied ? "Copiado" : "Copiar"}
+                          {copied ? t("overview.patients.copied") : t("overview.patients.copy")}
                         </button>
                       </div>
                       <span className={`react-patient-card__signal react-patient-card__signal--${signal.tone}`}>{signal.label}</span>
-                      <p>{patient.days_observed} dias com leituras disponíveis</p>
+                      <p>{t("overview.patients.daysObserved", { count: patient.days_observed })}</p>
                     </div>
                     <dl className="react-patient-card__metrics">
                       <div className="react-patient-card__metric-row">
-                        <dt>Média do período</dt>
-                        <dd>{patient.avg_glucose != null ? `${formatNumber(patient.avg_glucose)} mg/dL` : "-"}</dd>
+                        <dt>{t("overview.patients.avgPeriod")}</dt>
+                        <dd>{patient.avg_glucose != null ? `${formatNumber(patient.avg_glucose, "", i18n.language)} mg/dL` : "-"}</dd>
                       </div>
                       <div className="react-patient-card__metric-row">
-                        <dt>Tempo em baixa</dt>
-                        <dd>{formatNumber(patient.pct_hypo, "%")}</dd>
+                        <dt>{t("overview.patients.timeInLow")}</dt>
+                        <dd>{formatNumber(patient.pct_hypo, "%", i18n.language)}</dd>
                       </div>
                       <div className="react-patient-card__metric-row">
-                        <dt>Tempo em alta</dt>
-                        <dd>{formatNumber(patient.pct_hyper, "%")}</dd>
+                        <dt>{t("overview.patients.timeInHigh")}</dt>
+                        <dd>{formatNumber(patient.pct_hyper, "%", i18n.language)}</dd>
                       </div>
                     </dl>
                     <Link to={`/patients/${patient.id}`} className="react-patient-card__footer">
-                      <span>Abrir painel do paciente</span>
+                      <span>{t("overview.patients.openPatientPanel")}</span>
                     </Link>
                   </article>
                 );
@@ -460,16 +369,16 @@ export default function OverviewPage() {
             {visiblePatients.length ? (
               <div className="react-panel__footer">
                 <span>
-                  Página {patients.page} de {patients.pages}, com {patients.count} pacientes encontrados.
+                  {t("overview.patients.footerCount", { page: patients.page, pages: patients.pages, count: patients.count })}
                 </span>
                 <Pagination page={patients.page} pages={patients.pages} onPageChange={handlePageChange} />
               </div>
             ) : (
-              <StateBlock title="Nenhum paciente neste filtro" description="Tente outro status ou ajuste a busca para ampliar os resultados." />
+              <StateBlock title={t("overview.patients.emptyFilter.title")} description={t("overview.patients.emptyFilter.description")} />
             )}
           </>
         ) : (
-          <StateBlock title="Nenhum paciente encontrado" description="Tente buscar por outro nome ou identificador para continuar." />
+          <StateBlock title={t("overview.patients.emptyAll.title")} description={t("overview.patients.emptyAll.description")} />
         )}
       </section>
       <FilterHelpDialog signal={currentSignal} open={helpOpen} onClose={() => setHelpOpen(false)} />
