@@ -171,12 +171,14 @@ python scripts/init_db.py
 
 ## Deployment on Vercel
 
-For demonstration purposes, the project can be hosted as a single Vercel
-project that serves the React frontend and the FastAPI backend under one
-domain, backed by a managed MySQL instance. This arrangement keeps the
-demonstration self-contained: frontend and API share the same origin (no
-CORS configuration is required), and the database is the only external
-service.
+A live demonstration of the MVP is available at
+**<https://myglico.vercel.app/>**.
+
+The project is hosted as a single Vercel project that serves the React
+frontend and the FastAPI backend under one domain, backed by a managed MySQL
+instance. This arrangement keeps the demonstration self-contained: frontend
+and API share the same origin (no CORS configuration is required), and the
+database is the only external service.
 
 ### Deployment architecture
 

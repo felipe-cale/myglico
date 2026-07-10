@@ -174,12 +174,14 @@ python scripts/init_db.py
 
 ## Implantação no Vercel
 
-Para fins de demonstração, o projeto pode ser hospedado como um único
-projeto Vercel que serve o frontend React e o backend FastAPI sob o mesmo
-domínio, com uma instância gerenciada de MySQL como banco de dados. Esse
-arranjo mantém a demonstração autocontida: frontend e API compartilham a
-mesma origem (dispensando configuração de CORS), e o banco de dados é o
-único serviço externo.
+Uma demonstração do MVP está disponível em
+**<https://myglico.vercel.app/>**.
+
+O projeto é hospedado como um único projeto Vercel que serve o frontend
+React e o backend FastAPI sob o mesmo domínio, com uma instância gerenciada
+de MySQL como banco de dados. Esse arranjo mantém a demonstração
+autocontida: frontend e API compartilham a mesma origem (dispensando
+configuração de CORS), e o banco de dados é o único serviço externo.
 
 ### Arquitetura da implantação
 
