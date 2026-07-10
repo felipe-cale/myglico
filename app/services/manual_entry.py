@@ -6,7 +6,7 @@ from hashlib import sha256
 from sqlalchemy.orm import Session
 
 from app.models.entities import GlucoseRecord, GlucoseRecordSource, Patient, ProvenanceEvent
-from app.services.analytics import mark_analysis_pending
+from app.services.analysis_queue import mark_analysis_pending
 
 
 def _content_hash(payload: object) -> str:
