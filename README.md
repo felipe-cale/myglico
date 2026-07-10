@@ -4,15 +4,17 @@
 
 [Português](README.pt-br.md) | **English**
 
-Academic MVP for the MyGlico project, using the public `UCI Diabetes` dataset
-as a base for:
+MyGlico is an academic MVP for glycemic monitoring, developed as coursework.
+Using the public `UCI Diabetes` dataset as its data source, this repository
+demonstrates:
 
 - ingestion and normalization into a relational database;
 - an analytics layer for glycemic indicators;
 - provenance via `PROV-JSON` and `PROV-TTL`;
 - semantic export to RDF with SPARQL queries;
 - a web dashboard with a self-contained `React` layer, localized in
-  Portuguese (Brazil), English (US), and Spanish.
+  Portuguese (Brazil), English (US), and Spanish, including a localized
+  clinical PDF report per patient.
 
 ## Architecture
 
@@ -81,11 +83,11 @@ python scripts/import_uci_diabetes.py
 uvicorn app.main:app --reload
 ```
 
-`.[full]` pulls in the analytics/import tooling (numpy, pandas, scikit-learn,
-alembic, uvicorn, etc.) alongside the base API dependencies. A plain
-`pip install .` only installs what `app.main`'s request-time code needs —
-that's what the Vercel deployment uses, to stay under its function size
-limit (see "Deploying to Vercel" below).
+The `full` extra adds the analytics/import tooling (numpy, pandas,
+scikit-learn, alembic, uvicorn, etc.) to the base API dependencies. A plain
+`pip install .` installs only the packages required by the API at request
+time — the same set used by the hosted deployment to remain within the
+platform's function size limit (see "Deployment on Vercel" below).
 
 Open `http://127.0.0.1:8001/health` to validate the API, or use the React
 frontend in development.
@@ -167,88 +169,94 @@ python scripts/init_db.py
   `slot_aligned` since they may represent logical paper-log times.
 - The MVP prioritizes explainability and traceability for coursework purposes.
 
-## Deploying to Vercel
+## Deployment on Vercel
 
-The repository is set up for a single Vercel project that serves both the
-React frontend and the FastAPI backend, sharing one domain (no CORS needed):
+For demonstration purposes, the project can be hosted as a single Vercel
+project that serves the React frontend and the FastAPI backend under one
+domain, backed by a managed MySQL instance. This arrangement keeps the
+demonstration self-contained: frontend and API share the same origin (no
+CORS configuration is required), and the database is the only external
+service.
 
-- `vercel.json` builds `frontend-react` (Vite) as the static output and
-  rewrites `/api/*`, `/health`, and `/artifacts/*` to `api/index.py`, a thin
-  wrapper that imports the real FastAPI app (`app/main.py`). Every other path
-  falls back to `index.html` so client-side routing works on refresh.
-- `requirements.txt` (repo root) lists the backend's Python dependencies for
-  Vercel's Python runtime. It's intentionally **narrower** than
-  `pyproject.toml`'s `full` extra (see next section) — keep both in sync with
-  whatever `app.main`'s request-time import graph actually needs, not with
-  the full local/Docker dependency set.
-- Set the **Root Directory** of the Vercel project to the repository root
-  (not `frontend-react`) — it needs `api/`, `requirements.txt`, and `app/` in
-  the same build.
+### Deployment architecture
 
-### Why the deployed function's dependencies are trimmed (and what that means going forward)
+- `vercel.json` defines the build: the frontend is compiled with Vite into
+  static output (`frontend-react/dist`), while `/api/*`, `/health`, and
+  `/artifacts/*` are rewritten to `api/index.py` — a thin adapter that
+  exposes the FastAPI application (`app/main.py`) as a serverless function.
+  All remaining paths fall back to `index.html`, preserving client-side
+  routing across page reloads.
+- `requirements.txt` (repository root) lists the Python dependencies
+  installed for the serverless function. It is intentionally narrower than
+  the `full` extra in `pyproject.toml`, covering only the packages reachable
+  from the application's request-time import graph.
+- The Vercel project's Root Directory must be the repository root (not
+  `frontend-react`), since the build requires `api/`, `app/`, and
+  `requirements.txt` together.
 
-Vercel Python functions have a **500 MB bundle size limit**. `numpy` +
-`pandas` + `scikit-learn` (used by `app/services/analytics.py` for
-clustering and anomaly detection) alone pushed a full install past 620 MB.
-Since `app.main`'s live request path never imports `analytics.py` — it's
-only reachable from `scripts/import_uci_diabetes.py` and the offline
-bootstrap — those heavy libraries were split into `pyproject.toml`'s `full`
-extra and left out of `requirements.txt` entirely. A plain `pip install .`
-(what the Vercel deploy effectively gets) installs only `fastapi`,
-`sqlalchemy`, `pymysql`, `cryptography`, `pydantic-settings`, and `rdflib`.
+### Dependency footprint of the serverless function
 
-**This is fine for demonstrating the MVP as it stands today**: the dashboard,
-patient detail, the PDF report, and creating a manual glucose record all
-work — a manual entry still writes to `analysis_outbox`/`daily_metrics_current`
-via `app/services/analysis_queue.py` (plain SQL, no ML dependency), it just
-marks the day as needing re-analysis rather than recomputing it inline.
+Vercel imposes a 500 MB limit on function bundles. The analytics stack —
+`numpy`, `pandas`, and `scikit-learn`, used by `app/services/analytics.py`
+for clustering and anomaly detection — pushes a full installation beyond
+620 MB. Because the live API never imports that module (it is reached only
+by the offline import and analytics scripts), the project's dependencies are
+split in two:
 
-**It stops being fine the day you want that re-analysis to actually run in
-production** (recomputing clusters/anomalies after a manual entry, or
-re-running the importer against fresh data on a schedule). At that point,
-don't add `numpy`/`pandas`/`scikit-learn` back to `requirements.txt` — a
-single function can't hold both the API and the analytics stack under the
-size limit. Instead, run the analytics pipeline as a **separate deployment**:
-a small worker (Vercel Cron Job hitting its own lean function, a container
-on Railway/Fly/Render, or a scheduled script) that only does
-`compute_analytics`, reading the same cloud MySQL database. The API function
-stays as-is; the worker owns the heavy dependencies.
+- the base install (`pip install .`, mirrored by `requirements.txt`) covers
+  only the API: `fastapi`, `sqlalchemy`, `pymysql`, `cryptography`,
+  `pydantic-settings`, and `rdflib`;
+- the `full` extra (`pip install ".[full]"`) adds the analytics and import
+  tooling used locally and in Docker.
 
-Required environment variable:
+This division is sufficient for the MVP demonstration: the dashboard, the
+patient detail view, the localized PDF report, and manual glucose entry all
+operate normally. A manual entry records the affected day in
+`analysis_outbox`/`daily_metrics_current` through
+`app/services/analysis_queue.py` (plain SQL, no ML dependency), flagging it
+for re-analysis rather than recomputing indicators inline.
 
-- `MYGLICO_DATABASE_URL`: connection string for the cloud MySQL instance,
-  e.g. `mysql+pymysql://user:password@host:3306/dbname`. Managed MySQL
-  providers (Aiven, PlanetScale, etc.) often document connection strings
-  with a `ssl-mode=REQUIRED`/`ssl_mode=REQUIRED` query param — PyMySQL
-  doesn't accept that as a connect argument, so `app/db/session.py` strips
-  it out of the URL and translates it into the `ssl={}` PyMySQL actually
-  understands. Paste the provider's connection string as-is.
+As future work, should the platform evolve to recompute analytics in
+production — for example, after manual entries or on a schedule — the
+analytics pipeline should run as a separate deployment (a scheduled worker
+or container executing `compute_analytics` against the same database) rather
+than being bundled back into the API function, which would exceed the
+platform's size limit.
 
-Before the first deploy (or after schema changes), run migrations and the
-dataset import **once, from your machine, against the cloud database** —
-these are one-off data-loading steps, not something a serverless request
-should trigger:
+### Configuration
+
+The deployment requires a single environment variable:
+
+- `MYGLICO_DATABASE_URL`: connection string of the managed MySQL instance,
+  e.g. `mysql+pymysql://user:password@host:3306/dbname`. Providers such as
+  Aiven document connection strings with an `ssl-mode=REQUIRED` parameter;
+  since PyMySQL does not accept it as a connect argument,
+  `app/db/session.py` translates it into the equivalent `ssl` option, so the
+  provider's connection string can be used verbatim.
+
+### Database preparation
+
+Migrations and the dataset import are one-time data-loading steps, executed
+from a local machine against the cloud database rather than from the
+serverless function:
 
 ```bash
 MYGLICO_DATABASE_URL="mysql+pymysql://user:password@host:3306/dbname" alembic upgrade head
 MYGLICO_DATABASE_URL="mysql+pymysql://user:password@host:3306/dbname" python scripts/import_uci_diabetes.py
 ```
 
-Known limitations on Vercel:
+### Known limitations
 
-- The Python function's filesystem is read-only except `/tmp`, which is
-  wiped between cold starts. All API routes are DB-only reads (plus one
-  DB-only write for manual glucose entries), so this doesn't affect normal
-  usage — but the `/api/semantic/*` SPARQL endpoints and any `/artifacts/*`
-  file that isn't already committed to the repo won't have anything to read
-  in production (the frontend no longer links to them, so nothing breaks in
-  the UI; this only affects that unused backend surface).
-- `rdflib` (for the semantic/SPARQL routes) is the heaviest thing left in the
-  deployed function; cold start is still slower than the local Docker/uvicorn
-  setup, but nowhere near what it was with the analytics stack included. If
-  you add a new dependency to `app/services/`, check whether it's actually
-  reachable from `app.main` before adding it to `requirements.txt` — see the
-  section above.
+- The function's filesystem is read-only except for `/tmp`, which is cleared
+  between cold starts. All API routes operate exclusively on the database,
+  so normal usage is unaffected; the `/api/semantic/*` SPARQL endpoints and
+  any `/artifacts/*` file not versioned in the repository, however, have no
+  data to read in this environment. The frontend does not reference either,
+  so the user-facing application is not impacted.
+- `rdflib` (required by the semantic/SPARQL routes) is the largest remaining
+  dependency, so cold starts are slower than in the local Docker/uvicorn
+  setup. New dependencies should be added to `requirements.txt` only when
+  they are reachable from `app.main`'s request-time import graph.
 
 ## Citation
 

@@ -4,15 +4,17 @@
 
 **Português** | [English](README.md)
 
-MVP acadêmico do MyGlico para o recorte da disciplina, usando o dataset
-`UCI Diabetes` como base pública para:
+O MyGlico é um MVP acadêmico de acompanhamento glicêmico, desenvolvido como
+trabalho de disciplina. Usando o dataset público `UCI Diabetes` como fonte
+de dados, este repositório demonstra:
 
 - ingestão e normalização em banco relacional;
 - camada analítica para indicadores glicêmicos;
 - proveniência com `PROV-JSON` e `PROV-TTL`;
 - exportação semântica em RDF com consultas SPARQL;
 - visualização web com uma camada `React` autocontida, traduzida em
-  português (Brasil), inglês (EUA) e espanhol.
+  português (Brasil), inglês (EUA) e espanhol, incluindo um relatório
+  clínico em PDF localizado por paciente.
 
 ## Arquitetura
 
@@ -81,11 +83,12 @@ python scripts/import_uci_diabetes.py
 uvicorn app.main:app --reload
 ```
 
-`.[full]` traz as ferramentas de analytics/import (numpy, pandas,
-scikit-learn, alembic, uvicorn etc.) além das dependências básicas da API.
-Um `pip install .` puro instala só o que o código em tempo de execução do
-`app.main` precisa — é isso que o deploy no Vercel usa, pra ficar dentro do
-limite de tamanho de função (veja "Deploy no Vercel" abaixo).
+O extra `full` adiciona as ferramentas de analytics e importação (numpy,
+pandas, scikit-learn, alembic, uvicorn etc.) às dependências básicas da API.
+Um `pip install .` simples instala apenas os pacotes exigidos pela API em
+tempo de requisição — o mesmo conjunto usado pela implantação hospedada para
+permanecer dentro do limite de tamanho de função da plataforma (veja
+"Implantação no Vercel" abaixo).
 
 Abra `http://127.0.0.1:8001/health` para validar a API ou use o frontend
 React em desenvolvimento.
@@ -169,95 +172,97 @@ python scripts/init_db.py
   `slot_aligned` por poderem representar tempos lógicos do log em papel.
 - O MVP prioriza explicabilidade e rastreabilidade para a disciplina.
 
-## Deploy no Vercel
+## Implantação no Vercel
 
-O repositório está preparado para um único projeto Vercel que serve o
-frontend React e o backend FastAPI juntos, no mesmo domínio (sem precisar de
-CORS):
+Para fins de demonstração, o projeto pode ser hospedado como um único
+projeto Vercel que serve o frontend React e o backend FastAPI sob o mesmo
+domínio, com uma instância gerenciada de MySQL como banco de dados. Esse
+arranjo mantém a demonstração autocontida: frontend e API compartilham a
+mesma origem (dispensando configuração de CORS), e o banco de dados é o
+único serviço externo.
 
-- `vercel.json` builda `frontend-react` (Vite) como saída estática e
-  redireciona `/api/*`, `/health` e `/artifacts/*` para `api/index.py`, um
-  wrapper fino que importa a aplicação FastAPI real (`app/main.py`). Qualquer
-  outro caminho cai para `index.html`, o que mantém o roteamento client-side
-  funcionando ao dar refresh na página.
-- `requirements.txt` (na raiz) lista as dependências Python do backend para
-  o runtime Python do Vercel. Ele é intencionalmente **mais enxuto** que o
-  extra `full` do `pyproject.toml` (veja a seção abaixo) — mantenha os dois
-  sincronizados com o que o grafo de import em tempo de execução do
-  `app.main` realmente usa, não com o conjunto completo de dependências
-  locais/Docker.
-- Configure o **Root Directory** do projeto no Vercel para a raiz do
-  repositório (não `frontend-react`) — ele precisa de `api/`,
-  `requirements.txt` e `app/` no mesmo build.
+### Arquitetura da implantação
 
-### Por que as dependências da função implantada são enxutas (e o que isso significa daqui pra frente)
+- `vercel.json` define o build: o frontend é compilado com Vite como saída
+  estática (`frontend-react/dist`), enquanto `/api/*`, `/health` e
+  `/artifacts/*` são reescritos para `api/index.py` — um adaptador fino que
+  expõe a aplicação FastAPI (`app/main.py`) como função serverless. Os
+  demais caminhos caem para `index.html`, preservando o roteamento
+  client-side ao recarregar a página.
+- `requirements.txt` (raiz do repositório) lista as dependências Python
+  instaladas para a função serverless. Ele é intencionalmente mais restrito
+  que o extra `full` do `pyproject.toml`, cobrindo apenas os pacotes
+  alcançáveis pelo grafo de import da aplicação em tempo de requisição.
+- O Root Directory do projeto no Vercel deve ser a raiz do repositório (não
+  `frontend-react`), pois o build requer `api/`, `app/` e
+  `requirements.txt` em conjunto.
 
-Funções Python do Vercel têm um **limite de 500 MB** de tamanho de pacote.
-`numpy` + `pandas` + `scikit-learn` (usados por `app/services/analytics.py`
-para clusterização e detecção de anomalias) sozinhos empurravam uma
-instalação completa pra além de 620 MB. Como o caminho de execução ao vivo
-do `app.main` nunca importa `analytics.py` — ele só é alcançado por
-`scripts/import_uci_diabetes.py` e pelo bootstrap offline —, essas
-bibliotecas pesadas foram movidas pro extra `full` do `pyproject.toml` e
-ficaram de fora do `requirements.txt` por completo. Um `pip install .` puro
-(o que o deploy do Vercel efetivamente recebe) instala só `fastapi`,
-`sqlalchemy`, `pymysql`, `cryptography`, `pydantic-settings` e `rdflib`.
+### Dimensionamento das dependências da função serverless
 
-**Isso é suficiente pra demonstrar o MVP como está hoje**: o painel, o
-detalhe do paciente, o relatório em PDF e a criação de um registro manual de
-glicemia funcionam normalmente — uma entrada manual continua gravando em
-`analysis_outbox`/`daily_metrics_current` via
-`app/services/analysis_queue.py` (SQL puro, sem dependência de ML), só que
-marcando o dia como "precisa reanálise" em vez de recalcular na hora.
+O Vercel impõe um limite de 500 MB para o pacote de cada função. A stack de
+analytics — `numpy`, `pandas` e `scikit-learn`, usados por
+`app/services/analytics.py` para clusterização e detecção de anomalias —
+leva uma instalação completa a mais de 620 MB. Como a API em execução nunca
+importa esse módulo (ele é alcançado apenas pelos scripts offline de
+importação e analytics), as dependências do projeto foram divididas em dois
+conjuntos:
 
-**Isso deixa de ser suficiente no dia em que você quiser que essa reanálise
-rode de fato em produção** (recalcular clusters/anomalias depois de uma
-entrada manual, ou rodar o importador contra dados novos periodicamente).
-Nesse momento, não volte a colocar `numpy`/`pandas`/`scikit-learn` no
-`requirements.txt` — uma única função não comporta a API e a stack de
-analytics juntas dentro do limite de tamanho. Em vez disso, rode o pipeline
-de analytics como um **deploy separado**: um worker pequeno (um Cron Job do
-Vercel batendo numa função própria e enxuta, um container no
-Railway/Fly/Render, ou um script agendado) que só faz `compute_analytics`,
-lendo do mesmo banco MySQL na nuvem. A função da API continua como está; o
-worker fica com as dependências pesadas.
+- a instalação base (`pip install .`, espelhada pelo `requirements.txt`)
+  cobre apenas a API: `fastapi`, `sqlalchemy`, `pymysql`, `cryptography`,
+  `pydantic-settings` e `rdflib`;
+- o extra `full` (`pip install ".[full]"`) adiciona as ferramentas de
+  analytics e importação usadas localmente e no Docker.
 
-Variável de ambiente obrigatória:
+Essa divisão é suficiente para a demonstração do MVP: o painel, o detalhe do
+paciente, o relatório em PDF localizado e o registro manual de glicemia
+funcionam normalmente. Uma entrada manual registra o dia afetado em
+`analysis_outbox`/`daily_metrics_current` por meio de
+`app/services/analysis_queue.py` (SQL puro, sem dependência de ML),
+sinalizando-o para reanálise em vez de recalcular os indicadores na hora.
 
-- `MYGLICO_DATABASE_URL`: string de conexão do MySQL na nuvem, por exemplo
-  `mysql+pymysql://usuario:senha@host:3306/nome_do_banco`. Provedores de
-  MySQL gerenciado (Aiven, PlanetScale etc.) costumam documentar a string de
-  conexão com um parâmetro `ssl-mode=REQUIRED`/`ssl_mode=REQUIRED` — o
-  PyMySQL não aceita isso como argumento de conexão, então
-  `app/db/session.py` remove esse parâmetro da URL e traduz pra `ssl={}`,
-  que é o que o PyMySQL realmente entende. Cole a string de conexão do
-  provedor exatamente como ela vem.
+Como trabalho futuro, caso a plataforma evolua para recalcular a camada
+analítica em produção — por exemplo, após entradas manuais ou de forma
+agendada —, o pipeline de analytics deve ser executado como uma implantação
+separada (um worker agendado ou container executando `compute_analytics`
+contra o mesmo banco), em vez de retornar à função da API, o que excederia o
+limite de tamanho da plataforma.
 
-Antes do primeiro deploy (ou depois de mudanças de schema), rode as
-migrations e o import do dataset **uma vez, da sua máquina, contra o banco
-na nuvem** — são passos de carga de dados pontuais, não algo que uma
-requisição serverless deveria disparar:
+### Configuração
+
+A implantação requer uma única variável de ambiente:
+
+- `MYGLICO_DATABASE_URL`: string de conexão da instância gerenciada de
+  MySQL, por exemplo `mysql+pymysql://usuario:senha@host:3306/nome_do_banco`.
+  Provedores como o Aiven documentam a string de conexão com um parâmetro
+  `ssl-mode=REQUIRED`; como o PyMySQL não o aceita como argumento de
+  conexão, `app/db/session.py` o traduz para a opção `ssl` equivalente,
+  permitindo usar a string do provedor sem alterações.
+
+### Preparação do banco de dados
+
+As migrations e a importação do dataset são etapas pontuais de carga de
+dados, executadas de uma máquina local contra o banco na nuvem, e não a
+partir da função serverless:
 
 ```bash
 MYGLICO_DATABASE_URL="mysql+pymysql://usuario:senha@host:3306/nome_do_banco" alembic upgrade head
 MYGLICO_DATABASE_URL="mysql+pymysql://usuario:senha@host:3306/nome_do_banco" python scripts/import_uci_diabetes.py
 ```
 
-Limitações conhecidas no Vercel:
+### Limitações conhecidas
 
-- O filesystem da função Python é somente leitura, exceto `/tmp`, que é
-  zerado entre cold starts. Todas as rotas da API são leitura no banco (mais
-  uma escrita no banco, para entradas manuais de glicemia), então isso não
-  afeta o uso normal — mas os endpoints SPARQL `/api/semantic/*` e qualquer
-  arquivo em `/artifacts/*` que não esteja versionado no repositório não vão
-  ter nada pra ler em produção (o frontend não linka mais pra eles, então
-  nada quebra na interface; afeta só essa superfície do backend hoje sem uso).
-- `rdflib` (usado pelas rotas semânticas/SPARQL) é a dependência mais pesada
-  que sobrou na função implantada; o cold start ainda é mais lento que o
-  setup local em Docker/uvicorn, mas bem longe do que era com a stack de
-  analytics incluída. Se adicionar uma dependência nova em `app/services/`,
-  confira se ela é realmente alcançável a partir do `app.main` antes de
-  colocá-la no `requirements.txt` — veja a seção acima.
+- O filesystem da função é somente leitura, exceto `/tmp`, que é limpo entre
+  cold starts. Todas as rotas da API operam exclusivamente sobre o banco de
+  dados, portanto o uso normal não é afetado; os endpoints SPARQL
+  `/api/semantic/*` e arquivos em `/artifacts/*` não versionados no
+  repositório, porém, não têm dados a ler nesse ambiente. Como o frontend
+  não referencia nenhum dos dois, a aplicação visível ao usuário não é
+  impactada.
+- `rdflib` (exigido pelas rotas semânticas/SPARQL) é a maior dependência
+  restante, de modo que os cold starts são mais lentos que no setup local
+  com Docker/uvicorn. Novas dependências devem ser adicionadas ao
+  `requirements.txt` apenas quando alcançáveis pelo grafo de import do
+  `app.main` em tempo de requisição.
 
 ## Citação
 
