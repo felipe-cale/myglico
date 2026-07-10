@@ -163,6 +163,54 @@ python scripts/init_db.py
   `slot_aligned` por poderem representar tempos lógicos do log em papel.
 - O MVP prioriza explicabilidade e rastreabilidade para a disciplina.
 
+## Deploy no Vercel
+
+O repositório está preparado para um único projeto Vercel que serve o
+frontend React e o backend FastAPI juntos, no mesmo domínio (sem precisar de
+CORS):
+
+- `vercel.json` builda `frontend-react` (Vite) como saída estática e
+  redireciona `/api/*`, `/health` e `/artifacts/*` para `api/index.py`, um
+  wrapper fino que importa a aplicação FastAPI real (`app/main.py`). Qualquer
+  outro caminho cai para `index.html`, o que mantém o roteamento client-side
+  funcionando ao dar refresh na página.
+- `requirements.txt` (na raiz) lista as dependências Python do backend para
+  o runtime Python do Vercel; mantenha sincronizado com o `pyproject.toml`.
+- Configure o **Root Directory** do projeto no Vercel para a raiz do
+  repositório (não `frontend-react`) — ele precisa de `api/`,
+  `requirements.txt` e `app/` no mesmo build.
+
+Variável de ambiente obrigatória:
+
+- `MYGLICO_DATABASE_URL`: string de conexão do MySQL na nuvem, por exemplo
+  `mysql+pymysql://usuario:senha@host:3306/nome_do_banco`. A maioria dos
+  provedores de MySQL gerenciado exige TLS — confira se o seu precisa de um
+  parâmetro `ssl_mode`/`ssl_ca` na string de conexão.
+
+Antes do primeiro deploy (ou depois de mudanças de schema), rode as
+migrations e o import do dataset **uma vez, da sua máquina, contra o banco
+na nuvem** — são passos de carga de dados pontuais, não algo que uma
+requisição serverless deveria disparar:
+
+```bash
+MYGLICO_DATABASE_URL="mysql+pymysql://usuario:senha@host:3306/nome_do_banco" alembic upgrade head
+MYGLICO_DATABASE_URL="mysql+pymysql://usuario:senha@host:3306/nome_do_banco" python scripts/import_uci_diabetes.py
+```
+
+Limitações conhecidas no Vercel:
+
+- O filesystem da função Python é somente leitura, exceto `/tmp`, que é
+  zerado entre cold starts. Todas as rotas da API são leitura no banco (mais
+  uma escrita no banco, para entradas manuais de glicemia), então isso não
+  afeta o uso normal — mas os endpoints SPARQL `/api/semantic/*` e qualquer
+  arquivo em `/artifacts/*` que não esteja versionado no repositório não vão
+  ter nada pra ler em produção (o frontend não linka mais pra eles, então
+  nada quebra na interface; afeta só essa superfície do backend hoje sem uso).
+- `pandas`, `scikit-learn` e `rdflib` são dependências pesadas para uma
+  função serverless; espere um cold start bem mais lento que o setup local
+  em Docker/uvicorn, e fique de olho no limite de tamanho de função do
+  Vercel se adicionar mais dependências.
+
 ## Citação
 
 Se você usar este repositório, cite-o usando o arquivo

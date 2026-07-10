@@ -1,0 +1,15 @@
+# Keep the Python function bundle and the upload small.
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+tests
+data
+artifacts
+docker-compose.yml
+Dockerfile
+start-myglico.bat
+frontend-react/node_modules
+frontend-react/Dockerfile

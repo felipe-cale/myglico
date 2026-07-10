@@ -161,6 +161,52 @@ python scripts/init_db.py
   `slot_aligned` since they may represent logical paper-log times.
 - The MVP prioritizes explainability and traceability for coursework purposes.
 
+## Deploying to Vercel
+
+The repository is set up for a single Vercel project that serves both the
+React frontend and the FastAPI backend, sharing one domain (no CORS needed):
+
+- `vercel.json` builds `frontend-react` (Vite) as the static output and
+  rewrites `/api/*`, `/health`, and `/artifacts/*` to `api/index.py`, a thin
+  wrapper that imports the real FastAPI app (`app/main.py`). Every other path
+  falls back to `index.html` so client-side routing works on refresh.
+- `requirements.txt` (repo root) lists the backend's Python dependencies for
+  Vercel's Python runtime; keep it in sync with `pyproject.toml`.
+- Set the **Root Directory** of the Vercel project to the repository root
+  (not `frontend-react`) — it needs `api/`, `requirements.txt`, and `app/` in
+  the same build.
+
+Required environment variable:
+
+- `MYGLICO_DATABASE_URL`: connection string for the cloud MySQL instance,
+  e.g. `mysql+pymysql://user:password@host:3306/dbname`. Most managed MySQL
+  providers require TLS — check whether yours needs an `ssl_mode`/`ssl_ca`
+  query param or connection option.
+
+Before the first deploy (or after schema changes), run migrations and the
+dataset import **once, from your machine, against the cloud database** —
+these are one-off data-loading steps, not something a serverless request
+should trigger:
+
+```bash
+MYGLICO_DATABASE_URL="mysql+pymysql://user:password@host:3306/dbname" alembic upgrade head
+MYGLICO_DATABASE_URL="mysql+pymysql://user:password@host:3306/dbname" python scripts/import_uci_diabetes.py
+```
+
+Known limitations on Vercel:
+
+- The Python function's filesystem is read-only except `/tmp`, which is
+  wiped between cold starts. All API routes are DB-only reads (plus one
+  DB-only write for manual glucose entries), so this doesn't affect normal
+  usage — but the `/api/semantic/*` SPARQL endpoints and any `/artifacts/*`
+  file that isn't already committed to the repo won't have anything to read
+  in production (the frontend no longer links to them, so nothing breaks in
+  the UI; this only affects that unused backend surface).
+- `pandas`, `scikit-learn`, and `rdflib` are heavy dependencies for a
+  serverless function; expect a noticeably slower cold start than the local
+  Docker/uvicorn setup, and keep an eye on Vercel's function size limit if
+  you add more dependencies.
+
 ## Citation
 
 If you use this repository, cite it using the [`CITATION.cff`](CITATION.cff)

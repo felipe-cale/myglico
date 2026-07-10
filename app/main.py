@@ -14,7 +14,11 @@ settings = get_settings()
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
-app.mount("/artifacts", StaticFiles(directory=str(PROJECT_DIR / "artifacts")), name="artifacts")
+
+_artifacts_dir = PROJECT_DIR / "artifacts"
+if _artifacts_dir.is_dir():
+    app.mount("/artifacts", StaticFiles(directory=str(_artifacts_dir)), name="artifacts")
+
 app.include_router(router)
 
 
