@@ -526,10 +526,10 @@ export default function PatientDetailPage() {
   const dropHoursChartHeight = isCompactMobile ? 180 : 228;
   const trendChartHeight = isCompactMobile ? 260 : 340;
   const trendChartMargin = isCompactMobile
-    ? { top: 8, right: 4, left: -20, bottom: 0 }
+    ? { top: 8, right: 4, left: 0, bottom: 0 }
     : { top: 8, right: 12, left: 0, bottom: 0 };
   const dayChartMargin = isCompactMobile
-    ? { top: 8, right: 4, left: -20, bottom: 0 }
+    ? { top: 8, right: 4, left: 0, bottom: 0 }
     : { top: 8, right: 12, left: 0, bottom: 0 };
   const pieInnerRadius = isCompactMobile ? 56 : 64;
   const pieOuterRadius = isCompactMobile ? 72 : 80;
