@@ -75,11 +75,17 @@ MVP acadêmico do MyGlico para o recorte da disciplina, usando o dataset
 ## Execução local do backend
 
 ```bash
-pip install .
+pip install ".[full]"
 alembic upgrade head
 python scripts/import_uci_diabetes.py
 uvicorn app.main:app --reload
 ```
+
+`.[full]` traz as ferramentas de analytics/import (numpy, pandas,
+scikit-learn, alembic, uvicorn etc.) além das dependências básicas da API.
+Um `pip install .` puro instala só o que o código em tempo de execução do
+`app.main` precisa — é isso que o deploy no Vercel usa, pra ficar dentro do
+limite de tamanho de função (veja "Deploy no Vercel" abaixo).
 
 Abra `http://127.0.0.1:8001/health` para validar a API ou use o frontend
 React em desenvolvimento.

@@ -75,11 +75,17 @@ as a base for:
 ## Running the backend locally
 
 ```bash
-pip install .
+pip install ".[full]"
 alembic upgrade head
 python scripts/import_uci_diabetes.py
 uvicorn app.main:app --reload
 ```
+
+`.[full]` pulls in the analytics/import tooling (numpy, pandas, scikit-learn,
+alembic, uvicorn, etc.) alongside the base API dependencies. A plain
+`pip install .` only installs what `app.main`'s request-time code needs —
+that's what the Vercel deployment uses, to stay under its function size
+limit (see "Deploying to Vercel" below).
 
 Open `http://127.0.0.1:8001/health` to validate the API, or use the React
 frontend in development.

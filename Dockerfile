@@ -9,7 +9,7 @@ ENV WATCHFILES_FORCE_POLLING=true
 WORKDIR /app
 
 COPY . .
-RUN pip install --upgrade pip && pip install .
+RUN pip install --upgrade pip && pip install ".[full]"
 
 EXPOSE 8001
 

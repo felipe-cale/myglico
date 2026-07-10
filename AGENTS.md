@@ -30,7 +30,7 @@ before changing behavior.
 ## Build, Test, and Development Commands
 
 ```bash
-pip install .
+pip install ".[full]"                    # base API deps + analytics/import tooling
 alembic upgrade head
 python scripts/import_uci_diabetes.py
 uvicorn app.main:app --reload            # backend on :8001

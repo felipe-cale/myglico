@@ -8,19 +8,31 @@ version = "0.1.0"
 description = "Academic MVP for MyGlico using the UCI Diabetes dataset."
 requires-python = ">=3.12"
 dependencies = [
-    "alembic>=1.16.0",
     "fastapi>=0.116.0",
-    "lxml>=5.4.0",
-    "numpy>=2.3.0",
-    "pandas>=2.3.0",
-    "prov>=2.1.1",
     "pymysql>=1.1.1",
     "cryptography>=42.0.0",
     "pydantic-settings>=2.10.0",
     "rdflib>=7.1.4",
+    "sqlalchemy>=2.0.41",
+]
+
+# Everything the FastAPI app's request-time import graph actually needs is in
+# `dependencies` above (mirrors requirements.txt, used for the Vercel
+# deployment). numpy/pandas/scikit-learn (clustering + anomaly detection),
+# alembic (CLI migrations), uvicorn (local/Docker dev server), lxml, requests,
+# unlzw3, and prov are only used by the offline import/analytics scripts and
+# local tooling — install them with `pip install ".[full]"` for local dev or
+# Docker (see Dockerfile). Keeping them out of the base install is what keeps
+# the deployed Vercel function under the platform's function size limit.
+[project.optional-dependencies]
+full = [
+    "alembic>=1.16.0",
+    "lxml>=5.4.0",
+    "numpy>=2.3.0",
+    "pandas>=2.3.0",
+    "prov>=2.1.1",
     "requests>=2.32.4",
     "scikit-learn>=1.7.0",
-    "sqlalchemy>=2.0.41",
     "unlzw3>=0.2.3",
     "uvicorn[standard]>=0.35.0",
 ]
