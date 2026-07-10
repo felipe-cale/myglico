@@ -722,7 +722,7 @@ export default function PatientDetailPage() {
                   dataKey="hour"
                   ticks={hourlyAxisTicks}
                   interval={0}
-                  tickFormatter={(value) => `${value}h`}
+                  tickFormatter={(value) => (isCompactMobile ? `${value}` : `${value}h`)}
                   tick={hourlyAxisTickStyle}
                   minTickGap={0}
                   height={isCompactMobile ? 28 : 32}
