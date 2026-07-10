@@ -34,26 +34,43 @@ as a base for:
 
 ## Structure
 
-- `app/main.py`: FastAPI application.
-- `app/api/routes.py`: API routes.
-- `app/services/uci_importer.py`: download, extraction, raw records, and
-  `glucose_records` generation.
-- `app/services/analytics.py`: materialized metrics, indicators, anomalies,
-  and clustering.
-- `app/services/manual_entry.py`: transactional creation of patients and
-  manual glucose entries with origin and provenance.
-- `app/services/provenance.py`: PROV artifact generation.
-- `app/services/semantic.py`: RDF graph and SPARQL queries.
-- `app/services/clinical_pdf.py`: localized (pt-BR/en-US/es) patient clinical
-  PDF report generator.
-- `frontend-react/`: React interface consuming the FastAPI backend, including
-  its own assets in `public/` and translations in `src/locales/`.
-- `scripts/import_uci_diabetes.py`: idempotent dataset import, initial
-  analytics, PROV, and RDF.
-- `scripts/bootstrap_db.py`: bootstrap wrapper for local use.
-- `alembic/versions/20260414_0001_initial.py`: initial migration.
-- `alembic/versions/20260504_0002_clinical_core_uuid.py`: migration to the
-  UUID core with origin and provenance.
+```text
+.
+|-- alembic/                          # Migrations that instantiate the MySQL schema
+|   `-- versions/                     # Initial schema + UUID clinical core with provenance
+|-- app/
+|   |-- main.py                       # FastAPI application entry point
+|   |-- api/routes.py                 # API routes and the report.pdf endpoint
+|   |-- core/                         # Configuration
+|   |-- db/                           # SQLAlchemy engine and session
+|   |-- models/                       # Relational entities (patients, records, provenance)
+|   |-- schemas/                      # Pydantic schemas
+|   `-- services/
+|       |-- uci_importer.py           # UCI Diabetes importer (raw records + glucose_records)
+|       |-- analytics.py              # Materialized metrics, indicators, anomalies, clustering
+|       |-- manual_entry.py           # Transactional patient/manual glucose entry with provenance
+|       |-- provenance.py             # PROV artifact generation
+|       |-- semantic.py               # RDF graph and SPARQL queries
+|       `-- clinical_pdf.py           # Localized (pt-BR/en-US/es) patient PDF report generator
+|-- artifacts/
+|   |-- provenance/                   # Generated PROV-JSON / PROV-TTL
+|   `-- semantic/                     # Generated RDF (TTL)
+|-- frontend-react/                   # React (Vite) frontend consuming the FastAPI backend
+|   |-- public/                       # Static assets served by the frontend
+|   `-- src/
+|       |-- i18n.js                   # react-i18next setup and language resolution
+|       |-- locales/                  # Translation catalogs (pt-BR, en-US, es)
+|       |-- components/               # App shell, language switcher, shared UI
+|       `-- pages/                    # Overview and patient detail
+|-- mappings/
+|   `-- myglico-core-r2rml-juma.ttl   # R2RML mapping from MySQL to RDF
+|-- ontology/
+|   `-- mygv-dpo-extension.owl.ttl    # OWL ontology for the mygv: vocabulary
+`-- scripts/
+    |-- import_uci_diabetes.py        # Idempotent dataset import + analytics + PROV + RDF
+    |-- init_db.py                    # Bring up MySQL, migrate, and import (provenance only)
+    `-- bootstrap_db.py               # Local bootstrap wrapper
+```
 
 ## Running the backend locally
 

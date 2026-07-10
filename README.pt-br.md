@@ -34,26 +34,43 @@ MVP acadêmico do MyGlico para o recorte da disciplina, usando o dataset
 
 ## Estrutura
 
-- `app/main.py`: aplicação FastAPI.
-- `app/api/routes.py`: rotas de API.
-- `app/services/uci_importer.py`: download, extração, registros brutos e
-  geração de `glucose_records`.
-- `app/services/analytics.py`: métricas materializadas, indicadores,
-  anomalias e clusterização.
-- `app/services/manual_entry.py`: criação transacional de paciente e
-  glicemia manual com origem e proveniência.
-- `app/services/provenance.py`: geração de artefatos PROV.
-- `app/services/semantic.py`: grafo RDF e consultas SPARQL.
-- `app/services/clinical_pdf.py`: gerador do relatório PDF clínico do
-  paciente, traduzido em pt-BR/en-US/es.
-- `frontend-react/`: interface React consumindo o FastAPI, incluindo seus
-  próprios assets em `public/` e as traduções em `src/locales/`.
-- `scripts/import_uci_diabetes.py`: import idempotente do dataset, analytics
-  inicial, PROV e RDF.
-- `scripts/bootstrap_db.py`: wrapper de bootstrap para uso local.
-- `alembic/versions/20260414_0001_initial.py`: migration inicial.
-- `alembic/versions/20260504_0002_clinical_core_uuid.py`: migration para o
-  core UUID com origem e proveniência.
+```text
+.
+|-- alembic/                          # Migrations que instanciam o schema MySQL
+|   `-- versions/                     # Schema inicial + core clínico UUID com proveniência
+|-- app/
+|   |-- main.py                       # Ponto de entrada da aplicação FastAPI
+|   |-- api/routes.py                 # Rotas de API e o endpoint report.pdf
+|   |-- core/                         # Configuração
+|   |-- db/                           # Engine e sessão SQLAlchemy
+|   |-- models/                       # Entidades relacionais (pacientes, registros, proveniência)
+|   |-- schemas/                      # Schemas Pydantic
+|   `-- services/
+|       |-- uci_importer.py           # Importador UCI Diabetes (registros brutos + glucose_records)
+|       |-- analytics.py              # Métricas materializadas, indicadores, anomalias, clusters
+|       |-- manual_entry.py           # Criação transacional de paciente/glicemia manual com proveniência
+|       |-- provenance.py             # Geração de artefatos PROV
+|       |-- semantic.py               # Grafo RDF e consultas SPARQL
+|       `-- clinical_pdf.py           # Gerador do relatório PDF do paciente (pt-BR/en-US/es)
+|-- artifacts/
+|   |-- provenance/                   # PROV-JSON / PROV-TTL gerados
+|   `-- semantic/                     # RDF gerado (TTL)
+|-- frontend-react/                   # Frontend React (Vite) consumindo o backend FastAPI
+|   |-- public/                       # Assets estáticos servidos pelo frontend
+|   `-- src/
+|       |-- i18n.js                   # Configuração do react-i18next e resolução de idioma
+|       |-- locales/                  # Catálogos de tradução (pt-BR, en-US, es)
+|       |-- components/               # App shell, seletor de idioma, UI compartilhada
+|       `-- pages/                    # Visão geral e detalhe do paciente
+|-- mappings/
+|   `-- myglico-core-r2rml-juma.ttl   # Mapeamento R2RML de MySQL para RDF
+|-- ontology/
+|   `-- mygv-dpo-extension.owl.ttl    # Ontologia OWL do vocabulário mygv:
+`-- scripts/
+    |-- import_uci_diabetes.py        # Import idempotente do dataset + analytics + PROV + RDF
+    |-- init_db.py                    # Sobe MySQL, aplica migrations e importa (só proveniência)
+    `-- bootstrap_db.py               # Wrapper de bootstrap para uso local
+```
 
 ## Execução local do backend
 
