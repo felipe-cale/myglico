@@ -20,14 +20,18 @@ dependencies = [
 # `dependencies` above (mirrors requirements.txt, used for the Vercel
 # deployment). numpy/pandas/scikit-learn (clustering + anomaly detection),
 # alembic (CLI migrations), uvicorn (local/Docker dev server), lxml, requests,
-# unlzw3, and prov are only used by the offline import/analytics scripts and
-# local tooling — install them with `pip install ".[full]"` for local dev or
-# Docker (see Dockerfile). Keeping them out of the base install is what keeps
-# the deployed Vercel function under the platform's function size limit.
+# unlzw3, prov, matplotlib, and networkx are only used by the offline
+# import/analytics scripts and local tooling (including rendering the PROV-O
+# PNG diagrams in scripts/render_provenance_png.py) — install them with
+# `pip install ".[full]"` for local dev or Docker (see Dockerfile). Keeping
+# them out of the base install is what keeps the deployed Vercel function
+# under the platform's function size limit.
 [project.optional-dependencies]
 full = [
     "alembic>=1.16.0",
     "lxml>=5.4.0",
+    "matplotlib>=3.9.0",
+    "networkx>=3.3",
     "numpy>=2.3.0",
     "pandas>=2.3.0",
     "prov>=2.1.1",
