@@ -1,0 +1,39 @@
+@prefix ex: <https://myglico.local/execution/> .
+@prefix mygv: <https://myglico.local/vocab/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:glucose-records-72ad5489-6d12-43f4-9d17-2e5dba4841e8 a prov:Entity ;
+    rdfs:label "glucose_records"^^xsd:string ;
+    prov:wasDerivedFrom ex:raw-import-records-72ad5489-6d12-43f4-9d17-2e5dba4841e8 ;
+    prov:wasGeneratedBy ex:dataset-normalization-72ad5489-6d12-43f4-9d17-2e5dba4841e8 ;
+    mygv:recordCount "13531"^^xsd:int .
+
+ex:data-source-79df5290-2b2e-413c-ad90-d9e6763f9761 a prov:Entity ;
+    rdfs:label "UCI Diabetes"^^xsd:string ;
+    mygv:sourceType "dataset"^^xsd:string ;
+    mygv:version "UCI-34"^^xsd:string .
+
+ex:dataset-import-72ad5489-6d12-43f4-9d17-2e5dba4841e8 a prov:Activity ;
+    prov:startedAtTime "2026-06-27T21:35:04.560866"^^xsd:dateTime ;
+    prov:used ex:data-source-79df5290-2b2e-413c-ad90-d9e6763f9761 ;
+    prov:wasAssociatedWith ex:git-revision,
+        ex:myglico-importer .
+
+ex:dataset-normalization-72ad5489-6d12-43f4-9d17-2e5dba4841e8 a prov:Activity ;
+    prov:startedAtTime "2026-06-27T21:35:04.560866"^^xsd:dateTime ;
+    prov:used ex:raw-import-records-72ad5489-6d12-43f4-9d17-2e5dba4841e8 ;
+    prov:wasAssociatedWith ex:myglico-importer .
+
+ex:git-revision a prov:Agent ;
+    rdfs:label "unknown"^^xsd:string .
+
+ex:myglico-importer a prov:Agent ;
+    rdfs:label "MyGlico dataset importer"^^xsd:string .
+
+ex:raw-import-records-72ad5489-6d12-43f4-9d17-2e5dba4841e8 a prov:Entity ;
+    rdfs:label "raw_import_records"^^xsd:string ;
+    prov:wasGeneratedBy ex:dataset-import-72ad5489-6d12-43f4-9d17-2e5dba4841e8 ;
+    mygv:recordCount "29297"^^xsd:int .
+

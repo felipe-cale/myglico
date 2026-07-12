@@ -8,8 +8,6 @@ __pycache__/
 data/*.db
 data/*.sqlite3
 data/raw/
-artifacts/provenance/*.json
-artifacts/provenance/*.ttl
 artifacts/semantic/*.ttl
 dist/
 build/

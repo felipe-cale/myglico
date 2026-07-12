@@ -1,0 +1,47 @@
+@prefix ex: <https://myglico.local/execution/> .
+@prefix mygv: <https://myglico.local/vocab/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:cluster-days-8840c6f3-fb98-44b1-95b1-ae4457b7f140 a prov:Activity ;
+    prov:startedAtTime "2026-06-27T21:37:55.771622"^^xsd:dateTime ;
+    prov:used ex:analysis-config-8840c6f3-fb98-44b1-95b1-ae4457b7f140,
+        ex:glucose-record-set-8840c6f3-fb98-44b1-95b1-ae4457b7f140 ;
+    prov:wasAssociatedWith ex:analytics-git-revision,
+        ex:myglico-analytics .
+
+ex:daily-indicators-8840c6f3-fb98-44b1-95b1-ae4457b7f140 a prov:Entity ;
+    rdfs:label "daily_indicators"^^xsd:string ;
+    prov:wasDerivedFrom ex:glucose-record-set-8840c6f3-fb98-44b1-95b1-ae4457b7f140 ;
+    prov:wasGeneratedBy ex:compute-daily-indicators-8840c6f3-fb98-44b1-95b1-ae4457b7f140 ;
+    mygv:fingerprint "c7eb788b539a7c832fa04c46289b893982ab6c341ef807381cc510469ce7e50c"^^xsd:string .
+
+ex:detect-anomalies-8840c6f3-fb98-44b1-95b1-ae4457b7f140 a prov:Activity ;
+    prov:startedAtTime "2026-06-27T21:37:55.771622"^^xsd:dateTime ;
+    prov:used ex:analysis-config-8840c6f3-fb98-44b1-95b1-ae4457b7f140,
+        ex:glucose-record-set-8840c6f3-fb98-44b1-95b1-ae4457b7f140 ;
+    prov:wasAssociatedWith ex:analytics-git-revision,
+        ex:myglico-analytics .
+
+ex:compute-daily-indicators-8840c6f3-fb98-44b1-95b1-ae4457b7f140 a prov:Activity ;
+    prov:startedAtTime "2026-06-27T21:37:55.771622"^^xsd:dateTime ;
+    prov:used ex:analysis-config-8840c6f3-fb98-44b1-95b1-ae4457b7f140,
+        ex:glucose-record-set-8840c6f3-fb98-44b1-95b1-ae4457b7f140 ;
+    prov:wasAssociatedWith ex:analytics-git-revision,
+        ex:myglico-analytics .
+
+ex:analysis-config-8840c6f3-fb98-44b1-95b1-ae4457b7f140 a prov:Entity ;
+    rdfs:label "daily_glycemic_summary"^^xsd:string ;
+    mygv:algorithmVersion "v2"^^xsd:string .
+
+ex:analytics-git-revision a prov:Agent ;
+    rdfs:label "unknown"^^xsd:string .
+
+ex:myglico-analytics a prov:Agent ;
+    rdfs:label "MyGlico analytics service"^^xsd:string .
+
+ex:glucose-record-set-8840c6f3-fb98-44b1-95b1-ae4457b7f140 a prov:Entity ;
+    rdfs:label "glucose_records"^^xsd:string ;
+    mygv:fingerprint "9704def8beefb86a644d9f5d9fc3147e59e95cb4f1a0581e5630a56e9c5fa62b"^^xsd:string .
+
