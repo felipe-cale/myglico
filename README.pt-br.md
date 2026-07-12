@@ -12,7 +12,8 @@ de dados, este repositório demonstra:
 - ingestão e normalização em banco relacional;
 - camada analítica para indicadores glicêmicos;
 - proveniência com `PROV-JSON` e `PROV-TTL`;
-- exportação semântica em RDF com consultas SPARQL;
+- exportação semântica para RDF via mapeamento R2RML e ontologia OWL
+  própria, consultável com qualquer engine SPARQL sobre o grafo mapeado;
 - visualização web com uma camada `React` autocontida, traduzida em
   português (Brasil), inglês (EUA) e espanhol, incluindo um relatório
   clínico em PDF localizado por paciente.
@@ -27,11 +28,12 @@ de dados, este repositório demonstra:
 - Camada de origem/rastreabilidade com `raw_import_records`,
   `glucose_record_sources` e `data_quality_issues`.
 - Proveniência transacional em banco com `provenance_events`.
-- Artefatos `PROV-JSON`, `PROV-TTL` e RDF como derivados registrados em
+- Artefatos `PROV-JSON` e `PROV-TTL` como derivados registrados em
   `provenance_artifacts`.
 - `pandas + scikit-learn` para a camada analítica.
 - `prov` para proveniência.
-- `rdflib` para a camada semântica.
+- Mapeamento R2RML (`mappings/`) mais uma ontologia OWL própria
+  (`ontology/`) para exportação semântica do core relacional para RDF.
 - `react-i18next` na interface web e um gerador de PDF traduzido "na mão"
   para o relatório clínico do paciente.
 
@@ -53,11 +55,10 @@ de dados, este repositório demonstra:
 |       |-- analytics.py              # Métricas materializadas, indicadores, anomalias, clusters
 |       |-- manual_entry.py           # Criação transacional de paciente/glicemia manual com proveniência
 |       |-- provenance.py             # Geração de artefatos PROV
-|       |-- semantic.py               # Grafo RDF e consultas SPARQL
 |       `-- clinical_pdf.py           # Gerador do relatório PDF do paciente (pt-BR/en-US/es)
 |-- artifacts/
-|   |-- provenance/                   # PROV-JSON / PROV-TTL gerados
-|   `-- semantic/                     # RDF gerado (TTL)
+|   |-- provenance/                   # PROV-JSON / PROV-TTL gerados, além dos PNGs renderizados
+|   `-- presentations/                # Slides usados nas apresentações de checkpoint do projeto
 |-- frontend-react/                   # Frontend React (Vite) consumindo o backend FastAPI
 |   |-- public/                       # Assets estáticos servidos pelo frontend
 |   `-- src/
@@ -70,9 +71,10 @@ de dados, este repositório demonstra:
 |-- ontology/
 |   `-- mygv-dpo-extension.owl.ttl    # Ontologia OWL do vocabulário mygv:
 `-- scripts/
-    |-- import_uci_diabetes.py        # Import idempotente do dataset + analytics + PROV + RDF
+    |-- import_uci_diabetes.py        # Import idempotente do dataset + analytics + PROV
     |-- init_db.py                    # Sobe MySQL, aplica migrations e importa (só proveniência)
-    `-- bootstrap_db.py               # Wrapper de bootstrap para uso local
+    |-- bootstrap_db.py               # Wrapper de bootstrap para uso local
+    `-- render_provenance_png.py      # Renderiza os artefatos PROV-O .ttl/.json como PNG
 ```
 
 ## Execução local do backend
@@ -123,7 +125,7 @@ O container do backend:
 
 1. aplica as migrations;
 2. importa o UCI Diabetes via script se a base estiver vazia;
-3. gera analytics inicial, artefatos de proveniência e o grafo RDF;
+3. gera analytics inicial e artefatos de proveniência;
 4. sobe a aplicação FastAPI.
 
 ### Inicializar somente MySQL + importação + proveniência
@@ -137,8 +139,7 @@ python scripts/init_db.py --reset-db
 
 Esse script para `backend` e `frontend`, sobe somente o serviço `db`, aplica
 `alembic upgrade head` e executa a importação com `write_import_provenance`.
-Ele não executa analytics, não gera grafo semântico e não sobe a aplicação
-web.
+Ele não executa analytics e não sobe a aplicação web.
 
 A importação local pode levar alguns minutos porque preserva cada linha
 bruta, normaliza registros glicêmicos e grava eventos de proveniência. A
@@ -163,7 +164,10 @@ python scripts/init_db.py
 
 - `artifacts/provenance/*.json`
 - `artifacts/provenance/*.ttl`
-- `artifacts/semantic/*.ttl`
+- `artifacts/provenance/*.png` — diagramas PROV-O renderizados a partir do
+  `.ttl`/`.json` acima via `scripts/render_provenance_png.py`
+- `artifacts/presentations/*.pdf` — slides usados para apresentar os
+  checkpoints do projeto
 
 ## Observações do recorte
 
@@ -211,8 +215,8 @@ importação e analytics), as dependências do projeto foram divididas em dois
 conjuntos:
 
 - a instalação base (`pip install .`, espelhada pelo `requirements.txt`)
-  cobre apenas a API: `fastapi`, `sqlalchemy`, `pymysql`, `cryptography`,
-  `pydantic-settings` e `rdflib`;
+  cobre apenas a API: `fastapi`, `sqlalchemy`, `pymysql`, `cryptography` e
+  `pydantic-settings`;
 - o extra `full` (`pip install ".[full]"`) adiciona as ferramentas de
   analytics e importação usadas localmente e no Docker.
 
@@ -256,16 +260,13 @@ MYGLICO_DATABASE_URL="mysql+pymysql://usuario:senha@host:3306/nome_do_banco" pyt
 
 - O filesystem da função é somente leitura, exceto `/tmp`, que é limpo entre
   cold starts. Todas as rotas da API operam exclusivamente sobre o banco de
-  dados, portanto o uso normal não é afetado; os endpoints SPARQL
-  `/api/semantic/*` e arquivos em `/artifacts/*` não versionados no
-  repositório, porém, não têm dados a ler nesse ambiente. Como o frontend
-  não referencia nenhum dos dois, a aplicação visível ao usuário não é
-  impactada.
-- `rdflib` (exigido pelas rotas semânticas/SPARQL) é a maior dependência
-  restante, de modo que os cold starts são mais lentos que no setup local
-  com Docker/uvicorn. Novas dependências devem ser adicionadas ao
-  `requirements.txt` apenas quando alcançáveis pelo grafo de import do
-  `app.main` em tempo de requisição.
+  dados, portanto o uso normal não é afetado; arquivos em `/artifacts/*` não
+  versionados no repositório, porém, não têm dados a ler nesse ambiente. Como
+  o frontend não referencia esses arquivos, a aplicação visível ao usuário
+  não é impactada.
+- Novas dependências devem ser adicionadas ao `requirements.txt` apenas
+  quando alcançáveis pelo grafo de import do `app.main` em tempo de
+  requisição.
 
 ## Citação
 

@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     database_url: str = Field(default=f"sqlite:///{(BASE_DIR / 'data' / 'myglico.db').as_posix()}")
     artifacts_dir: Path = BASE_DIR / "artifacts"
     provenance_dir: Path = _WRITABLE_DIR / "artifacts" / "provenance"
-    semantic_dir: Path = _WRITABLE_DIR / "artifacts" / "semantic"
     raw_data_dir: Path = _WRITABLE_DIR / "data" / "raw"
     bootstrap_on_empty: bool = True
     default_hypo_threshold: float = 70.0
@@ -41,7 +40,7 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     settings = Settings()
-    for directory in (settings.provenance_dir, settings.semantic_dir, settings.raw_data_dir):
+    for directory in (settings.provenance_dir, settings.raw_data_dir):
         try:
             directory.mkdir(parents=True, exist_ok=True)
         except OSError:

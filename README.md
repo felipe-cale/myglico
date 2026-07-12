@@ -12,7 +12,8 @@ demonstrates:
 - ingestion and normalization into a relational database;
 - an analytics layer for glycemic indicators;
 - provenance via `PROV-JSON` and `PROV-TTL`;
-- semantic export to RDF with SPARQL queries;
+- semantic export to RDF via an R2RML mapping and a custom OWL ontology,
+  queryable with any SPARQL engine over the mapped graph;
 - a web dashboard with a self-contained `React` layer, localized in
   Portuguese (Brazil), English (US), and Spanish, including a localized
   clinical PDF report per patient.
@@ -27,11 +28,12 @@ demonstrates:
 - Origin/traceability layer with `raw_import_records`, `glucose_record_sources`,
   and `data_quality_issues`.
 - Transactional database provenance with `provenance_events`.
-- `PROV-JSON`, `PROV-TTL`, and RDF artifacts registered as derivatives in
+- `PROV-JSON` and `PROV-TTL` artifacts registered as derivatives in
   `provenance_artifacts`.
 - `pandas + scikit-learn` for the analytics layer.
 - `prov` for provenance.
-- `rdflib` for the semantic layer.
+- R2RML mapping (`mappings/`) plus a custom OWL ontology (`ontology/`) for
+  semantic export of the relational core to RDF.
 - `react-i18next` for the frontend UI and a hand-rolled localized PDF
   generator for the patient clinical report.
 
@@ -53,11 +55,10 @@ demonstrates:
 |       |-- analytics.py              # Materialized metrics, indicators, anomalies, clustering
 |       |-- manual_entry.py           # Transactional patient/manual glucose entry with provenance
 |       |-- provenance.py             # PROV artifact generation
-|       |-- semantic.py               # RDF graph and SPARQL queries
 |       `-- clinical_pdf.py           # Localized (pt-BR/en-US/es) patient PDF report generator
 |-- artifacts/
-|   |-- provenance/                   # Generated PROV-JSON / PROV-TTL
-|   `-- semantic/                     # Generated RDF (TTL)
+|   |-- provenance/                   # Generated PROV-JSON / PROV-TTL, plus rendered PROV-O PNGs
+|   `-- presentations/                # Slide decks used for the project's checkpoint presentations
 |-- frontend-react/                   # React (Vite) frontend consuming the FastAPI backend
 |   |-- public/                       # Static assets served by the frontend
 |   `-- src/
@@ -70,9 +71,10 @@ demonstrates:
 |-- ontology/
 |   `-- mygv-dpo-extension.owl.ttl    # OWL ontology for the mygv: vocabulary
 `-- scripts/
-    |-- import_uci_diabetes.py        # Idempotent dataset import + analytics + PROV + RDF
+    |-- import_uci_diabetes.py        # Idempotent dataset import + analytics + PROV
     |-- init_db.py                    # Bring up MySQL, migrate, and import (provenance only)
-    `-- bootstrap_db.py               # Local bootstrap wrapper
+    |-- bootstrap_db.py               # Local bootstrap wrapper
+    `-- render_provenance_png.py      # Renders PROV-O .ttl/.json artifacts as PNG diagrams
 ```
 
 ## Running the backend locally
@@ -122,7 +124,7 @@ The backend container:
 
 1. applies migrations;
 2. imports the UCI Diabetes dataset via script if the database is empty;
-3. generates initial analytics, provenance artifacts, and the RDF graph;
+3. generates initial analytics and provenance artifacts;
 4. starts the FastAPI application.
 
 ### Bootstrapping only MySQL + import + provenance
@@ -136,8 +138,8 @@ python scripts/init_db.py --reset-db
 
 This script stops `backend` and `frontend`, brings up only the `db` service,
 applies `alembic upgrade head`, and runs the import with
-`write_import_provenance`. It does not run analytics, does not generate the
-semantic graph, and does not start the web application.
+`write_import_provenance`. It does not run analytics and does not start the
+web application.
 
 The local import can take a few minutes because it preserves every raw row,
 normalizes glucose records, and writes provenance events. The `analysis_outbox`
@@ -161,7 +163,10 @@ python scripts/init_db.py
 
 - `artifacts/provenance/*.json`
 - `artifacts/provenance/*.ttl`
-- `artifacts/semantic/*.ttl`
+- `artifacts/provenance/*.png` — PROV-O diagrams rendered from the `.ttl`/`.json`
+  above via `scripts/render_provenance_png.py`
+- `artifacts/presentations/*.pdf` — slide decks used to present the project's
+  checkpoints
 
 ## Scope notes
 
@@ -207,8 +212,8 @@ by the offline import and analytics scripts), the project's dependencies are
 split in two:
 
 - the base install (`pip install .`, mirrored by `requirements.txt`) covers
-  only the API: `fastapi`, `sqlalchemy`, `pymysql`, `cryptography`,
-  `pydantic-settings`, and `rdflib`;
+  only the API: `fastapi`, `sqlalchemy`, `pymysql`, `cryptography`, and
+  `pydantic-settings`;
 - the `full` extra (`pip install ".[full]"`) adds the analytics and import
   tooling used locally and in Docker.
 
@@ -251,15 +256,13 @@ MYGLICO_DATABASE_URL="mysql+pymysql://user:password@host:3306/dbname" python scr
 ### Known limitations
 
 - The function's filesystem is read-only except for `/tmp`, which is cleared
-  between cold starts. All API routes operate exclusively on the database,
-  so normal usage is unaffected; the `/api/semantic/*` SPARQL endpoints and
-  any `/artifacts/*` file not versioned in the repository, however, have no
-  data to read in this environment. The frontend does not reference either,
-  so the user-facing application is not impacted.
-- `rdflib` (required by the semantic/SPARQL routes) is the largest remaining
-  dependency, so cold starts are slower than in the local Docker/uvicorn
-  setup. New dependencies should be added to `requirements.txt` only when
-  they are reachable from `app.main`'s request-time import graph.
+  between cold starts. All API routes operate exclusively on the database, so
+  normal usage is unaffected; any `/artifacts/*` file not versioned in the
+  repository, however, has no data to read in this environment. The frontend
+  does not reference such files, so the user-facing application is not
+  impacted.
+- New dependencies should be added to `requirements.txt` only when they are
+  reachable from `app.main`'s request-time import graph.
 
 ## Citation
 

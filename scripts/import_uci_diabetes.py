@@ -12,7 +12,6 @@ from app.db.session import SessionLocal
 from app.models.entities import AnalysisRun, ProvenanceArtifact
 from app.services.analytics import compute_analytics
 from app.services.provenance import write_analytics_provenance, write_import_provenance
-from app.services.semantic import build_semantic_graph
 from app.services.uci_importer import import_uci_diabetes
 from sqlalchemy import desc, select
 
@@ -34,10 +33,7 @@ def main() -> None:
         if should_compute:
             analytics_run = compute_analytics(db, trigger_type="dataset_import")
             write_analytics_provenance(db, analytics_run)
-            semantic_path = build_semantic_graph(db, analytics_run)
             db.commit()
-        else:
-            semantic_path = "already-generated"
 
         artifact_count = db.query(ProvenanceArtifact).count()
         print(
@@ -45,7 +41,7 @@ def main() -> None:
             f"batch={import_batch.id} raw={import_batch.raw_record_count} "
             f"glucose_records={import_batch.normalized_record_count}"
         )
-        print(f"Analytics completed: run={analytics_run.id} semantic_graph={semantic_path}")
+        print(f"Analytics completed: run={analytics_run.id}")
         print(f"Artifacts registered: {artifact_count}")
 
 

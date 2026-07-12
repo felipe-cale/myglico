@@ -12,7 +12,6 @@ dependencies = [
     "pymysql>=1.1.1",
     "cryptography>=42.0.0",
     "pydantic-settings>=2.10.0",
-    "rdflib>=7.1.4",
     "sqlalchemy>=2.0.41",
 ]
 
@@ -20,7 +19,7 @@ dependencies = [
 # `dependencies` above (mirrors requirements.txt, used for the Vercel
 # deployment). numpy/pandas/scikit-learn (clustering + anomaly detection),
 # alembic (CLI migrations), uvicorn (local/Docker dev server), lxml, requests,
-# unlzw3, prov, matplotlib, and networkx are only used by the offline
+# unlzw3, prov, rdflib, matplotlib, and networkx are only used by the offline
 # import/analytics scripts and local tooling (including rendering the PROV-O
 # PNG diagrams in scripts/render_provenance_png.py) — install them with
 # `pip install ".[full]"` for local dev or Docker (see Dockerfile). Keeping
@@ -35,6 +34,7 @@ full = [
     "numpy>=2.3.0",
     "pandas>=2.3.0",
     "prov>=2.1.1",
+    "rdflib>=7.1.4",
     "requests>=2.32.4",
     "scikit-learn>=1.7.0",
     "unlzw3>=0.2.3",

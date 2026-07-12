@@ -8,7 +8,6 @@ __pycache__/
 data/*.db
 data/*.sqlite3
 data/raw/
-artifacts/semantic/*.ttl
 dist/
 build/
 frontend-react/node_modules/

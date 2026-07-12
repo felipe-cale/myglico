@@ -20,7 +20,6 @@ from app.models.entities import (
     Patient,
     ProvenanceArtifact,
 )
-from app.services.semantic import SAMPLE_QUERIES
 
 
 EVENT_TYPE_LABELS = {
@@ -191,12 +190,11 @@ def get_dashboard_summary(db: Session) -> dict[str, object]:
             "provenance_ttl": artifact_url(_artifact_path(db, "import_batch", latest_batch.id, "provenance", "ttl")),
         }
 
-    latest_run_links = {"provenance_json": None, "provenance_ttl": None, "semantic_ttl": None}
+    latest_run_links = {"provenance_json": None, "provenance_ttl": None}
     if latest_run:
         latest_run_links = {
             "provenance_json": artifact_url(_artifact_path(db, "analysis_run", latest_run.id, "provenance", "json")),
             "provenance_ttl": artifact_url(_artifact_path(db, "analysis_run", latest_run.id, "provenance", "ttl")),
-            "semantic_ttl": artifact_url(_artifact_path(db, "analysis_run", latest_run.id, "semantic_graph", "ttl")),
         }
 
     return {
@@ -459,20 +457,6 @@ def _serialize_report_record(record: GlucoseRecord) -> dict[str, object]:
     }
 
 
-def get_dashboard_context(db: Session) -> dict[str, object]:
-    summary = get_dashboard_summary(db)
-    patients_page = get_paginated_patients(db, page=1, page_size=70)
-    semantic_query = SAMPLE_QUERIES["high_risk_days"]
-
-    return {
-        **summary,
-        "patients": patients_page["patients"],
-        "semantic_query": semantic_query,
-        "semantic_result": [],
-        "sample_queries": SAMPLE_QUERIES,
-    }
-
-
 def get_patient_detail_context(
     db: Session,
     patient_id: str,
@@ -586,12 +570,11 @@ def get_patient_detail_context(
             "provenance_json": artifact_url(_artifact_path(db, "import_batch", latest_batch.id, "provenance", "json")),
             "provenance_ttl": artifact_url(_artifact_path(db, "import_batch", latest_batch.id, "provenance", "ttl")),
         }
-    latest_run_links = {"provenance_json": None, "provenance_ttl": None, "semantic_ttl": None}
+    latest_run_links = {"provenance_json": None, "provenance_ttl": None}
     if latest_run:
         latest_run_links = {
             "provenance_json": artifact_url(_artifact_path(db, "analysis_run", latest_run.id, "provenance", "json")),
             "provenance_ttl": artifact_url(_artifact_path(db, "analysis_run", latest_run.id, "provenance", "ttl")),
-            "semantic_ttl": artifact_url(_artifact_path(db, "analysis_run", latest_run.id, "semantic_graph", "ttl")),
         }
 
     return {

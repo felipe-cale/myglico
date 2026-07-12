@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -11,8 +11,7 @@ from app.db.session import get_db
 from app.models.entities import Patient
 from app.services.clinical_pdf import build_patient_report_pdf, patient_report_filename
 from app.services.manual_entry import create_manual_glucose_record, create_patient
-from app.services.reports import get_dashboard_context, get_dashboard_summary, get_paginated_patients, get_patient_detail_context, get_patient_report_context
-from app.services.semantic import SAMPLE_QUERIES, execute_sparql
+from app.services.reports import get_dashboard_summary, get_paginated_patients, get_patient_detail_context, get_patient_report_context
 
 
 router = APIRouter()
@@ -166,24 +165,3 @@ def api_create_manual_glucose_record(
             "analytics_status": "stale",
         }
     }
-
-
-@router.get("/api/semantic/query")
-def api_semantic_query(
-    name: str = Query(default="high_risk_days"),
-    q: str | None = Query(default=None),
-    db: Session = Depends(get_db),
-) -> JSONResponse:
-    context = get_dashboard_context(db)
-    latest_run = context["latest_run"]
-    semantic_ttl_url = context["latest_run_links"].get("semantic_ttl") if context.get("latest_run_links") else None
-    if latest_run is None or not semantic_ttl_url:
-        raise HTTPException(status_code=404, detail="No semantic graph available yet.")
-    query_text = SAMPLE_QUERIES.get(name, q or SAMPLE_QUERIES["high_risk_days"])
-    results = execute_sparql(semantic_ttl_url, query_text, limit=100)
-    return JSONResponse({"query": query_text, "results": results})
-
-
-@router.get("/api/semantic/queries")
-def api_semantic_queries() -> dict[str, object]:
-    return {"queries": SAMPLE_QUERIES}

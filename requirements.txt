@@ -1,14 +1,13 @@
 # Dependencies for the live Vercel serverless function (api/index.py).
 #
 # This is intentionally narrower than pyproject.toml: numpy/pandas/scikit-learn
-# (clustering + anomaly detection), lxml, requests, unlzw3, prov, and alembic
-# are only used by the offline import/analytics scripts and CLI migrations,
-# never imported by app.main's request-time import graph. Bundling them here
-# blew the function past Vercel's 500 MB limit (~621 MB) for no runtime benefit.
-# If you add an import to the live API path, mirror it here too.
+# (clustering + anomaly detection), lxml, requests, unlzw3, rdflib, prov, and
+# alembic are only used by the offline import/analytics scripts and CLI
+# migrations, never imported by app.main's request-time import graph. Bundling
+# them here blew the function past Vercel's 500 MB limit (~621 MB) for no
+# runtime benefit. If you add an import to the live API path, mirror it here too.
 fastapi>=0.116.0
 sqlalchemy>=2.0.41
 pymysql>=1.1.1
 cryptography>=42.0.0
 pydantic-settings>=2.10.0
-rdflib>=7.1.4

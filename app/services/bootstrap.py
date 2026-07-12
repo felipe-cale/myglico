@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from app.models.entities import AnalysisRun, ImportBatch
 from app.services.analytics import compute_analytics
 from app.services.provenance import write_analytics_provenance, write_import_provenance
-from app.services.semantic import build_semantic_graph
 from app.services.uci_importer import dataset_already_loaded, import_uci_diabetes
 
 
@@ -25,11 +24,9 @@ def bootstrap_application(db: Session, import_dataset: bool = True) -> tuple[Imp
     if analytics_run is None:
         analytics_run = compute_analytics(db, trigger_type="bootstrap")
         write_analytics_provenance(db, analytics_run)
-        build_semantic_graph(db, analytics_run)
         db.commit()
     else:
         write_analytics_provenance(db, analytics_run)
-        build_semantic_graph(db, analytics_run)
         db.commit()
 
     return import_batch, analytics_run

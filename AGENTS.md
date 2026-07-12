@@ -4,9 +4,8 @@
 
 MyGlico is a Python 3.12 / FastAPI academic MVP with a self-contained React
 (Vite) dashboard. It ingests the public UCI Diabetes dataset into a relational
-core, computes glycemic analytics, records transactional provenance, and
-exports an RDF semantic layer. `README.md` is the canonical overview; read it
-before changing behavior.
+core, computes glycemic analytics, and records transactional provenance.
+`README.md` is the canonical overview; read it before changing behavior.
 
 - `app/main.py` — FastAPI application entry point.
 - `app/api/routes.py` — API routes.
@@ -17,14 +16,15 @@ before changing behavior.
 - `app/services/manual_entry.py` — transactional creation of patients and
   manual glucose entries with origin and provenance.
 - `app/services/provenance.py` — PROV artifact generation.
-- `app/services/semantic.py` — RDF graph and SPARQL queries.
 - `app/services/clinical_pdf.py` — hand-rolled, localized (pt-BR/en-US/es)
   patient clinical PDF report generator.
 - `frontend-react/` — React (Vite) interface consuming the FastAPI backend,
   with its own assets in `public/` and translations in `src/locales/`.
 - `scripts/import_uci_diabetes.py` — idempotent dataset import, initial
-  analytics, PROV, and RDF.
+  analytics, and PROV.
 - `scripts/bootstrap_db.py` — local bootstrap wrapper.
+- `scripts/render_provenance_png.py` — renders PROV-O `.ttl`/`.json`
+  artifacts as PNG diagrams.
 - `alembic/versions/` — schema migrations.
 
 ## Build, Test, and Development Commands
