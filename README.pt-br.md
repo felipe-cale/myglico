@@ -58,7 +58,8 @@ de dados, este repositório demonstra:
 |       `-- clinical_pdf.py           # Gerador do relatório PDF do paciente (pt-BR/en-US/es)
 |-- artifacts/
 |   |-- provenance/                   # PROV-JSON / PROV-TTL gerados, além dos PNGs renderizados
-|   `-- presentations/                # Slides usados nas apresentações de checkpoint do projeto
+|   |-- presentations/                # Slides usados nas apresentações de checkpoint do projeto
+|   `-- reports/                      # Relatório final (PDF)
 |-- frontend-react/                   # Frontend React (Vite) consumindo o backend FastAPI
 |   |-- public/                       # Assets estáticos servidos pelo frontend
 |   `-- src/
@@ -168,6 +169,13 @@ python scripts/init_db.py
   `.ttl`/`.json` acima via `scripts/render_provenance_png.py`
 - `artifacts/presentations/*.pdf` — slides usados para apresentar os
   checkpoints do projeto
+- `artifacts/reports/MyGlico_RelatorioFinal.pdf` — relatório final (veja
+  "Relatório final" abaixo)
+
+## Relatório final
+
+Baixe o relatório final em PDF:
+[MyGlico_RelatorioFinal.pdf](artifacts/reports/MyGlico_RelatorioFinal.pdf)
 
 ## Observações do recorte
 

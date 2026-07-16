@@ -58,7 +58,8 @@ demonstrates:
 |       `-- clinical_pdf.py           # Localized (pt-BR/en-US/es) patient PDF report generator
 |-- artifacts/
 |   |-- provenance/                   # Generated PROV-JSON / PROV-TTL, plus rendered PROV-O PNGs
-|   `-- presentations/                # Slide decks used for the project's checkpoint presentations
+|   |-- presentations/                # Slide decks used for the project's checkpoint presentations
+|   `-- reports/                      # Final report (PDF)
 |-- frontend-react/                   # React (Vite) frontend consuming the FastAPI backend
 |   |-- public/                       # Static assets served by the frontend
 |   `-- src/
@@ -167,6 +168,13 @@ python scripts/init_db.py
   above via `scripts/render_provenance_png.py`
 - `artifacts/presentations/*.pdf` — slide decks used to present the project's
   checkpoints
+- `artifacts/reports/MyGlico_RelatorioFinal.pdf` — final report (see
+  "Final report" below)
+
+## Final report
+
+Download the final PDF report:
+[MyGlico_RelatorioFinal.pdf](artifacts/reports/MyGlico_RelatorioFinal.pdf)
 
 ## Scope notes
 
