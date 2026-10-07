@@ -3,9 +3,22 @@ from __future__ import annotations
 from datetime import date, datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.crypto import decrypt_field, email_lookup, encrypt_field, generate_short_id
 from app.db.base import Base
 
 
@@ -19,13 +32,20 @@ def _now() -> datetime:
 
 class Patient(Base):
     __tablename__ = "patients"
+    __table_args__ = (
+        UniqueConstraint("short_id", name="uq_patients_short_id"),
+        UniqueConstraint("user_account_id", name="uq_patients_user_account_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
-    name: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
-    email: Mapped[str | None] = mapped_column(String(254), unique=True)
+    name_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    email_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    short_id: Mapped[str] = mapped_column(String(6), nullable=False, default=generate_short_id)
+    user_account_id: Mapped[str | None] = mapped_column(ForeignKey("user_accounts.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
 
+    user_account: Mapped["UserAccount | None"] = relationship(back_populates="patient")
     glucose_records: Mapped[list["GlucoseRecord"]] = relationship(back_populates="patient")
     source_links: Mapped[list["PatientSourceLink"]] = relationship(back_populates="patient", cascade="all, delete-orphan")
     daily_metrics: Mapped[list["DailyMetricsCurrent"]] = relationship(back_populates="patient", cascade="all, delete-orphan")
@@ -38,11 +58,210 @@ class Patient(Base):
         return self.name
 
     @property
+    def name(self) -> str:
+        return decrypt_field(self.name_encrypted, table="patients", column="name", record_id=self.id) or ""
+
+    @name.setter
+    def name(self, value: str) -> None:
+        if self.id is None:
+            self.id = _uuid()
+        self.name_encrypted = encrypt_field(
+            value, table="patients", column="name", record_id=self.id
+        )  # type: ignore[assignment]
+
+    @property
+    def email(self) -> str | None:
+        return decrypt_field(self.email_encrypted, table="patients", column="email", record_id=self.id)
+
+    @email.setter
+    def email(self, value: str | None) -> None:
+        if self.id is None:
+            self.id = _uuid()
+        self.email_encrypted = encrypt_field(value, table="patients", column="email", record_id=self.id)
+
+    @property
     def source_file(self) -> str:
         if self.source_links:
             return self.source_links[0].source_file or "manual"
         return "manual"
 
+
+class UserAccount(Base):
+    __tablename__ = "user_accounts"
+    __table_args__ = (UniqueConstraint("email_lookup", name="uq_user_accounts_email_lookup"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    email_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    email_lookup: Mapped[str] = mapped_column(String(64), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    account_status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
+    is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    patient: Mapped[Patient | None] = relationship(back_populates="user_account", uselist=False)
+    doctor: Mapped["Doctor | None"] = relationship(back_populates="user_account", uselist=False)
+    sessions: Mapped[list["UserSession"]] = relationship(back_populates="user_account", cascade="all, delete-orphan")
+
+    @property
+    def email(self) -> str:
+        return decrypt_field(self.email_encrypted, table="user_accounts", column="email", record_id=self.id) or ""
+
+    @email.setter
+    def email(self, value: str) -> None:
+        if self.id is None:
+            self.id = _uuid()
+        self.email_encrypted = encrypt_field(
+            value, table="user_accounts", column="email", record_id=self.id
+        )  # type: ignore[assignment]
+        self.email_lookup = email_lookup(value)
+
+
+class Doctor(Base):
+    __tablename__ = "doctors"
+    __table_args__ = (
+        UniqueConstraint("short_id", name="uq_doctors_short_id"),
+        UniqueConstraint("user_account_id", name="uq_doctors_user_account_id"),
+        UniqueConstraint("crm_uf_lookup", name="uq_doctors_crm_uf_lookup"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    short_id: Mapped[str] = mapped_column(String(6), nullable=False, default=generate_short_id)
+    user_account_id: Mapped[str] = mapped_column(ForeignKey("user_accounts.id"), nullable=False)
+    name_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    crm_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    uf_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    crm_uf_lookup: Mapped[str | None] = mapped_column(String(64))
+    is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    declared_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    user_account: Mapped[UserAccount] = relationship(back_populates="doctor")
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_account_id: Mapped[str] = mapped_column(ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+
+    user_account: Mapped[UserAccount] = relationship(back_populates="sessions")
+
+
+class PatientDoctorLink(Base):
+    __tablename__ = "patient_doctor_links"
+    # One non-null marker for an open cycle; terminal cycles retain NULL.
+    __table_args__ = (
+        UniqueConstraint("patient_id", "doctor_id", "open_pair_key", name="uq_patient_doctor_open_cycle"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), nullable=False, index=True)
+    doctor_id: Mapped[str] = mapped_column(ForeignKey("doctors.id"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING", index=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
+    revoked_by_role: Mapped[str | None] = mapped_column(String(16))
+    reason_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    open_pair_key: Mapped[str | None] = mapped_column(String(8), nullable=True, default="open")
+    patient: Mapped[Patient] = relationship()
+    doctor: Mapped[Doctor] = relationship()
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    recipient_user_account_id: Mapped[str] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    notification_type: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    causation_event_id: Mapped[str] = mapped_column(
+        ForeignKey("provenance_events.id"), nullable=False, index=True
+    )
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+
+
+class NotificationOutbox(Base):
+    __tablename__ = "notification_outbox"
+    __table_args__ = (UniqueConstraint("notification_id", name="uq_notification_outbox_notification"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    notification_id: Mapped[str] = mapped_column(ForeignKey("notifications.id", ondelete="CASCADE"), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class Investigation(Base):
+    __tablename__ = "investigations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), nullable=False, index=True)
+    doctor_id: Mapped[str] = mapped_column(ForeignKey("doctors.id"), nullable=False, index=True)
+    association_id: Mapped[str] = mapped_column(ForeignKey("patient_doctor_links.id"), nullable=False, index=True)
+    atypical_day_event_id: Mapped[str | None] = mapped_column(ForeignKey("daily_indicators.id"), index=True)
+    title_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="OPEN", index=True)
+    awaiting_role: Mapped[str | None] = mapped_column(String(16))
+    opened_by_role: Mapped[str] = mapped_column(String(16), nullable=False)
+    opened_by_domain_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    opened_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    closed_by: Mapped[str | None] = mapped_column(String(36))
+    closed_reason: Mapped[str | None] = mapped_column(String(80))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+class InvestigationMessage(Base):
+    __tablename__ = "investigation_messages"
+    __table_args__ = (
+        UniqueConstraint("investigation_id", "sequence", name="uq_investigation_message_sequence"),
+        UniqueConstraint("investigation_id", "idempotency_key", name="uq_investigation_message_idempotency"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    investigation_id: Mapped[str] = mapped_column(ForeignKey("investigations.id", ondelete="CASCADE"), nullable=False, index=True)
+    author_role: Mapped[str] = mapped_column(String(16), nullable=False)
+    author_domain_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    content_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))
+
+
+class InvestigationReadPosition(Base):
+    __tablename__ = "investigation_read_positions"
+
+    investigation_id: Mapped[str] = mapped_column(ForeignKey("investigations.id", ondelete="CASCADE"), primary_key=True)
+    participant_role: Mapped[str] = mapped_column(String(16), primary_key=True)
+    participant_domain_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    last_read_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+
+class AtypicalDayPrompt(Base):
+    __tablename__ = "atypical_day_prompts"
+    __table_args__ = (
+        UniqueConstraint("patient_id", "indicator_date", name="uq_atypical_prompt_patient_date"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), nullable=False, index=True)
+    daily_indicator_id: Mapped[str] = mapped_column(ForeignKey("daily_indicators.id"), nullable=False, index=True)
+    indicator_date: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="CREATED", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
 
 class DataSource(Base):
     __tablename__ = "data_sources"
@@ -124,13 +343,27 @@ class GlucoseRecord(Base):
     measured_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     glucose_mg_dl: Mapped[float] = mapped_column(Float, nullable=False)
     context_label: Mapped[str | None] = mapped_column(String(80), index=True)
-    notes: Mapped[str | None] = mapped_column(Text)
+    notes_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
 
     patient: Mapped["Patient"] = relationship(back_populates="glucose_records")
     sources: Mapped[list["GlucoseRecordSource"]] = relationship(back_populates="glucose_record", cascade="all, delete-orphan")
     quality_issues: Mapped[list["DataQualityIssue"]] = relationship(back_populates="glucose_record")
+
+    @property
+    def notes(self) -> str | None:
+        return decrypt_field(
+            self.notes_encrypted, table="glucose_records", column="notes", record_id=self.id,
+        )
+
+    @notes.setter
+    def notes(self, value: str | None) -> None:
+        if value is not None and not getattr(self, "id", None):
+            self.id = _uuid()
+        self.notes_encrypted = encrypt_field(
+            value, table="glucose_records", column="notes", record_id=self.id or "",
+        )
 
 
 class GlucoseRecordSource(Base):

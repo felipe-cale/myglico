@@ -797,6 +797,46 @@ input {
   max-width: 16rem;
 }
 
+.react-manual-entry-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.react-manual-entry-form__notes,
+.react-manual-entry-form__actions {
+  grid-column: 1 / -1;
+}
+
+.react-manual-entry-form textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 20px;
+  border: 1px solid var(--react-border);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--react-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.react-manual-entry-form textarea:focus {
+  outline: none;
+  border-color: rgba(22, 124, 217, 0.35);
+  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.12);
+}
+
+.react-manual-entry-form__actions {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.react-filter-actions .react-manual-entry-form__feedback {
+  max-width: none;
+}
+
+.react-filter-actions .react-manual-entry-form__feedback.is-success {
+  color: var(--react-green-deep);
+}
+
 .react-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -2241,4 +2281,212 @@ input {
   .react-page--patient-detail .react-mobile-card__grid {
     grid-template-columns: 1fr;
   }
+}
+
+.react-atypical-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.react-atypical-range label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--react-muted);
+}
+
+.react-atypical-list,
+.react-my-patients__list,
+.react-message-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.react-atypical-item,
+.react-my-patients__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 18px;
+  border: 1px solid var(--react-border);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.react-atypical-item__select {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.react-atypical-item__select span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.react-atypical-item__select small {
+  color: var(--react-muted);
+}
+
+.react-atypical-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.react-atypical-item__actions .react-button,
+.react-my-patients__item .react-button {
+  min-height: 2.25rem;
+  font-size: 0.85rem;
+}
+
+.react-chip--removable {
+  min-height: 2.25rem;
+  cursor: pointer;
+}
+
+.react-selected-days {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.react-selected-days > span {
+  font-size: 0.9rem;
+  color: var(--react-muted);
+}
+
+.react-my-patients {
+  margin-bottom: 1.5rem;
+}
+
+.react-investigation-card {
+  border: 1px solid var(--react-border);
+  border-radius: 18px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.react-investigation-card p {
+  margin: 0.35rem 0;
+}
+
+.react-investigation-card.has-unread {
+  border-color: var(--react-blue);
+  box-shadow: 0 0 0 1px var(--react-blue);
+}
+
+.react-investigation-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.react-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--react-rose);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.react-investigations-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--react-blue-deep);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.react-message-list {
+  border: 1px solid var(--react-border);
+  border-radius: 18px;
+  padding: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.react-message {
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: #f6f8fa;
+  border-left: 4px solid transparent;
+}
+
+.react-message p {
+  margin: 0.25rem 0 0;
+}
+
+.react-message.is-new {
+  background: rgba(39, 183, 231, 0.12);
+  border-left-color: var(--react-blue);
+}
+
+.react-message__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.react-message__meta small {
+  color: var(--react-muted);
+}
+
+.react-investigation-closed {
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: rgba(97, 121, 146, 0.1);
+  color: var(--react-slate);
+}
+
+.react-privacy-notice {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--react-border);
+  font-size: 0.9rem;
+}
+
+.react-privacy-notice p {
+  margin: 0;
+  color: var(--react-muted);
+}
+
+.react-atypical-scope {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.react-atypical-scope p {
+  margin: 0;
+  font-weight: 600;
+  color: var(--react-text);
+}
+
+.react-atypical-scope small {
+  color: var(--react-muted);
+}
+
+.react-period-notice {
+  margin: 1rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(244, 169, 61, 0.5);
+  background: rgba(244, 169, 61, 0.12);
+  color: var(--react-text);
 }

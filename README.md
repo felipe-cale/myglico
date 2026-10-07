@@ -96,6 +96,46 @@ platform's function size limit (see "Deployment on Vercel" below).
 Open `http://127.0.0.1:8001/health` to validate the API, or use the React
 frontend in development.
 
+## Authentication, encryption, and database setup
+
+Authenticated API access uses revocable server-side sessions in an
+HttpOnly, Secure, SameSite=Lax cookie. A `UserAccount` can be linked to at
+most one domain identity: either `Patient` or `Doctor`; registering a second
+role with an existing email is rejected. People who need both roles must use
+separate accounts and email addresses.
+
+Set `MYGLICO_ENCRYPTION_KEY_V1` and `MYGLICO_LOOKUP_HMAC_KEY` to independent,
+32-byte keys encoded as 64 hexadecimal characters before starting the API or
+running migrations. The first encrypts protected fields with AES-256-GCM; the
+second creates blind lookup indexes. Keep both values in the deployment's
+secret store and back them up securely. The key names and rotation requirements
+are documented in `app/core/CRYPTO_CONFIGURATION.md`. Never commit real key
+values.
+
+For Docker Compose, export both variables in the shell or provide them through
+the deployment environment before running `docker compose up --build`.
+Migrations preserve existing IDs and encrypt legacy patient identity values.
+On SQLite, run `VACUUM` on a stopped/disposable database after the migration to
+reclaim pages that may still contain remnants of removed plaintext columns.
+
+The UCI importer provisions demo accounts only when explicitly requested:
+
+```bash
+python scripts/import_uci_diabetes.py --provision-demo-accounts
+```
+
+Public demo credentials use `patientN@demo.myglico.invalid` and
+`doctor@demo.myglico.invalid`, with the documented demo password `qwerty`;
+this scheme is exclusive to public dataset demonstrations. Other clinical
+free-text fields (patient names/emails, doctor identity fields, investigation
+content, and glucose-record notes) are encrypted at rest. Numeric glucose,
+measurement time, context labels, and aggregate metric values remain queryable
+for the current analytics algorithm and public UCI analysis workflow.
+
+The built-in rate limiter is an in-memory fixed-window guard per API worker.
+Deployments with multiple workers or instances should add a shared rate-limit
+backend before relying on it as a global abuse-control boundary.
+
 ## Running with Docker
 
 ### Full development environment

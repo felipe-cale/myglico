@@ -1,10 +1,13 @@
 {
   "common": {
     "all": "Todos",
+    "or": "ou",
     "yes": "Sim",
     "no": "Não",
     "dash": "-",
-    "explain": "Explicar {{label}}"
+    "back": "Voltar",
+    "explain": "Explicar {{label}}",
+    "loading": "Carregando..."
   },
   "languageSwitcher": {
     "label": "Idioma"
@@ -105,13 +108,31 @@
       "body": "Visualize rapidamente quem está em acompanhamento, identifique padrões importantes e aprofunde a leitura de cada pessoa com contexto suficiente para apoiar decisões seguras.",
       "imageAlt": "Identidade MyGlico"
     },
-    "summaryLoading": { "title": "Carregando painel", "description": "Estamos preparando a visão mais recente da base acompanhada." },
-    "summaryError": { "title": "Não foi possível carregar o painel", "description": "Tivemos um problema ao montar o resumo inicial deste ambiente." },
+    "summaryLoading": {
+      "title": "Carregando painel",
+      "description": "Estamos preparando a visão mais recente da base acompanhada."
+    },
+    "summaryError": {
+      "title": "Não foi possível carregar o painel",
+      "description": "Tivemos um problema ao montar o resumo inicial deste ambiente."
+    },
     "metrics": {
-      "patients": { "label": "Pacientes acompanhados", "helper": "Base pronta para acompanhamento contínuo." },
-      "records": { "label": "Registros de glicemia", "helper": "Leituras disponíveis para consulta e comparação." },
-      "days": { "label": "Dias analisados", "helper": "Períodos consolidados para leitura clínica." },
-      "issues": { "label": "Alertas de qualidade", "helper": "Pontos que merecem validação ou revisão." }
+      "patients": {
+        "label": "Pacientes acompanhados",
+        "helper": "Base pronta para acompanhamento contínuo."
+      },
+      "records": {
+        "label": "Registros de glicemia",
+        "helper": "Leituras disponíveis para consulta e comparação."
+      },
+      "days": {
+        "label": "Dias analisados",
+        "helper": "Períodos consolidados para leitura clínica."
+      },
+      "issues": {
+        "label": "Alertas de qualidade",
+        "helper": "Pontos que merecem validação ou revisão."
+      }
     },
     "patients": {
       "eyebrow": "Pacientes acompanhados",
@@ -122,8 +143,14 @@
       "helpButtonAriaLabel": "Explicar perfis do filtro",
       "searchPlaceholder": "Buscar por nome ou código",
       "searchAriaLabel": "Buscar paciente",
-      "loading": { "title": "Carregando pacientes", "description": "Estamos atualizando a lista de pessoas acompanhadas." },
-      "error": { "title": "Não foi possível carregar a lista", "description": "Houve um problema ao trazer os pacientes deste ambiente." },
+      "loading": {
+        "title": "Carregando pacientes",
+        "description": "Estamos atualizando a lista de pessoas acompanhadas."
+      },
+      "error": {
+        "title": "Não foi possível carregar a lista",
+        "description": "Houve um problema ao trazer os pacientes deste ambiente."
+      },
       "patientCode": "Código do paciente",
       "copy": "Copiar",
       "copied": "Copiado",
@@ -134,8 +161,14 @@
       "timeInHigh": "Tempo em alta",
       "openPatientPanel": "Abrir painel do paciente",
       "footerCount": "Página {{page}} de {{pages}}, com {{count}} pacientes encontrados.",
-      "emptyFilter": { "title": "Nenhum paciente neste filtro", "description": "Tente outro status ou ajuste a busca para ampliar os resultados." },
-      "emptyAll": { "title": "Nenhum paciente encontrado", "description": "Tente buscar por outro nome ou identificador para continuar." }
+      "emptyFilter": {
+        "title": "Nenhum paciente neste filtro",
+        "description": "Tente outro status ou ajuste a busca para ampliar os resultados."
+      },
+      "emptyAll": {
+        "title": "Nenhum paciente encontrado",
+        "description": "Tente buscar por outro nome ou identificador para continuar."
+      }
     },
     "profileHelp": {
       "eyebrow": "Ajuda do filtro",
@@ -144,40 +177,97 @@
         "title": "Perfis de filtro",
         "intro": "Os perfis abaixo organizam a lista por padrão glicêmico predominante no período analisado. Eles funcionam como triagem visual e não substituem avaliação clínica.",
         "sections": [
-          { "title": "Perfil em Faixa", "body": "Agrupa pacientes que não atingiram os limiares de perfil hiperglicêmico nem hipoglicêmico. Nas métricas da aplicação, a faixa usada como referência considera 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL nas leituras pré-refeição e valores abaixo de 180 mg/dL nas leituras pós-refeição." },
-          { "title": "Perfil Hiperglicêmico", "body": "É aplicado quando a média glicêmica do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%. O tempo em alta considera leituras iguais ou acima de 130 mg/dL nas medições pré-refeição e iguais ou acima de 180 mg/dL nas medições pós-refeição ou sem contexto específico." },
-          { "title": "Perfil Hipoglicêmico", "body": "É aplicado quando o tempo em baixa é maior ou igual a 10% no período. O tempo em baixa considera leituras abaixo de 70 mg/dL." }
+          {
+            "title": "Perfil em Faixa",
+            "body": "Agrupa pacientes que não atingiram os limiares de perfil hiperglicêmico nem hipoglicêmico. Nas métricas da aplicação, a faixa usada como referência considera 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL nas leituras pré-refeição e valores abaixo de 180 mg/dL nas leituras pós-refeição."
+          },
+          {
+            "title": "Perfil Hiperglicêmico",
+            "body": "É aplicado quando a média glicêmica do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%. O tempo em alta considera leituras iguais ou acima de 130 mg/dL nas medições pré-refeição e iguais ou acima de 180 mg/dL nas medições pós-refeição ou sem contexto específico."
+          },
+          {
+            "title": "Perfil Hipoglicêmico",
+            "body": "É aplicado quando o tempo em baixa é maior ou igual a 10% no período. O tempo em baixa considera leituras abaixo de 70 mg/dL."
+          }
         ]
       },
       "stable": {
         "title": "Perfil em Faixa",
         "intro": "Este filtro mostra pacientes que permaneceram fora dos critérios de perfil hiperglicêmico e hipoglicêmico na triagem atual.",
         "sections": [
-          { "title": "Faixa considerada", "body": "A referência usada nas métricas considera 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL nas leituras pré-refeição e valores abaixo de 180 mg/dL nas leituras pós-refeição." },
-          { "title": "Como o filtro entra aqui", "body": "O paciente permanece neste grupo quando a média glicêmica do período fica abaixo de 185 mg/dL e o tempo em baixa fica abaixo de 10%." }
+          {
+            "title": "Faixa considerada",
+            "body": "A referência usada nas métricas considera 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL nas leituras pré-refeição e valores abaixo de 180 mg/dL nas leituras pós-refeição."
+          },
+          {
+            "title": "Como o filtro entra aqui",
+            "body": "O paciente permanece neste grupo quando a média glicêmica do período fica abaixo de 185 mg/dL e o tempo em baixa fica abaixo de 10%."
+          }
         ]
       },
       "attention": {
         "title": "Perfil Hiperglicêmico",
         "intro": "Este filtro destaca pacientes com predominância de leituras elevadas no período analisado.",
         "sections": [
-          { "title": "Limiar de classificação", "body": "O perfil é aplicado quando a média glicêmica do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%." },
-          { "title": "O que conta como alta", "body": "O tempo em alta considera leituras iguais ou acima de 130 mg/dL nas medições pré-refeição e iguais ou acima de 180 mg/dL nas medições pós-refeição ou sem contexto específico." }
+          {
+            "title": "Limiar de classificação",
+            "body": "O perfil é aplicado quando a média glicêmica do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%."
+          },
+          {
+            "title": "O que conta como alta",
+            "body": "O tempo em alta considera leituras iguais ou acima de 130 mg/dL nas medições pré-refeição e iguais ou acima de 180 mg/dL nas medições pós-refeição ou sem contexto específico."
+          }
         ]
       },
       "oscillation": {
         "title": "Perfil Hipoglicêmico",
         "intro": "Este filtro destaca pacientes com recorrência mais relevante de leituras em baixa no período.",
         "sections": [
-          { "title": "Limiar de classificação", "body": "O perfil é aplicado quando o tempo em baixa é maior ou igual a 10% no período." },
-          { "title": "O que conta como baixa", "body": "O tempo em baixa considera leituras abaixo de 70 mg/dL." }
+          {
+            "title": "Limiar de classificação",
+            "body": "O perfil é aplicado quando o tempo em baixa é maior ou igual a 10% no período."
+          },
+          {
+            "title": "O que conta como baixa",
+            "body": "O tempo em baixa considera leituras abaixo de 70 mg/dL."
+          }
         ]
       }
     }
   },
+  "manualEntry": {
+    "eyebrow": "Registro manual",
+    "title": "Registrar leitura de glicemia",
+    "body": "Adicione uma medição avulsa feita no glicosímetro. A leitura entra no seu histórico e os indicadores do dia são recalculados.",
+    "measuredAt": "Data e hora da medição",
+    "glucose": "Glicemia (mg/dL)",
+    "glucosePlaceholder": "Ex.: 110",
+    "context": "Contexto (opcional)",
+    "contextNone": "Sem contexto",
+    "contextCustom": "Outro (descrever)",
+    "customContext": "Descreva o contexto",
+    "customContextPlaceholder": "Ex.: jejum, aleatória, após exercício",
+    "notes": "Observações (opcional)",
+    "notesPlaceholder": "Ex.: senti tontura antes da medição",
+    "submit": "Registrar leitura",
+    "submitting": "Registrando...",
+    "success": "Leitura registrada com sucesso.",
+    "errors": {
+      "measuredAtRequired": "Informe a data e a hora da medição.",
+      "glucoseRange": "Informe um valor de glicemia maior que 0 e até 1000 mg/dL.",
+      "customContextRequired": "Descreva o contexto ou escolha outra opção.",
+      "saveFailed": "Não foi possível registrar a leitura. Tente novamente."
+    }
+  },
   "patientDetail": {
-    "loading": { "title": "Carregando painel do paciente", "description": "Estamos preparando os indicadores e a visualização clínica." },
-    "error": { "title": "Não foi possível carregar o paciente", "description": "Tivemos um problema ao montar o detalhamento analítico deste paciente." },
+    "loading": {
+      "title": "Carregando painel do paciente",
+      "description": "Estamos preparando os indicadores e a visualização clínica."
+    },
+    "error": {
+      "title": "Não foi possível carregar o paciente",
+      "description": "Tivemos um problema ao montar o detalhamento analítico deste paciente."
+    },
     "hero": {
       "eyebrow": "Detalhe do paciente",
       "measurementsBadge": "{{count}} medições",
@@ -185,7 +275,9 @@
       "backToOverview": "Voltar para a visão geral",
       "downloadReport": "Baixar Relatório Glicêmico",
       "periodAnalyzed": "Período analisado",
-      "defaultWindow": "Janela padrão de 30 dias a partir da data mais recente disponível."
+      "defaultWindow": "Janela padrão de 30 dias a partir da data mais recente disponível.",
+      "selectedDays": "Dias selecionados ({{count}})",
+      "referencePeriod": "Somente estes dias são analisados. Período de referência: {{start}} a {{end}}."
     },
     "filter": {
       "eyebrow": "Filtro temporal",
@@ -194,7 +286,8 @@
       "startDate": "Data inicial",
       "endDate": "Data final",
       "apply": "Filtrar",
-      "invalidRange": "A data inicial não pode ser maior que a data final."
+      "invalidRange": "A data inicial não pode ser maior que a data final.",
+      "periodAdjusted": "Período ajustado para incluir o(s) dia(s) selecionado(s) {{dates}}: de {{originalStart}} – {{originalEnd}} para {{start}} – {{end}}. Ao limpar a seleção de dias, o período original volta."
     },
     "distribution": {
       "eyebrow": "Distribuição",
@@ -224,7 +317,10 @@
       "legendHighRisk": "Risco > 250 mg/dL",
       "seriesAverage": "Média",
       "seriesGlucose": "Glicemia",
-      "insufficientData": { "title": "Sem leituras suficientes no dia selecionado", "description": "Não há medições glicêmicas suficientes para compor a visualização horária deste dia." },
+      "insufficientData": {
+        "title": "Sem leituras suficientes no dia selecionado",
+        "description": "Não há medições glicêmicas suficientes para compor a visualização horária deste dia."
+      },
       "dayStripAriaLabel": "Dias disponíveis no período",
       "chartLegendAriaLabel": "Legenda do gráfico glicêmico"
     },
@@ -236,17 +332,49 @@
       "bodyPeriod": "Síntese dos indicadores mais relevantes para leitura clínica rápida."
     },
     "stats": {
-      "measurements": { "label": "Medições", "helper": "leituras do dia" },
-      "avgDay": { "label": "Média do dia" },
-      "pctHypoDay": { "label": "% em hipo", "helper": "{{count}} eventos" },
-      "pctInRangeDay": { "label": "% em faixa", "helper": "distribuição do dia" },
-      "pctHyperDay": { "label": "% em hiper", "helper": "{{count}} eventos" },
-      "daysObserved": { "label": "Dias observados", "helper": "dias com leituras" },
-      "avgGlucose": { "label": "Média glicêmica", "helper": "média do período" },
-      "pctHypoPeriod": { "label": "% em hipo", "helper": "leituras abaixo de 70 mg/dL" },
-      "pctInRangePeriod": { "label": "% em faixa", "helper": "leituras na faixa" },
-      "pctHyperPeriod": { "label": "% em hiper", "helper": "acima da meta" },
-      "anomalyDays": { "label": "Dias atípicos", "helper": "sinalizados pela análise" }
+      "measurements": {
+        "label": "Medições",
+        "helper": "leituras do dia"
+      },
+      "avgDay": {
+        "label": "Média do dia"
+      },
+      "pctHypoDay": {
+        "label": "% em hipo",
+        "helper": "{{count}} eventos"
+      },
+      "pctInRangeDay": {
+        "label": "% em faixa",
+        "helper": "distribuição do dia"
+      },
+      "pctHyperDay": {
+        "label": "% em hiper",
+        "helper": "{{count}} eventos"
+      },
+      "daysObserved": {
+        "label": "Dias observados",
+        "helper": "dias com leituras"
+      },
+      "avgGlucose": {
+        "label": "Média glicêmica",
+        "helper": "média do período"
+      },
+      "pctHypoPeriod": {
+        "label": "% em hipo",
+        "helper": "leituras abaixo de 70 mg/dL"
+      },
+      "pctInRangePeriod": {
+        "label": "% em faixa",
+        "helper": "leituras na faixa"
+      },
+      "pctHyperPeriod": {
+        "label": "% em hiper",
+        "helper": "acima da meta"
+      },
+      "anomalyDays": {
+        "label": "Dias atípicos",
+        "helper": "sinalizados pela análise"
+      }
     },
     "dailyIndicators": {
       "eyebrow": "Indicadores diários",
@@ -269,6 +397,169 @@
       "subtype": "Subtipo",
       "value": "Valor",
       "context": "Contexto"
+    }
+  },
+  "auth": {
+    "login": "Entrar",
+    "register": "Criar conta",
+    "email": "E-mail",
+    "password": "Senha",
+    "passwordConfirm": "Confirmar senha",
+    "role": "Sou",
+    "rolePatient": "Paciente",
+    "roleDoctor": "Médico",
+    "name": "Nome de exibição",
+    "docName": "Nome profissional",
+    "crm": "CRM",
+    "uf": "UF",
+    "passwordMismatch": "As senhas não conferem.",
+    "crmUfTogether": "Informe CRM e UF juntos, ou deixe ambos vazios.",
+    "submitLogin": "Entrar na minha conta",
+    "submitRegister": "Criar minha conta",
+    "logout": "Sair",
+    "error": "Erro na autenticação. Verifique os dados.",
+    "successReg": "Conta criada com sucesso!",
+    "reqLogin": "Você precisa entrar para acessar esta página.",
+    "crmUfRequired": "Informe CRM e UF para cadastrar um médico.",
+    "privacyRequired": "Confirme a ciência do aviso de privacidade para continuar.",
+    "privacyNotice": "Aviso de privacidade: o MyGlico é um protótipo acadêmico. Seus dados de identificação são armazenados cifrados e usados apenas para operar o sistema; leituras glicêmicas são compartilhadas somente com médicos que você associar e pode revogar a qualquer momento.",
+    "privacyAccept": "Li e estou ciente do aviso de privacidade."
+  },
+  "landing": {
+    "title": "Bem-vindo ao MyGlico",
+    "desc": "Acompanhamento glicêmico com visão clara e contínua."
+  },
+  "dashboard": {
+    "myDoctors": "Meus médicos",
+    "searchDoctor": "Buscar médico",
+    "shortId": "Código (SHORTID)",
+    "search": "Buscar",
+    "requestLink": "Solicitar associação",
+    "revokeLink": "Revogar associação",
+    "accept": "Aceitar",
+    "reject": "Rejeitar",
+    "cancel": "Cancelar",
+    "statusPending": "Pendente",
+    "statusActive": "Ativo",
+    "myLinks": "Meus vínculos",
+    "noLinks": "Nenhum vínculo encontrado.",
+    "statusLabel": "Status",
+    "doctorLabel": "Médico",
+    "patientLabel": "Paciente",
+    "searchCriteriaRequired": "Informe um SHORTID ou CRM e UF.",
+    "doctorNotFound": "Nenhum médico encontrado.",
+    "searchFailed": "Não foi possível buscar o médico.",
+    "linkActionFailed": "Não foi possível atualizar o vínculo.",
+    "status": {
+      "pending": "Pendente",
+      "active": "Ativo",
+      "rejected": "Recusado",
+      "cancelled": "Cancelado",
+      "revoked": "Revogado"
+    },
+    "demoDoctor": "Demonstração",
+    "declaredUnverified": "Declarado (não verificado)",
+    "crmUfValue": "CRM: {{crm}}/{{uf}}",
+    "myPatients": "Meus pacientes",
+    "noPatients": "Nenhum paciente com vínculo ativo.",
+    "openPatientDetail": "Ver detalhamento",
+    "linkRequests": "Solicitações e histórico de vínculos",
+    "linksLoadFailed": "Não foi possível carregar os vínculos."
+  },
+  "cscw": {
+    "investigations": "Questionamentos",
+    "new": "Novo questionamento",
+    "open": "Abrir questionamento",
+    "close": "Encerrar",
+    "send": "Enviar",
+    "subject": "Assunto",
+    "message": "Mensagem",
+    "atypicalDay": "Dia atípico",
+    "noAtypical": "Sem dia atípico associado",
+    "viewDay": "Ver o dia",
+    "defer": "Agora não",
+    "association": "Vínculo",
+    "selectAssociation": "Selecione um vínculo ativo",
+    "popupButton": "Ver dias atípicos",
+    "popupTitle": "Dias atípicos",
+    "popupEmpty": "Nenhum dia atípico encontrado.",
+    "popupAsk": "Questionar",
+    "popupApply": "Aplicar filtro",
+    "popupClear": "Limpar seleção",
+    "openFailed": "Não foi possível abrir o questionamento.",
+    "empty": "Nenhum questionamento encontrado.",
+    "loading": "Carregando questionamento...",
+    "statusLabel": "Status",
+    "awaiting": "Aguardando",
+    "nobody": "ninguém",
+    "status": {
+      "open": "Aberto",
+      "closed": "Encerrado"
+    },
+    "proactivePrompt": "Identificamos um dia atípico nas suas leituras. Você quer abrir um questionamento com um médico associado?",
+    "popupCloseAria": "Fechar dias atípicos",
+    "selectedDaysLabel": "Dias selecionados",
+    "removeDayAria": "Remover {{date}} da seleção",
+    "popupLoading": "Carregando dias atípicos...",
+    "popupError": "Não foi possível carregar os dias atípicos.",
+    "retry": "Tentar novamente",
+    "hasInvestigation": "Já possui questionamento",
+    "viewInDetail": "Ver no detalhamento",
+    "popupClearDays": "Limpar seleção de dias",
+    "proactivePromptDated": "Identificamos um dia atípico nas suas leituras em {{date}}. Você quer abrir um questionamento com um médico associado?",
+    "fromAtypicalDay": "Questionamento a partir de um dia atípico",
+    "noActiveLinkPatient": "Você ainda não tem um médico com vínculo ativo. Use \"Buscar médico\" acima para solicitar uma associação.",
+    "noActiveLinkDoctor": "Você ainda não tem pacientes com vínculo ativo.",
+    "listFailed": "Não foi possível carregar os questionamentos.",
+    "unreadAria": "{{count}} mensagens não lidas",
+    "unreadCount": "{{count}} não lidas",
+    "counterpartDoctor": "Médico",
+    "counterpartPatient": "Paciente",
+    "openedAt": "Aberto em {{date}}",
+    "roles": {
+      "patient": "Paciente",
+      "doctor": "Médico",
+      "system": "Sistema"
+    },
+    "originAtypical": "Origem: dia atípico associado",
+    "openConversation": "Abrir conversa",
+    "sendFailed": "Não foi possível enviar a mensagem.",
+    "closeFailed": "Não foi possível encerrar o questionamento.",
+    "loadFailed": "Não foi possível carregar o questionamento.",
+    "closedReason": {
+      "PARTICIPANT_CLOSED": "Encerrado por um participante",
+      "ASSOCIATION_REVOKED": "Encerrado por revogação do vínculo",
+      "default": "Encerrado"
+    },
+    "messagesLabel": "Mensagens do questionamento",
+    "newMessage": "Nova",
+    "closingObservation": "Observação final (opcional)",
+    "confirmClose": "Confirmar encerramento",
+    "menuAria": "Questionamentos, {{count}} mensagens não lidas",
+    "proactivePromptBatch": "Identificamos {{count}} dias atípicos nas suas leituras, entre {{first}} e {{last}}. Você quer abrir um questionamento com um médico associado?",
+    "viewDays": "Ver os dias",
+    "promptRegion": "Convite sobre dias atípicos",
+    "popupScopeAll": "{{count}} dias atípicos em todo o histórico do paciente.",
+    "popupScopeActive": "{{count}} dias atípicos no período exibido no detalhamento ({{start}} a {{end}}), o mesmo escopo do card.",
+    "popupScopeCustom": "{{count}} dias atípicos no período escolhido aqui ({{start}} a {{end}}), diferente do período exibido no detalhamento.",
+    "popupShowAll": "Ver todo o histórico",
+    "popupUseActive": "Usar o período exibido",
+    "popupOutsideHint": "Dias fora do período exibido ampliam o período do detalhamento ao aplicar o filtro."
+  },
+  "notifications": {
+    "title": "Notificações",
+    "empty": "Nenhuma notificação",
+    "unread": "{{count}} não lidas",
+    "markRead": "Marcar como lida",
+    "types": {
+      "association_requested": "Nova solicitação de vínculo",
+      "association_confirmed": "Vínculo confirmado",
+      "association_rejected": "Solicitação de vínculo recusada",
+      "association_revoked": "Vínculo revogado",
+      "investigation_opened": "Novo questionamento",
+      "investigation_message_added": "Nova mensagem no questionamento",
+      "investigation_closed": "Questionamento encerrado",
+      "atypical_day_prompt": "Convite para conversar sobre um dia atípico"
     }
   }
 }

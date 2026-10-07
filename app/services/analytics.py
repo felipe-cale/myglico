@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.entities import AnalysisOutbox, AnalysisRun, DailyIndicator, DailyMetricsCurrent, GlucoseRecord, ProvenanceEvent
+from app.services.investigations import create_prompts_for_indicators
 
 
 settings = get_settings()
@@ -64,9 +65,9 @@ def _analysis_parameters() -> dict[str, object]:
 
 
 def _upper_bound_for_context(context: str | None) -> float:
-    if context and context.startswith("pre_"):
+    if isinstance(context, str) and context.startswith("pre_"):
         return settings.pre_meal_max
-    if context and context.startswith("post_"):
+    if isinstance(context, str) and context.startswith("post_"):
         return settings.post_meal_max
     return settings.generic_max
 
@@ -74,9 +75,9 @@ def _upper_bound_for_context(context: str | None) -> float:
 def _in_range(glucose: float, context: str | None) -> bool:
     if glucose < settings.default_hypo_threshold:
         return False
-    if context and context.startswith("pre_"):
+    if isinstance(context, str) and context.startswith("pre_"):
         return settings.pre_meal_min <= glucose <= settings.pre_meal_max
-    if context and context.startswith("post_"):
+    if isinstance(context, str) and context.startswith("post_"):
         return glucose < settings.post_meal_max
     return settings.default_hypo_threshold <= glucose <= settings.generic_max
 
@@ -125,6 +126,14 @@ def _prepare_glucose_frame(records: list[GlucoseRecord]) -> pd.DataFrame:
             }
             for record in records
         ]
+    )
+    # pandas 3 may infer a nullable string column for mixed str/None values;
+    # row-wise apply then receives NaN-like scalars. Keep explicit Python
+    # strings/None so the context helpers have a stable input contract.
+    frame["context_label"] = pd.Series(
+        [record.context_label if isinstance(record.context_label, str) else None for record in records],
+        index=frame.index,
+        dtype=object,
     )
     frame["is_hypo"] = frame["glucose_mg_dl"] < settings.default_hypo_threshold
     frame["is_in_range"] = frame.apply(lambda row: _in_range(row["glucose_mg_dl"], row["context_label"]), axis=1)
@@ -296,8 +305,10 @@ def compute_analytics(
     _upsert_daily_metrics(db, rows, fingerprints_by_day)
 
     db.execute(delete(DailyIndicator).where(DailyIndicator.analysis_run_id == analysis_run.id))
-    for row in rows:
-        db.add(DailyIndicator(analysis_run_id=analysis_run.id, **row))
+    indicators = [DailyIndicator(analysis_run_id=analysis_run.id, **row) for row in rows]
+    db.add_all(indicators)
+    db.flush()
+    create_prompts_for_indicators(db, indicators)
 
     outbox_query = select(AnalysisOutbox).where(AnalysisOutbox.status.in_(["pending", "processing"]))
     if patient_id:

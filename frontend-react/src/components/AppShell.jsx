@@ -1,16 +1,31 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { useAuth } from "../contexts/AuthContext";
+import { logout } from "../api";
+import NotificationCenter from "./NotificationCenter";
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 
 export default function AppShell({ children }) {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const navigation = [{ to: "/", label: t("appShell.nav.overview") }];
+  const { session, refreshSession } = useAuth();
+
+  let navigation = [];
+  if (session?.authenticated) {
+    navigation.push({ to: "/dashboard", label: t("appShell.nav.overview") });
+  }
+
+  const handleLogout = async () => {
+    await logout();
+    await refreshSession();
+    navigate("/");
+  };
 
   useEffect(() => {
     setMenuOpen(false);
@@ -20,18 +35,12 @@ export default function AppShell({ children }) {
     if (!menuOpen || typeof document === "undefined") {
       return undefined;
     }
-
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     const handleEscape = (event) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-      }
+      if (event.key === "Escape") setMenuOpen(false);
     };
-
     window.addEventListener("keydown", handleEscape);
-
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleEscape);
@@ -55,8 +64,8 @@ export default function AppShell({ children }) {
           <button
             type="button"
             className="react-drawer__close"
-            aria-label={t("appShell.closeMenu")}
             onClick={() => setMenuOpen(false)}
+            aria-label={t("appShell.closeMenu")}
           >
             ×
           </button>
@@ -73,7 +82,10 @@ export default function AppShell({ children }) {
             </NavLink>
           ))}
         </nav>
-        <div className="react-drawer__actions">
+        <div className="react-drawer__actions" style={{display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem'}}>
+          {session?.authenticated && (
+             <button onClick={handleLogout} style={{ border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '1rem', padding: '0' }}>{t("auth.logout")}</button>
+          )}
           <LanguageSwitcher />
         </div>
       </aside>
@@ -91,7 +103,6 @@ export default function AppShell({ children }) {
           <button
             type="button"
             className="react-topbar__menu-button"
-            aria-label={t("appShell.openMenu")}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(true)}
           >
@@ -112,7 +123,11 @@ export default function AppShell({ children }) {
                 </NavLink>
               ))}
             </nav>
-            <div className="react-topbar__actions">
+            <div className="react-topbar__actions" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                  {session?.authenticated && <NotificationCenter />}
+              {session?.authenticated && (
+                 <button onClick={handleLogout} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '0' }}>{t("auth.logout")}</button>
+              )}
               <LanguageSwitcher />
             </div>
           </div>

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from hashlib import sha256
 from datetime import date, datetime, time, timedelta
 from math import ceil
 from pathlib import Path
@@ -89,17 +88,6 @@ def _enum_label(value: str | None, labels: dict[str, str]) -> str:
     return labels.get(value, _humanize_enum_value(value))
 
 
-def _patient_short_id(patient_id: str) -> str:
-    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    digest = sha256(patient_id.encode("utf-8")).digest()
-    value = int.from_bytes(digest[:8], "big")
-    chars: list[str] = []
-    for _ in range(6):
-        value, remainder = divmod(value, len(alphabet))
-        chars.append(alphabet[remainder])
-    return "".join(chars)
-
-
 def _patient_signal(avg_glucose: float | None, pct_hypo: float | None, pct_hyper: float | None) -> dict[str, str]:
     avg_value = avg_glucose or 0.0
     hypo_value = pct_hypo or 0.0
@@ -171,6 +159,23 @@ def get_latest_analytics_run(db: Session) -> AnalysisRun | None:
     return db.scalars(select(AnalysisRun).order_by(desc(AnalysisRun.started_at))).first()
 
 
+def get_latest_patient_analytics_run(db: Session, patient_id: str) -> AnalysisRun | None:
+    """Get the newest completed run that actually contains this patient's indicators.
+
+    Dataset imports may create global AnalysisRuns (patient_id is NULL), so
+    ownership is determined through DailyIndicator rather than the run header.
+    """
+    return db.scalars(
+        select(AnalysisRun)
+        .join(DailyIndicator, DailyIndicator.analysis_run_id == AnalysisRun.id)
+        .where(
+            DailyIndicator.patient_id == patient_id,
+            AnalysisRun.status == "completed",
+        )
+        .order_by(AnalysisRun.finished_at.desc(), AnalysisRun.created_at.desc())
+    ).first()
+
+
 def get_dashboard_summary(db: Session) -> dict[str, object]:
     latest_batch = get_latest_import_batch(db)
     latest_run = get_latest_analytics_run(db)
@@ -215,14 +220,19 @@ def get_paginated_patients(
     page_size: int = 12,
     query: str | None = None,
     signal: str | None = None,
+    patient_id: str | None = None,
 ) -> dict[str, object]:
-    latest_run = get_latest_analytics_run(db)
     safe_page = max(page, 1)
     safe_page_size = max(1, min(page_size, 50))
     normalized_signal = (signal or "all").strip().lower()
     normalized_query = (query or "").strip().lower()
 
-    patients = db.scalars(select(Patient).order_by(Patient.name)).all()
+    # Patient.name is decrypted at the application boundary and is not a SQL
+    # column; order by the stable internal key rather than ciphertext.
+    patient_query = select(Patient).order_by(Patient.id)
+    if patient_id is not None:
+        patient_query = patient_query.where(Patient.id == patient_id)
+    patients = db.scalars(patient_query).all()
 
     patient_rows: list[dict[str, object]] = []
     if patients:
@@ -237,13 +247,16 @@ def get_paginated_patients(
             metrics_by_patient.setdefault(metric.patient_id, []).append(metric)
 
         anomaly_by_patient: dict[str, int] = {}
-        if latest_run:
-            anomaly_rows = db.execute(
-                select(DailyIndicator.patient_id, func.count(DailyIndicator.id))
-                .where(DailyIndicator.analysis_run_id == latest_run.id, DailyIndicator.anomaly_flag.is_(True))
-                .group_by(DailyIndicator.patient_id)
-            ).all()
-            anomaly_by_patient = {str(patient_id): int(count) for patient_id, count in anomaly_rows}
+        for patient in patients:
+            patient_run = get_latest_patient_analytics_run(db, patient.id)
+            if patient_run is not None:
+                anomaly_by_patient[patient.id] = int(db.scalar(
+                    select(func.count(DailyIndicator.id)).where(
+                        DailyIndicator.analysis_run_id == patient_run.id,
+                        DailyIndicator.patient_id == patient.id,
+                        DailyIndicator.anomaly_flag.is_(True),
+                    )
+                ) or 0)
 
         for patient in patients:
             patient_metrics = metrics_by_patient.get(patient.id, [])
@@ -255,11 +268,10 @@ def get_paginated_patients(
             hypo_rate = round(mean([row.pct_hypo for row in patient_metrics]), 2) if patient_metrics else 0.0
             hyper_rate = round(mean([row.pct_hyper for row in patient_metrics]), 2) if patient_metrics else 0.0
             patient_signal = _patient_signal(average_glucose, hypo_rate, hyper_rate)
-            short_id = _patient_short_id(patient.id)
             patient_rows.append(
                 {
                     "id": patient.id,
-                    "short_id": short_id,
+                    "short_id": patient.short_id,
                     "display_name": patient.name,
                     "name": patient.name,
                     "email": patient.email,
@@ -462,13 +474,14 @@ def get_patient_detail_context(
     patient_id: str,
     start_date: date | None = None,
     end_date: date | None = None,
+    exact_dates: list[date] | None = None,
 ) -> dict[str, object] | None:
     patient = db.get(Patient, patient_id)
     if patient is None:
         return None
 
     latest_batch = get_latest_import_batch(db)
-    latest_run = get_latest_analytics_run(db)
+    latest_run = get_latest_patient_analytics_run(db, patient_id)
     metric_bounds = db.execute(
         select(func.min(DailyMetricsCurrent.metric_date), func.max(DailyMetricsCurrent.metric_date)).where(
             DailyMetricsCurrent.patient_id == patient_id,
@@ -483,7 +496,12 @@ def get_patient_detail_context(
     record_end = record_bounds[1].date() if record_bounds[1] else None
     available_start = metric_bounds[0] or record_start
     available_end = metric_bounds[1] or record_end
-    resolved_start, resolved_end = _resolve_date_window(available_start, available_end, start_date, end_date)
+    if exact_dates is not None:
+        # Exact selection is authoritative, including dates outside the default
+        # or explicitly requested interval.
+        resolved_start, resolved_end = None, None
+    else:
+        resolved_start, resolved_end = _resolve_date_window(available_start, available_end, start_date, end_date)
 
     indicator_query = None
     if latest_run:
@@ -497,6 +515,8 @@ def get_patient_detail_context(
                 DailyIndicator.indicator_date >= resolved_start,
                 DailyIndicator.indicator_date <= resolved_end,
             )
+        if exact_dates is not None:
+            indicator_query = indicator_query.where(DailyIndicator.indicator_date.in_(exact_dates))
     indicators = db.scalars(indicator_query).all() if indicator_query is not None else []
 
     metric_query = select(DailyMetricsCurrent).where(DailyMetricsCurrent.patient_id == patient_id).order_by(DailyMetricsCurrent.metric_date)
@@ -505,6 +525,8 @@ def get_patient_detail_context(
             DailyMetricsCurrent.metric_date >= resolved_start,
             DailyMetricsCurrent.metric_date <= resolved_end,
         )
+    if exact_dates is not None:
+        metric_query = metric_query.where(DailyMetricsCurrent.metric_date.in_(exact_dates))
     metrics = db.scalars(metric_query).all()
 
     record_query = (
@@ -524,6 +546,10 @@ def get_patient_detail_context(
         end_dt = datetime.combine(resolved_end + timedelta(days=1), time.min)
         record_query = record_query.where(GlucoseRecord.measured_at >= start_dt, GlucoseRecord.measured_at < end_dt)
         glucose_query = glucose_query.where(GlucoseRecord.measured_at >= start_dt, GlucoseRecord.measured_at < end_dt)
+    if exact_dates is not None:
+        exact_date_strings = [day.isoformat() for day in exact_dates]
+        record_query = record_query.where(func.date(GlucoseRecord.measured_at).in_(exact_date_strings))
+        glucose_query = glucose_query.where(func.date(GlucoseRecord.measured_at).in_(exact_date_strings))
 
     recent_records = db.scalars(record_query.limit(20)).all()
     glucose_records = db.scalars(glucose_query).all()
@@ -614,7 +640,7 @@ def get_patient_report_context(
     if patient is None:
         return None
 
-    latest_run = get_latest_analytics_run(db)
+    latest_run = get_latest_patient_analytics_run(db, patient_id)
     metric_bounds = db.execute(
         select(func.min(DailyMetricsCurrent.metric_date), func.max(DailyMetricsCurrent.metric_date)).where(
             DailyMetricsCurrent.patient_id == patient_id,

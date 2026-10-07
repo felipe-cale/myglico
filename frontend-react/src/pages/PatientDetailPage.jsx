@@ -19,6 +19,9 @@ import {
 } from "recharts";
 import { fetchPatientDetail, patientReportPdfUrl } from "../api";
 import StateBlock from "../components/StateBlock";
+import AtypicalDaysPopup from "../components/AtypicalDaysPopup";
+import ManualGlucoseEntryForm from "../components/ManualGlucoseEntryForm";
+import { useAuth } from "../contexts/AuthContext";
 
 const PIE_COLORS = ["#e35d73", "#19a86a", "#f4a93d"];
 const HOURLY_TICKS = Array.from({ length: 24 }, (_, index) => index);
@@ -35,6 +38,9 @@ function formatNumberBase(value, suffix = "", locale = "pt-BR") {
 }
 
 function formatDateBase(dateValue, locale = "pt-BR") {
+  if (!dateValue) {
+    return "-";
+  }
   return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "2-digit",
@@ -53,6 +59,9 @@ function formatDateTimeBase(dateValue, locale = "pt-BR") {
 }
 
 function formatShortDateBase(dateValue, locale = "pt-BR") {
+  if (!dateValue) {
+    return "-";
+  }
   return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "2-digit"
@@ -189,6 +198,17 @@ function MobileDetailField({ label, value, children, className = "" }) {
   );
 }
 
+function rangeCoveringDates(base, dates) {
+  let start = base?.start || "";
+  let end = base?.end || "";
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  const outside = dates.filter((value) => (start && value < start) || (end && value > end));
+  if (start && first < start) start = first;
+  if (end && last > end) end = last;
+  return { start, end, adjusted: outside.length > 0, outside, originalStart: base?.start || "", originalEnd: base?.end || "" };
+}
+
 export default function PatientDetailPage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
@@ -197,6 +217,7 @@ export default function PatientDetailPage() {
   const formatDateTime = (dateValue) => formatDateTimeBase(dateValue, locale);
   const formatShortDate = (dateValue) => formatShortDateBase(dateValue, locale);
   const { patientId } = useParams();
+  const { session } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -208,7 +229,11 @@ export default function PatientDetailPage() {
   const [isCompactMobile, setIsCompactMobile] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 640px)").matches : false
   );
+  const [reloadToken, setReloadToken] = useState(0);
   const lastResolvedRequestRef = useRef("");
+  const preservedRangeRef = useRef(null);
+  const [periodAdjustment, setPeriodAdjustment] = useState(null);
+  const silentReloadRef = useRef(false);
   const isDayMode = viewMode === "day";
   const summary = data?.summary;
   const hourlyLows = data?.hourly_lows ?? [];
@@ -237,7 +262,12 @@ export default function PatientDetailPage() {
 
   const requestedStart = searchParams.get("start_date") || undefined;
   const requestedEnd = searchParams.get("end_date") || undefined;
-  const requestKey = `${patientId}:${requestedStart || ""}:${requestedEnd || ""}`;
+  const requestedDatesParam = searchParams.get("dates") || "";
+  const requestedDates = useMemo(
+    () => requestedDatesParam.split(",").map((value) => value.trim()).filter(Boolean).sort(),
+    [requestedDatesParam]
+  );
+  const requestKey = `${patientId}:${requestedStart || ""}:${requestedEnd || ""}:${requestedDatesParam}:${reloadToken}`;
 
   useEffect(() => {
     if (data && lastResolvedRequestRef.current === requestKey) {
@@ -245,24 +275,37 @@ export default function PatientDetailPage() {
     }
 
     let active = true;
-    setLoading(true);
+    if (!silentReloadRef.current) {
+      setLoading(true);
+    }
+    silentReloadRef.current = false;
     setError(null);
-    fetchPatientDetail(patientId, { startDate: requestedStart, endDate: requestedEnd })
+    const hasExactDates = requestedDates.length > 0;
+    const detailRequest = hasExactDates
+      ? { dates: requestedDates }
+      : { startDate: requestedStart, endDate: requestedEnd };
+    fetchPatientDetail(patientId, detailRequest)
       .then((payload) => {
         if (!active) {
           return;
         }
+        // With exact days the API reports no period, so the user's period stays in the URL untouched.
+        const periodStart = hasExactDates ? requestedStart || preservedRangeRef.current?.start : payload.filters.start_date;
+        const periodEnd = hasExactDates ? requestedEnd || preservedRangeRef.current?.end : payload.filters.end_date;
         setData(payload);
-        setDraftStartDate(payload.filters.start_date || "");
-        setDraftEndDate(payload.filters.end_date || "");
-        lastResolvedRequestRef.current = `${patientId}:${payload.filters.start_date || ""}:${payload.filters.end_date || ""}`;
+        setDraftStartDate(periodStart || "");
+        setDraftEndDate(periodEnd || "");
+        lastResolvedRequestRef.current = `${patientId}:${periodStart || ""}:${periodEnd || ""}:${requestedDatesParam}:${reloadToken}`;
 
         const next = new URLSearchParams();
-        if (payload.filters.start_date) {
-          next.set("start_date", payload.filters.start_date);
+        if (periodStart) {
+          next.set("start_date", periodStart);
         }
-        if (payload.filters.end_date) {
-          next.set("end_date", payload.filters.end_date);
+        if (periodEnd) {
+          next.set("end_date", periodEnd);
+        }
+        if (requestedDatesParam) {
+          next.set("dates", requestedDatesParam);
         }
         const nextQuery = next.toString();
         const currentQuery = searchParams.toString();
@@ -283,7 +326,7 @@ export default function PatientDetailPage() {
     return () => {
       active = false;
     };
-  }, [patientId, requestedStart, requestedEnd, requestKey, data, searchParams, setSearchParams]);
+  }, [patientId, requestedStart, requestedEnd, requestedDates, requestedDatesParam, requestKey, reloadToken, data, searchParams, setSearchParams]);
 
   const chartData = useMemo(() => {
     if (!data) {
@@ -500,8 +543,17 @@ export default function PatientDetailPage() {
     }
 
     const next = new URLSearchParams(searchParams);
-    next.set("start_date", draftStartDate);
-    next.set("end_date", draftEndDate);
+    let nextStart = draftStartDate;
+    let nextEnd = draftEndDate;
+    if (requestedDates.length) {
+      preservedRangeRef.current = { start: draftStartDate, end: draftEndDate };
+      const covering = rangeCoveringDates({ start: draftStartDate, end: draftEndDate }, requestedDates);
+      nextStart = covering.start;
+      nextEnd = covering.end;
+      setPeriodAdjustment(covering.adjusted ? covering : null);
+    }
+    next.set("start_date", nextStart);
+    next.set("end_date", nextEnd);
 
     if (next.toString() !== searchParams.toString()) {
       lastResolvedRequestRef.current = "";
@@ -509,6 +561,73 @@ export default function PatientDetailPage() {
       setViewMode("period");
       setSearchParams(next);
     }
+  }
+
+  function applyAtypicalDates(dates) {
+    const exactDates = Array.from(new Set(dates)).sort();
+    const next = new URLSearchParams(searchParams);
+    const currentStart = searchParams.get("start_date") || data?.filters?.start_date || "";
+    const currentEnd = searchParams.get("end_date") || data?.filters?.end_date || "";
+    if (exactDates.length) {
+      if (!requestedDates.length || !preservedRangeRef.current) {
+        preservedRangeRef.current = { start: currentStart, end: currentEnd };
+      }
+      // Days outside the user's period widen it explicitly; the original period is kept to restore on clear.
+      const covering = rangeCoveringDates(preservedRangeRef.current, exactDates);
+      next.set("dates", exactDates.join(","));
+      if (covering.start && covering.end) {
+        next.set("start_date", covering.start);
+        next.set("end_date", covering.end);
+      }
+      setPeriodAdjustment(covering.adjusted ? covering : null);
+    } else {
+      const restoreStart = preservedRangeRef.current?.start || currentStart;
+      const restoreEnd = preservedRangeRef.current?.end || currentEnd;
+      next.delete("dates");
+      if (restoreStart && restoreEnd) {
+        next.set("start_date", restoreStart);
+        next.set("end_date", restoreEnd);
+      } else {
+        next.delete("start_date");
+        next.delete("end_date");
+      }
+      preservedRangeRef.current = null;
+      setPeriodAdjustment(null);
+    }
+    lastResolvedRequestRef.current = "";
+    setSelectedDay("");
+    setViewMode("period");
+    setSearchParams(next);
+  }
+
+  function clearDaySelection() {
+    applyAtypicalDates([]);
+  }
+
+  function removeSelectedDay(date) {
+    applyAtypicalDates(requestedDates.filter((value) => value !== date));
+  }
+
+  function handleManualRecordCreated(record) {
+    const measuredDate = record?.measured_at?.slice(0, 10);
+    const { start_date: currentStart, end_date: currentEnd } = data?.filters ?? {};
+    silentReloadRef.current = true;
+    lastResolvedRequestRef.current = "";
+    if (measuredDate && currentStart && currentEnd && (measuredDate < currentStart || measuredDate > currentEnd)) {
+      const windowStart = new Date(`${measuredDate}T00:00:00Z`);
+      windowStart.setUTCDate(windowStart.getUTCDate() - 29);
+      const startDate = windowStart.toISOString().slice(0, 10);
+      const next = new URLSearchParams(searchParams);
+      next.set("start_date", startDate);
+      next.set("end_date", measuredDate);
+      setSelectedDay("");
+      setViewMode("period");
+      setDraftStartDate(startDate);
+      setDraftEndDate(measuredDate);
+      setSearchParams(next);
+      return;
+    }
+    setReloadToken((current) => current + 1);
   }
 
   if (loading) {
@@ -575,6 +694,7 @@ export default function PatientDetailPage() {
     setSelectedDay("");
   }
 
+  const isOwnPatientView = Boolean(session?.patient?.id && session.patient.id === patient.id);
   const reportUrl = patientReportPdfUrl(patient.id, {
     startDate: filters.start_date,
     endDate: filters.end_date,
@@ -599,16 +719,34 @@ export default function PatientDetailPage() {
             <a className="react-button" href={reportUrl || "#"} target="_blank" rel="noreferrer">
               {t("patientDetail.hero.downloadReport")}
             </a>
+            <AtypicalDaysPopup
+              patientId={patient.id}
+              appliedDates={requestedDates}
+              activeStart={requestedStart || filters.start_date || ""}
+              activeEnd={requestedEnd || filters.end_date || ""}
+              onApplyDates={applyAtypicalDates}
+              onClearDays={clearDaySelection}
+            />
           </div>
         </div>
         <div className="react-hero__side">
-          <div className="react-summary-box">
-            <span>{t("patientDetail.hero.periodAnalyzed")}</span>
-            <strong>
-              {formatDate(filters.start_date)} - {formatDate(filters.end_date)}
-            </strong>
-            <small>{t("patientDetail.hero.defaultWindow")}</small>
-          </div>
+          {requestedDates.length > 0 ? (
+            <div className="react-summary-box" data-testid="period-summary">
+              <span>{t("patientDetail.hero.selectedDays", { count: requestedDates.length })}</span>
+              <strong>{requestedDates.map((value) => formatDate(value)).join(", ")}</strong>
+              {requestedStart && requestedEnd ? (
+                <small>{t("patientDetail.hero.referencePeriod", { start: formatDate(requestedStart), end: formatDate(requestedEnd) })}</small>
+              ) : null}
+            </div>
+          ) : (
+            <div className="react-summary-box" data-testid="period-summary">
+              <span>{t("patientDetail.hero.periodAnalyzed")}</span>
+              <strong>
+                {formatDate(filters.start_date)} - {formatDate(filters.end_date)}
+              </strong>
+              <small>{t("patientDetail.hero.defaultWindow")}</small>
+            </div>
+          )}
         </div>
       </section>
 
@@ -652,9 +790,45 @@ export default function PatientDetailPage() {
                 {hasInvalidRange ? <small>{t("patientDetail.filter.invalidRange")}</small> : null}
               </div>
             </form>
+            {periodAdjustment && requestedDates.length > 0 ? (
+              <p className="react-period-notice" role="status" data-testid="period-adjusted">
+                {t("patientDetail.filter.periodAdjusted", {
+                  dates: periodAdjustment.outside.map((value) => formatDate(value)).join(", "),
+                  originalStart: formatDate(periodAdjustment.originalStart),
+                  originalEnd: formatDate(periodAdjustment.originalEnd),
+                  start: formatDate(periodAdjustment.start),
+                  end: formatDate(periodAdjustment.end)
+                })}
+              </p>
+            ) : null}
+            {requestedDates.length > 0 ? (
+              <div className="react-selected-days" role="group" aria-label={t("cscw.selectedDaysLabel")}>
+                <span>{t("cscw.selectedDaysLabel")}</span>
+                <div className="react-chip-row">
+                  {requestedDates.map((date) => (
+                    <button
+                      type="button"
+                      key={date}
+                      className="react-chip is-active react-chip--removable"
+                      onClick={() => removeSelectedDay(date)}
+                      aria-label={t("cscw.removeDayAria", { date: formatDate(date) })}
+                    >
+                      {formatDate(date)} ×
+                    </button>
+                  ))}
+                  <button type="button" className="react-chip" onClick={clearDaySelection}>
+                    {t("cscw.popupClearDays")}
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
+
+      {isOwnPatientView ? (
+        <ManualGlucoseEntryForm patientId={patient.id} onCreated={handleManualRecordCreated} />
+      ) : null}
 
       <section className="react-patient-insights">
         <article className="react-panel react-panel--summary">

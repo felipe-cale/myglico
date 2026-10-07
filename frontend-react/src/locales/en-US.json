@@ -1,10 +1,13 @@
 {
   "common": {
     "all": "All",
+    "or": "or",
     "yes": "Yes",
     "no": "No",
     "dash": "-",
-    "explain": "Explain {{label}}"
+    "back": "Back",
+    "explain": "Explain {{label}}",
+    "loading": "Loading..."
   },
   "languageSwitcher": {
     "label": "Language"
@@ -105,13 +108,31 @@
       "body": "Quickly see who is being monitored, spot important patterns, and dig into each person's readings with enough context to support safe decisions.",
       "imageAlt": "MyGlico identity"
     },
-    "summaryLoading": { "title": "Loading dashboard", "description": "We're preparing the latest view of the monitored base." },
-    "summaryError": { "title": "Couldn't load the dashboard", "description": "We had a problem building this environment's initial summary." },
+    "summaryLoading": {
+      "title": "Loading dashboard",
+      "description": "We're preparing the latest view of the monitored base."
+    },
+    "summaryError": {
+      "title": "Couldn't load the dashboard",
+      "description": "We had a problem building this environment's initial summary."
+    },
     "metrics": {
-      "patients": { "label": "Patients monitored", "helper": "Base ready for continuous tracking." },
-      "records": { "label": "Glucose records", "helper": "Readings available for review and comparison." },
-      "days": { "label": "Days analyzed", "helper": "Periods consolidated for clinical review." },
-      "issues": { "label": "Quality alerts", "helper": "Points that deserve validation or review." }
+      "patients": {
+        "label": "Patients monitored",
+        "helper": "Base ready for continuous tracking."
+      },
+      "records": {
+        "label": "Glucose records",
+        "helper": "Readings available for review and comparison."
+      },
+      "days": {
+        "label": "Days analyzed",
+        "helper": "Periods consolidated for clinical review."
+      },
+      "issues": {
+        "label": "Quality alerts",
+        "helper": "Points that deserve validation or review."
+      }
     },
     "patients": {
       "eyebrow": "Patients monitored",
@@ -122,8 +143,14 @@
       "helpButtonAriaLabel": "Explain filter profiles",
       "searchPlaceholder": "Search by name or code",
       "searchAriaLabel": "Search patient",
-      "loading": { "title": "Loading patients", "description": "We're updating the list of monitored people." },
-      "error": { "title": "Couldn't load the list", "description": "There was a problem fetching this environment's patients." },
+      "loading": {
+        "title": "Loading patients",
+        "description": "We're updating the list of monitored people."
+      },
+      "error": {
+        "title": "Couldn't load the list",
+        "description": "There was a problem fetching this environment's patients."
+      },
       "patientCode": "Patient code",
       "copy": "Copy",
       "copied": "Copied",
@@ -134,8 +161,14 @@
       "timeInHigh": "Time in high",
       "openPatientPanel": "Open patient dashboard",
       "footerCount": "Page {{page}} of {{pages}}, with {{count}} patients found.",
-      "emptyFilter": { "title": "No patients in this filter", "description": "Try another status or adjust the search to widen the results." },
-      "emptyAll": { "title": "No patients found", "description": "Try searching by another name or identifier to continue." }
+      "emptyFilter": {
+        "title": "No patients in this filter",
+        "description": "Try another status or adjust the search to widen the results."
+      },
+      "emptyAll": {
+        "title": "No patients found",
+        "description": "Try searching by another name or identifier to continue."
+      }
     },
     "profileHelp": {
       "eyebrow": "Filter help",
@@ -144,40 +177,97 @@
         "title": "Filter profiles",
         "intro": "The profiles below organize the list by the predominant glucose pattern in the analyzed period. They work as a visual triage and do not replace clinical assessment.",
         "sections": [
-          { "title": "In-Range Profile", "body": "Groups patients who did not reach the hyperglycemic or hypoglycemic profile thresholds. In the app's metrics, the reference range considers 70 to 180 mg/dL for general readings, 80 to 130 mg/dL for pre-meal readings, and values below 180 mg/dL for post-meal readings." },
-          { "title": "Hyperglycemic Profile", "body": "Applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher. Time in high considers readings at or above 130 mg/dL in pre-meal measurements and at or above 180 mg/dL in post-meal measurements or without specific context." },
-          { "title": "Hypoglycemic Profile", "body": "Applied when time in low is 10% or higher in the period. Time in low considers readings below 70 mg/dL." }
+          {
+            "title": "In-Range Profile",
+            "body": "Groups patients who did not reach the hyperglycemic or hypoglycemic profile thresholds. In the app's metrics, the reference range considers 70 to 180 mg/dL for general readings, 80 to 130 mg/dL for pre-meal readings, and values below 180 mg/dL for post-meal readings."
+          },
+          {
+            "title": "Hyperglycemic Profile",
+            "body": "Applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher. Time in high considers readings at or above 130 mg/dL in pre-meal measurements and at or above 180 mg/dL in post-meal measurements or without specific context."
+          },
+          {
+            "title": "Hypoglycemic Profile",
+            "body": "Applied when time in low is 10% or higher in the period. Time in low considers readings below 70 mg/dL."
+          }
         ]
       },
       "stable": {
         "title": "In-Range Profile",
         "intro": "This filter shows patients who stayed outside the hyperglycemic and hypoglycemic profile criteria in the current screening.",
         "sections": [
-          { "title": "Reference range", "body": "The reference used in the metrics considers 70 to 180 mg/dL for general readings, 80 to 130 mg/dL for pre-meal readings, and values below 180 mg/dL for post-meal readings." },
-          { "title": "How the filter applies here", "body": "The patient stays in this group when the period's average glucose is below 185 mg/dL and time in low is below 10%." }
+          {
+            "title": "Reference range",
+            "body": "The reference used in the metrics considers 70 to 180 mg/dL for general readings, 80 to 130 mg/dL for pre-meal readings, and values below 180 mg/dL for post-meal readings."
+          },
+          {
+            "title": "How the filter applies here",
+            "body": "The patient stays in this group when the period's average glucose is below 185 mg/dL and time in low is below 10%."
+          }
         ]
       },
       "attention": {
         "title": "Hyperglycemic Profile",
         "intro": "This filter highlights patients with a predominance of elevated readings in the analyzed period.",
         "sections": [
-          { "title": "Classification threshold", "body": "The profile is applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher." },
-          { "title": "What counts as high", "body": "Time in high considers readings at or above 130 mg/dL in pre-meal measurements and at or above 180 mg/dL in post-meal measurements or without specific context." }
+          {
+            "title": "Classification threshold",
+            "body": "The profile is applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher."
+          },
+          {
+            "title": "What counts as high",
+            "body": "Time in high considers readings at or above 130 mg/dL in pre-meal measurements and at or above 180 mg/dL in post-meal measurements or without specific context."
+          }
         ]
       },
       "oscillation": {
         "title": "Hypoglycemic Profile",
         "intro": "This filter highlights patients with a more significant recurrence of low readings in the period.",
         "sections": [
-          { "title": "Classification threshold", "body": "The profile is applied when time in low is 10% or higher in the period." },
-          { "title": "What counts as low", "body": "Time in low considers readings below 70 mg/dL." }
+          {
+            "title": "Classification threshold",
+            "body": "The profile is applied when time in low is 10% or higher in the period."
+          },
+          {
+            "title": "What counts as low",
+            "body": "Time in low considers readings below 70 mg/dL."
+          }
         ]
       }
     }
   },
+  "manualEntry": {
+    "eyebrow": "Manual entry",
+    "title": "Log a glucose reading",
+    "body": "Add a one-off measurement taken with your glucose meter. The reading joins your history and the day's indicators are recalculated.",
+    "measuredAt": "Measurement date and time",
+    "glucose": "Glucose (mg/dL)",
+    "glucosePlaceholder": "e.g. 110",
+    "context": "Context (optional)",
+    "contextNone": "No context",
+    "contextCustom": "Other (describe)",
+    "customContext": "Describe the context",
+    "customContextPlaceholder": "e.g. fasting, random, after exercise",
+    "notes": "Notes (optional)",
+    "notesPlaceholder": "e.g. felt dizzy before measuring",
+    "submit": "Log reading",
+    "submitting": "Saving...",
+    "success": "Reading logged successfully.",
+    "errors": {
+      "measuredAtRequired": "Enter the measurement date and time.",
+      "glucoseRange": "Enter a glucose value greater than 0 and up to 1000 mg/dL.",
+      "customContextRequired": "Describe the context or choose another option.",
+      "saveFailed": "Could not log the reading. Please try again."
+    }
+  },
   "patientDetail": {
-    "loading": { "title": "Loading patient dashboard", "description": "We're preparing the indicators and clinical visualization." },
-    "error": { "title": "Couldn't load this patient", "description": "We had a problem building this patient's analytical breakdown." },
+    "loading": {
+      "title": "Loading patient dashboard",
+      "description": "We're preparing the indicators and clinical visualization."
+    },
+    "error": {
+      "title": "Couldn't load this patient",
+      "description": "We had a problem building this patient's analytical breakdown."
+    },
     "hero": {
       "eyebrow": "Patient detail",
       "measurementsBadge": "{{count}} measurements",
@@ -185,7 +275,9 @@
       "backToOverview": "Back to overview",
       "downloadReport": "Download Glucose Report",
       "periodAnalyzed": "Period analyzed",
-      "defaultWindow": "Default 30-day window from the most recent available date."
+      "defaultWindow": "Default 30-day window from the most recent available date.",
+      "selectedDays": "Selected days ({{count}})",
+      "referencePeriod": "Only these days are analyzed. Reference period: {{start}} to {{end}}."
     },
     "filter": {
       "eyebrow": "Time filter",
@@ -194,7 +286,8 @@
       "startDate": "Start date",
       "endDate": "End date",
       "apply": "Filter",
-      "invalidRange": "The start date cannot be later than the end date."
+      "invalidRange": "The start date cannot be later than the end date.",
+      "periodAdjusted": "Period adjusted to include the selected day(s) {{dates}}: from {{originalStart}} – {{originalEnd}} to {{start}} – {{end}}. Clearing the day selection restores the original period."
     },
     "distribution": {
       "eyebrow": "Distribution",
@@ -224,7 +317,10 @@
       "legendHighRisk": "Risk > 250 mg/dL",
       "seriesAverage": "Average",
       "seriesGlucose": "Glucose",
-      "insufficientData": { "title": "Not enough readings for the selected day", "description": "There aren't enough glucose measurements to build the hourly view for this day." },
+      "insufficientData": {
+        "title": "Not enough readings for the selected day",
+        "description": "There aren't enough glucose measurements to build the hourly view for this day."
+      },
       "dayStripAriaLabel": "Available days in the period",
       "chartLegendAriaLabel": "Glucose chart legend"
     },
@@ -236,17 +332,49 @@
       "bodyPeriod": "Synthesis of the most relevant indicators for a quick clinical review."
     },
     "stats": {
-      "measurements": { "label": "Measurements", "helper": "readings for the day" },
-      "avgDay": { "label": "Day average" },
-      "pctHypoDay": { "label": "% in low", "helper": "{{count}} events" },
-      "pctInRangeDay": { "label": "% in range", "helper": "day's distribution" },
-      "pctHyperDay": { "label": "% in high", "helper": "{{count}} events" },
-      "daysObserved": { "label": "Days observed", "helper": "days with readings" },
-      "avgGlucose": { "label": "Average glucose", "helper": "period average" },
-      "pctHypoPeriod": { "label": "% in low", "helper": "readings below 70 mg/dL" },
-      "pctInRangePeriod": { "label": "% in range", "helper": "readings in range" },
-      "pctHyperPeriod": { "label": "% in high", "helper": "above target" },
-      "anomalyDays": { "label": "Atypical days", "helper": "flagged by the analysis" }
+      "measurements": {
+        "label": "Measurements",
+        "helper": "readings for the day"
+      },
+      "avgDay": {
+        "label": "Day average"
+      },
+      "pctHypoDay": {
+        "label": "% in low",
+        "helper": "{{count}} events"
+      },
+      "pctInRangeDay": {
+        "label": "% in range",
+        "helper": "day's distribution"
+      },
+      "pctHyperDay": {
+        "label": "% in high",
+        "helper": "{{count}} events"
+      },
+      "daysObserved": {
+        "label": "Days observed",
+        "helper": "days with readings"
+      },
+      "avgGlucose": {
+        "label": "Average glucose",
+        "helper": "period average"
+      },
+      "pctHypoPeriod": {
+        "label": "% in low",
+        "helper": "readings below 70 mg/dL"
+      },
+      "pctInRangePeriod": {
+        "label": "% in range",
+        "helper": "readings in range"
+      },
+      "pctHyperPeriod": {
+        "label": "% in high",
+        "helper": "above target"
+      },
+      "anomalyDays": {
+        "label": "Atypical days",
+        "helper": "flagged by the analysis"
+      }
     },
     "dailyIndicators": {
       "eyebrow": "Daily indicators",
@@ -269,6 +397,169 @@
       "subtype": "Subtype",
       "value": "Value",
       "context": "Context"
+    }
+  },
+  "auth": {
+    "login": "Sign In",
+    "register": "Create Account",
+    "email": "Email",
+    "password": "Password",
+    "passwordConfirm": "Confirm Password",
+    "role": "I am a",
+    "rolePatient": "Patient",
+    "roleDoctor": "Doctor",
+    "name": "Display Name",
+    "docName": "Professional Name",
+    "crm": "CRM",
+    "uf": "State (UF)",
+    "passwordMismatch": "The passwords do not match.",
+    "crmUfTogether": "Enter both CRM and state, or leave both blank.",
+    "submitLogin": "Sign in to my account",
+    "submitRegister": "Create my account",
+    "logout": "Sign Out",
+    "error": "Authentication error. Please check your credentials.",
+    "successReg": "Account created successfully!",
+    "reqLogin": "You must be signed in to access this page.",
+    "crmUfRequired": "Enter CRM and state (UF) to register a doctor.",
+    "privacyRequired": "Please acknowledge the privacy notice to continue.",
+    "privacyNotice": "Privacy notice: MyGlico is an academic prototype. Your identification data is stored encrypted and used only to operate the system; glucose readings are shared only with doctors you associate with, and you can revoke that at any time.",
+    "privacyAccept": "I have read and acknowledge the privacy notice."
+  },
+  "landing": {
+    "title": "Welcome to MyGlico",
+    "desc": "Glycemic tracking with clear and continuous insights."
+  },
+  "dashboard": {
+    "myDoctors": "My Doctors",
+    "searchDoctor": "Search Doctor",
+    "shortId": "Code (SHORTID)",
+    "search": "Search",
+    "requestLink": "Request Link",
+    "revokeLink": "Revoke Link",
+    "accept": "Accept",
+    "reject": "Reject",
+    "cancel": "Cancel",
+    "statusPending": "Pending",
+    "statusActive": "Active",
+    "myLinks": "My associations",
+    "noLinks": "No associations found.",
+    "statusLabel": "Status",
+    "doctorLabel": "Doctor",
+    "patientLabel": "Patient",
+    "searchCriteriaRequired": "Enter a SHORTID or both CRM and state.",
+    "doctorNotFound": "No doctor found.",
+    "searchFailed": "Could not search for the doctor.",
+    "linkActionFailed": "Could not update the association.",
+    "status": {
+      "pending": "Pending",
+      "active": "Active",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled",
+      "revoked": "Revoked"
+    },
+    "demoDoctor": "Demo",
+    "declaredUnverified": "Declared (not verified)",
+    "crmUfValue": "CRM: {{crm}}/{{uf}}",
+    "myPatients": "My patients",
+    "noPatients": "No patients with an active association.",
+    "openPatientDetail": "View details",
+    "linkRequests": "Association requests and history",
+    "linksLoadFailed": "Could not load the associations."
+  },
+  "cscw": {
+    "investigations": "Investigations",
+    "new": "New Investigation",
+    "open": "Open Investigation",
+    "close": "Close",
+    "send": "Send",
+    "subject": "Subject",
+    "message": "Message",
+    "atypicalDay": "Atypical Day",
+    "noAtypical": "No atypical day associated",
+    "viewDay": "View Day",
+    "defer": "Not now",
+    "association": "Association",
+    "selectAssociation": "Select an active association",
+    "popupButton": "View atypical days",
+    "popupTitle": "Atypical days",
+    "popupEmpty": "No atypical days found.",
+    "popupAsk": "Discuss",
+    "popupApply": "Apply filter",
+    "popupClear": "Clear selection",
+    "openFailed": "Could not open the investigation.",
+    "empty": "No investigations found.",
+    "loading": "Loading investigation...",
+    "statusLabel": "Status",
+    "awaiting": "Awaiting",
+    "nobody": "no one",
+    "status": {
+      "open": "Open",
+      "closed": "Closed"
+    },
+    "proactivePrompt": "We identified an atypical day in your readings. Would you like to open an investigation with an associated doctor?",
+    "popupCloseAria": "Close atypical days",
+    "selectedDaysLabel": "Selected days",
+    "removeDayAria": "Remove {{date}} from selection",
+    "popupLoading": "Loading atypical days...",
+    "popupError": "Could not load the atypical days.",
+    "retry": "Try again",
+    "hasInvestigation": "Already has a question thread",
+    "viewInDetail": "View in detail",
+    "popupClearDays": "Clear day selection",
+    "proactivePromptDated": "We identified an atypical day in your readings on {{date}}. Would you like to open a question thread with an associated doctor?",
+    "fromAtypicalDay": "Question thread from an atypical day",
+    "noActiveLinkPatient": "You don't have a doctor with an active association yet. Use \"Search Doctor\" above to request one.",
+    "noActiveLinkDoctor": "You don't have patients with an active association yet.",
+    "listFailed": "Could not load the question threads.",
+    "unreadAria": "{{count}} unread messages",
+    "unreadCount": "{{count}} unread",
+    "counterpartDoctor": "Doctor",
+    "counterpartPatient": "Patient",
+    "openedAt": "Opened on {{date}}",
+    "roles": {
+      "patient": "Patient",
+      "doctor": "Doctor",
+      "system": "System"
+    },
+    "originAtypical": "Origin: associated atypical day",
+    "openConversation": "Open conversation",
+    "sendFailed": "Could not send the message.",
+    "closeFailed": "Could not close the question thread.",
+    "loadFailed": "Could not load the question thread.",
+    "closedReason": {
+      "PARTICIPANT_CLOSED": "Closed by a participant",
+      "ASSOCIATION_REVOKED": "Closed because the association was revoked",
+      "default": "Closed"
+    },
+    "messagesLabel": "Question thread messages",
+    "newMessage": "New",
+    "closingObservation": "Final note (optional)",
+    "confirmClose": "Confirm closing",
+    "menuAria": "Question threads, {{count}} unread messages",
+    "proactivePromptBatch": "We identified {{count}} atypical days in your readings, between {{first}} and {{last}}. Would you like to open a question thread with an associated doctor?",
+    "viewDays": "View the days",
+    "promptRegion": "Atypical days invitation",
+    "popupScopeAll": "{{count}} atypical days in the patient's full history.",
+    "popupScopeActive": "{{count}} atypical days in the period shown in the detail view ({{start}} to {{end}}), the same scope as the card.",
+    "popupScopeCustom": "{{count}} atypical days in the period chosen here ({{start}} to {{end}}), different from the period shown in the detail view.",
+    "popupShowAll": "Show full history",
+    "popupUseActive": "Use the period shown",
+    "popupOutsideHint": "Days outside the period shown widen the detail period when the filter is applied."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications",
+    "unread": "{{count}} unread",
+    "markRead": "Mark as read",
+    "types": {
+      "association_requested": "New association request",
+      "association_confirmed": "Association confirmed",
+      "association_rejected": "Association request rejected",
+      "association_revoked": "Association revoked",
+      "investigation_opened": "New investigation",
+      "investigation_message_added": "New investigation message",
+      "investigation_closed": "Investigation closed",
+      "atypical_day_prompt": "Invitation to discuss an atypical day"
     }
   }
 }

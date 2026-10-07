@@ -5,6 +5,10 @@ import { fetchDashboardSummary, fetchPatients } from "../api";
 import MetricCard from "../components/MetricCard";
 import Pagination from "../components/Pagination";
 import StateBlock from "../components/StateBlock";
+import { useAuth } from "../contexts/AuthContext";
+import DoctorLinksManager from "../components/DoctorLinksManager";
+import InvestigationsList from "../components/InvestigationsList";
+import ProactivePrompt from "../components/ProactivePrompt";
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 const JUSTIFIED_TEXT_STYLE = {
@@ -107,6 +111,8 @@ function FilterHelpDialog({ signal, open, onClose }) {
 
 export default function OverviewPage() {
   const { t, i18n } = useTranslation();
+  const { session } = useAuth();
+  const isPatient = session?.account?.roles?.includes("patient") ?? false;
   const [searchParams, setSearchParams] = useSearchParams();
   const [summary, setSummary] = useState(null);
   const [patients, setPatients] = useState(null);
@@ -128,6 +134,10 @@ export default function OverviewPage() {
   }, [currentQuery]);
 
   useEffect(() => {
+    if (!isPatient) {
+      setLoadingSummary(false);
+      return undefined;
+    }
     let active = true;
     setLoadingSummary(true);
     setSummaryError(null);
@@ -150,7 +160,7 @@ export default function OverviewPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [isPatient]);
 
   useEffect(() => {
     const nextQuery = deferredSearch.trim();
@@ -170,6 +180,10 @@ export default function OverviewPage() {
   }, [currentQuery, deferredSearch, searchParams, setSearchParams]);
 
   useEffect(() => {
+    if (!isPatient) {
+      setLoadingPatients(false);
+      return undefined;
+    }
     let active = true;
     setLoadingPatients(true);
     setPatientsError(null);
@@ -192,7 +206,7 @@ export default function OverviewPage() {
     return () => {
       active = false;
     };
-  }, [currentPage, currentQuery, currentSignal]);
+  }, [currentPage, currentQuery, currentSignal, isPatient]);
 
   function handlePageChange(page) {
     const next = new URLSearchParams(searchParams);
@@ -246,22 +260,13 @@ export default function OverviewPage() {
 
   return (
     <div className="react-page">
-      <section className="react-hero">
-        <div className="react-hero__content">
-          <h1>{t("overview.hero.title")}</h1>
-          <p>{t("overview.hero.body")}</p>
-          <div className="react-badges react-badges--overview">
-            <span className="react-badge react-badge--brand">{t("overview.hero.badgeDaily")}</span>
-            <span className="react-badge react-badge--green">{t("overview.hero.badgeClinical")}</span>
-            <span className="react-badge react-badge--blue">{t("overview.hero.badgeContinuous")}</span>
-          </div>
-        </div>
-        <div className="react-hero__visual">
-          <img src={assetUrl("img/myglico-logo.png")} alt={t("overview.hero.imageAlt")} />
-        </div>
-      </section>
+      <ProactivePrompt />
+      <DoctorLinksManager />
+      <InvestigationsList />
 
-      {loadingSummary ? (
+      {isPatient && (
+        <>
+          {loadingSummary ? (
         <StateBlock title={t("overview.summaryLoading.title")} description={t("overview.summaryLoading.description")} tone="info" />
       ) : summaryError ? (
         <StateBlock title={t("overview.summaryError.title")} description={t("overview.summaryError.description")} tone="danger" />
@@ -382,6 +387,8 @@ export default function OverviewPage() {
         )}
       </section>
       <FilterHelpDialog signal={currentSignal} open={helpOpen} onClose={() => setHelpOpen(false)} />
+        </>
+      )}
     </div>
   );
 }

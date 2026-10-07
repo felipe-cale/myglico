@@ -11,3 +11,6 @@ data/raw/
 dist/
 build/
 frontend-react/node_modules/
+frontend-react/e2e/.artifacts/
+frontend-react/playwright-report/
+frontend-react/test-results/

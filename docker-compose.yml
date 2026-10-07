@@ -29,6 +29,8 @@ services:
         condition: service_healthy
     environment:
       MYGLICO_DATABASE_URL: "mysql+pymysql://myglico:myglico@db:3306/myglico?charset=utf8mb4"
+      MYGLICO_ENCRYPTION_KEY_V1: "${MYGLICO_ENCRYPTION_KEY_V1:?Set a 64-character hex key}"
+      MYGLICO_LOOKUP_HMAC_KEY: "${MYGLICO_LOOKUP_HMAC_KEY:?Set a 64-character hex key}"
       MYGLICO_RELOAD: "1"
       WATCHFILES_FORCE_POLLING: "true"
     command: >

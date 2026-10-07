@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
+from uuid import uuid4
 from zipfile import ZipFile
 import calendar
 import re
@@ -16,22 +17,33 @@ from sqlalchemy.orm import Session
 from unlzw3 import unlzw
 
 from app.core.config import get_settings
+from app.core.crypto import email_lookup, encrypt_field, generate_short_id, hash_password
 from app.models.entities import (
     AnalysisOutbox,
     DataQualityIssue,
     DataSource,
+    Doctor,
     GlucoseRecord,
     GlucoseRecordSource,
     ImportBatch,
     Patient,
+    PatientDoctorLink,
     PatientSourceLink,
     ProvenanceEvent,
     RawImportRecord,
+    UserAccount,
 )
 
 
 settings = get_settings()
 UCI_DIABETES_URL = "https://archive.ics.uci.edu/static/public/34/diabetes.zip"
+DEMO_PASSWORD = "qwerty"
+DEMO_EMAIL_DOMAIN = "demo.myglico.invalid"
+DEMO_DOCTOR_EMAIL = f"doctor@{DEMO_EMAIL_DOMAIN}"
+LEGACY_DEMO_DOCTOR_EMAIL = "doctor@email.com"
+_DEMO_PATIENT_EMAIL = re.compile(
+    r"^patient([1-9][0-9]*)@(demo\.myglico\.invalid|email\.com)$", re.IGNORECASE
+)
 # Canonical time slots observed in the UCI dataset paper-log style records.
 # They are used only to flag timestamps that align with typical meal/daypart slots
 # during provenance normalization; they do not overwrite the original recorded time.
@@ -214,7 +226,15 @@ def _get_or_create_patient(
         link.source_file = source_file
         return link.patient
 
-    patient = Patient(name=f"Paciente UCI {patient_suffix}", email=None)
+    patient_id = str(uuid4())
+    patient = Patient(
+        id=patient_id,
+        short_id=generate_short_id(
+            lambda code: db.scalar(select(Patient.id).where(Patient.short_id == code)) is not None
+        ),
+        name=f"Paciente UCI {patient_suffix}",
+        email=None,
+    )
     db.add(patient)
     db.flush()
     db.add(
@@ -510,3 +530,206 @@ def import_uci_diabetes(db: Session, skip_if_loaded: bool = True) -> tuple[Impor
     db.commit()
     db.refresh(import_batch)
     return import_batch, dataset
+
+
+def provision_demo_accounts(db: Session) -> dict[str, int]:
+    """Provision stable demo identities and links for imported UCI patients."""
+    data_source = db.scalar(
+        select(DataSource).where(DataSource.name == "UCI Diabetes", DataSource.version == "UCI-34")
+    )
+    if data_source is None:
+        return {"patients": 0, "accounts_created": 0, "links_created": 0, "skipped": 0}
+
+    legacy_doctor_email = "doctor-uci@demo.myglico.invalid"
+    doctor_account = db.scalar(
+        select(UserAccount).where(UserAccount.email_lookup == email_lookup(DEMO_DOCTOR_EMAIL))
+    )
+    if doctor_account is None:
+        doctor_account = db.scalar(
+            select(UserAccount).where(UserAccount.email_lookup == email_lookup(legacy_doctor_email))
+        )
+    if doctor_account is None:
+        doctor_account = db.scalar(
+            select(UserAccount).where(UserAccount.email_lookup == email_lookup(LEGACY_DEMO_DOCTOR_EMAIL))
+        )
+    if doctor_account is None:
+        doctor_account = UserAccount(
+            email=DEMO_DOCTOR_EMAIL,
+            password_hash=hash_password(DEMO_PASSWORD),
+            account_status="active",
+            is_demo=True,
+        )
+        db.add(doctor_account)
+        db.flush()
+        doctor_id = str(uuid4())
+        doctor = Doctor(
+            id=doctor_id,
+            short_id=generate_short_id(
+                lambda code: db.scalar(select(Doctor.id).where(Doctor.short_id == code)) is not None
+            ),
+            user_account_id=doctor_account.id,
+            name_encrypted=encrypt_field(
+                "Médico demonstrativo UCI", table="doctors", column="name", record_id=doctor_id
+            ),
+            crm_encrypted=None,
+            uf_encrypted=None,
+            crm_uf_lookup=None,
+            is_demo=True,
+            declared_verified=False,
+        )
+        db.add(doctor)
+        db.flush()
+    else:
+        if not doctor_account.is_demo:
+            raise RuntimeError("Reserved UCI demo identity collides with a non-demo account")
+        doctor = db.scalar(select(Doctor).where(Doctor.user_account_id == doctor_account.id))
+        if doctor is None or not doctor.is_demo:
+            raise RuntimeError("Reserved UCI demo account has no matching demo doctor")
+    source_links = db.scalars(
+        select(PatientSourceLink)
+        .where(PatientSourceLink.data_source_id == data_source.id)
+        .order_by(PatientSourceLink.external_patient_code)
+    ).all()
+    candidates: list[tuple[Patient, str, UserAccount | None, bool]] = []
+    used_indices: set[int] = set()
+    created_links = 0
+    skipped = 0
+    for source_link in source_links:
+        patient = source_link.patient
+        external_code = source_link.external_patient_code
+        legacy_email = f"patient-{external_code}@demo.myglico.invalid"
+        account: UserAccount | None = None
+        is_legacy_account = False
+        if patient.user_account_id is not None:
+            account = db.get(UserAccount, patient.user_account_id)
+            if account is None or not account.is_demo:
+                skipped += 1
+                continue
+            current_match = _DEMO_PATIENT_EMAIL.fullmatch(account.email.strip())
+            is_legacy_account = account.email == legacy_email
+            if current_match is None and not is_legacy_account:
+                skipped += 1
+                continue
+        else:
+            account = db.scalar(
+                select(UserAccount).where(UserAccount.email_lookup == email_lookup(legacy_email))
+            )
+            if account is not None and not account.is_demo:
+                raise RuntimeError("Legacy UCI demo identity collides with a non-demo account")
+            is_legacy_account = account is not None
+            if account is None:
+                # A failed/partial previous transaction is not expected, but this
+                # lookup also safely recovers a demo account before linking it.
+                candidates.append((patient, external_code, None, False))
+                continue
+            other_patient = db.scalar(select(Patient).where(Patient.user_account_id == account.id))
+            if other_patient is not None and other_patient.id != patient.id:
+                raise RuntimeError("Legacy UCI demo account is linked to a different patient")
+            patient.user_account_id = account.id
+        match = _DEMO_PATIENT_EMAIL.fullmatch(account.email.strip()) if account else None
+        if match:
+            index = int(match.group(1))
+            if index in used_indices:
+                raise RuntimeError("Duplicate patient demo email index found")
+            used_indices.add(index)
+        candidates.append((patient, external_code, account, is_legacy_account))
+
+    next_index = max(used_indices, default=0) + 1
+    created_accounts = 0
+    for patient, external_code, account, is_legacy_account in candidates:
+        if account is None:
+            legacy_email = f"patient-{external_code}@demo.myglico.invalid"
+            account = db.scalar(
+                select(UserAccount).where(UserAccount.email_lookup == email_lookup(legacy_email))
+            )
+            if account is not None:
+                if not account.is_demo:
+                    raise RuntimeError("Legacy UCI demo identity collides with a non-demo account")
+                other_patient = db.scalar(select(Patient).where(Patient.user_account_id == account.id))
+                if other_patient is not None and other_patient.id != patient.id:
+                    raise RuntimeError("Legacy UCI demo account is linked to a different patient")
+                patient.user_account_id = account.id
+                is_legacy_account = True
+            else:
+                while next_index in used_indices:
+                    next_index += 1
+                target_email = f"patient{next_index}@{DEMO_EMAIL_DOMAIN}"
+                target_owner = db.scalar(
+                    select(UserAccount).where(UserAccount.email_lookup == email_lookup(target_email))
+                )
+                if target_owner is not None:
+                    raise RuntimeError("Public demo patient email collides with another account")
+                account = UserAccount(
+                    email=target_email,
+                    password_hash=hash_password(DEMO_PASSWORD),
+                    account_status="active",
+                    is_demo=True,
+                )
+                db.add(account)
+                db.flush()
+                patient.user_account_id = account.id
+                created_accounts += 1
+                used_indices.add(next_index)
+                next_index += 1
+
+        match = _DEMO_PATIENT_EMAIL.fullmatch(account.email.strip())
+        if match is None and not is_legacy_account:
+            raise RuntimeError("Demo patient account does not have a recognized stable identity")
+
+        if not patient.short_id:
+            patient.short_id = generate_short_id(
+                lambda code: db.scalar(select(Patient.id).where(Patient.short_id == code)) is not None
+            )
+
+        existing_link = db.scalar(
+            select(PatientDoctorLink)
+            .where(PatientDoctorLink.patient_id == patient.id, PatientDoctorLink.doctor_id == doctor.id)
+            .order_by(PatientDoctorLink.requested_at.desc())
+        )
+        if existing_link is not None:
+            # Keep both manual decisions and revoked demo links terminal.
+            continue
+
+        link = PatientDoctorLink(
+            patient_id=patient.id,
+            doctor_id=doctor.id,
+            status="ACTIVE",
+            decided_at=datetime.utcnow(),
+            version=1,
+            open_pair_key="open",
+        )
+        db.add(link)
+        db.flush()
+        event_payload = {
+            "activity": "DemoAssociationProvisioned",
+            "association_id": link.id,
+            "patient_id": patient.id,
+            "doctor_id": doctor.id,
+            "external_patient_code": external_code,
+        }
+        db.add(
+            ProvenanceEvent(
+                activity_type="DemoAssociationProvisioned",
+                entity_type="patient_doctor_link",
+                entity_id=link.id,
+                source_type="software-agent",
+                source_id=data_source.id,
+                occurred_at=datetime.utcnow(),
+                prov_json=event_payload,
+                metadata_json={"import_source": "UCI-34", "actor_kind": "SoftwareImporter"},
+                content_hash=_content_hash(event_payload),
+            )
+        )
+        created_links += 1
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return {
+        "patients": len(source_links),
+        "accounts_created": created_accounts,
+        "links_created": created_links,
+        "skipped": skipped,
+    }

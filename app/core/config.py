@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     post_meal_max: float = 180.0
     semantic_base_uri: str = "https://myglico.local/resource/"
     semantic_vocab_uri: str = "https://myglico.local/vocab/"
+    # Secrets are supplied by the deployment environment; no key material is
+    # stored in settings files or the database. Keep old key versions during
+    # rotation so existing payloads remain decryptable.
+    active_encryption_key_version: int = 1
+    encryption_key_v1: str | None = None
+    encryption_key_v2: str | None = None
+    lookup_hmac_key: str | None = None
+    session_ttl_hours: int = Field(default=12, gt=0)
 
 
 @lru_cache

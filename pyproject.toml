@@ -40,6 +40,20 @@ full = [
     "unlzw3>=0.2.3",
     "uvicorn[standard]>=0.35.0",
 ]
+# Backend integration tests (tests/integration, pytest). Install with
+# `pip install ".[test]"`. The browser E2E suite lives in frontend-react and
+# uses its own npm toolchain (`npm install` + `npx playwright test`), see
+# frontend-react/e2e/README.md.
+test = [
+    "httpx>=0.27.0",
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: backend integration tests running against an isolated database",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

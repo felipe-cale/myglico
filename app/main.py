@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
@@ -25,3 +27,18 @@ app.include_router(router)
 @app.on_event("startup")
 def warm_report_assets() -> None:
     preload_report_assets()
+
+
+@app.middleware("http")
+async def prevent_private_api_caching(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith(("/api/auth/", "/api/patients", "/api/doctors/search")):
+        response.headers["Cache-Control"] = "no-store, private"
+    return response
+
+
+@app.exception_handler(RequestValidationError)
+async def scrub_validation_inputs(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # FastAPI's default validation payload can echo submitted values. Keep
+    # passwords and other personal fields out of error responses.
+    return JSONResponse(status_code=422, content={"detail": "Invalid request."})
