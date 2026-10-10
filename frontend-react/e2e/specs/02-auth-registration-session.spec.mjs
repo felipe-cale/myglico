@@ -11,6 +11,33 @@ import { tx } from "../fixtures/i18n.mjs";
 import * as api from "../fixtures/api.mjs";
 
 test.describe("Group 2 - registration, login, session and account switch", () => {
+  test("R3 - doctor registration UI submits explicit privacy notice acceptance", async ({ page, profiles }) => {
+    const doctor = profiles("doctorA");
+    await page.goto(ROUTES.register);
+    await page.locator("select").selectOption("doctor");
+    const textInputs = page.locator('input[type="text"]');
+    await textInputs.nth(0).fill(doctor.display_name);
+    await textInputs.nth(1).fill(doctor.crm);
+    await textInputs.nth(2).fill(doctor.uf);
+    await page.locator('input[type="email"]').fill(doctor.email);
+    const passwords = page.locator('input[type="password"]');
+    await passwords.nth(0).fill(doctor.password);
+    await passwords.nth(1).fill(doctor.password);
+    await page.locator('input[type="checkbox"]').check();
+
+    const registration = page.waitForResponse(response =>
+      response.url().includes("/api/auth/register") && response.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: tx("auth.submitRegister") }).click();
+    const response = await registration;
+    expect(response.status()).toBe(201);
+    expect(response.request().postDataJSON()).toMatchObject({
+      role: "doctor", crm: doctor.crm, uf: doctor.uf,
+      privacy_notice_accepted: true,
+    });
+    await expect(page).toHaveURL(/\/dashboard$/);
+  });
+
   test("AUT-CA-03 - patient registration creates the account and Patient with a valid short id", async ({ apiSession }) => {
     const session = await apiSession("patientA");
     const created = await session.register();
@@ -44,7 +71,7 @@ test.describe("Group 2 - registration, login, session and account switch", () =>
     const p = profiles("patientA");
     const invalid = await apiSession.registerAccount({
       role: "doctor", email: p.email, password: p.password, password_confirmation: p.password,
-      display_name: p.display_name, crm: "1234567",
+      display_name: p.display_name, crm: "1234567", privacy_notice_accepted: true,
     });
     expect([400, 422]).toContain(invalid.status);
     const loginRes = await apiSession.login({ email: p.email, password: p.password });
@@ -52,7 +79,7 @@ test.describe("Group 2 - registration, login, session and account switch", () =>
     // The e-mail is still free: a valid registration now succeeds.
     const valid = await apiSession.registerAccount({
       role: "patient", email: p.email, password: p.password, password_confirmation: p.password,
-      display_name: p.display_name,
+      display_name: p.display_name, privacy_notice_accepted: true,
     });
     expect(valid.status).toBe(201);
   });
@@ -111,7 +138,7 @@ test.describe("Group 2 - registration, login, session and account switch", () =>
     const asDoctor = await apiSession.registerAccount({
       role: "doctor", email: patient.profile.email, password: patient.profile.password,
       password_confirmation: patient.profile.password, display_name: "X",
-      crm: doctorTemplate.crm, uf: doctorTemplate.uf,
+      crm: doctorTemplate.crm, uf: doctorTemplate.uf, privacy_notice_accepted: true,
     });
     expect(asDoctor.status).toBe(409);
     const sess = await api.session(patient.request);

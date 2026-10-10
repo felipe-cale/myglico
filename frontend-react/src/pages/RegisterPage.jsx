@@ -8,17 +8,17 @@ export default function RegisterPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { refreshSession } = useAuth();
-  
+
   const [role, setRole] = useState("patient");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
+
   const [displayName, setDisplayName] = useState("");
   const [crm, setCrm] = useState("");
   const [uf, setUf] = useState("");
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  
+
   const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
@@ -42,6 +42,7 @@ export default function RegisterPage() {
         password,
         password_confirmation: confirmPassword,
         display_name: displayName,
+        privacy_notice_accepted: privacyAccepted,
         ...(role === "doctor" ? { crm: crm.trim(), uf: uf.trim().toUpperCase() } : {})
       };
       await registerAccount(payload);
@@ -64,29 +65,29 @@ export default function RegisterPage() {
             <option value="doctor">{t("auth.roleDoctor")}</option>
           </select>
         </label>
-        
+
         <label className="react-select-field">
           <span>{t("auth.email")}</span>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
         </label>
-        
+
         <label className="react-select-field">
           <span>{t("auth.password")}</span>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required />
         </label>
-        
+
         <label className="react-select-field">
           <span>{t("auth.passwordConfirm")}</span>
           <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={8} required />
         </label>
-        
+
         {role === "patient" && (
           <label className="react-select-field">
             <span>{t("auth.name")}</span>
             <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} required />
           </label>
         )}
-        
+
         {role === "doctor" && (
           <>
             <label className="react-select-field">
@@ -103,7 +104,7 @@ export default function RegisterPage() {
             </label>
           </>
         )}
-        
+
         <div className="react-privacy-notice">
           <p id="privacy-notice-text">{t("auth.privacyNotice")}</p>
           <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>

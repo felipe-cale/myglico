@@ -42,6 +42,7 @@ class Patient(Base):
     email_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
     short_id: Mapped[str] = mapped_column(String(6), nullable=False, default=generate_short_id)
     user_account_id: Mapped[str | None] = mapped_column(ForeignKey("user_accounts.id"), nullable=True)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/Sao_Paulo")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
 
@@ -99,6 +100,7 @@ class UserAccount(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    privacy_notice_accepted_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     patient: Mapped[Patient | None] = relationship(back_populates="user_account", uselist=False)
     doctor: Mapped["Doctor | None"] = relationship(back_populates="user_account", uselist=False)
@@ -199,6 +201,8 @@ class NotificationOutbox(Base):
     notification_id: Mapped[str] = mapped_column(ForeignKey("notifications.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING", index=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    last_error: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime)
 
@@ -218,7 +222,7 @@ class Investigation(Base):
     opened_by_domain_id: Mapped[str] = mapped_column(String(36), nullable=False)
     opened_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime)
-    closed_by: Mapped[str | None] = mapped_column(String(36))
+    closed_by: Mapped[str | None] = mapped_column(String(80))
     closed_reason: Mapped[str | None] = mapped_column(String(80))
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 

@@ -458,7 +458,7 @@ def close_for_revoked_association(
         result = db.execute(update(Investigation).where(
             Investigation.id == investigation.id, Investigation.status == "OPEN",
         ).values(status="CLOSED", awaiting_role=None, closed_at=now,
-                 closed_by=revoke_event.source_id,
+                 closed_by="software-agent",
                  closed_reason="ASSOCIATION_REVOKED", version=Investigation.version + 1)
           .execution_options(synchronize_session=False))
         if result.rowcount == 1:
@@ -532,31 +532,39 @@ def create_prompts_for_indicators(db: Session, indicators: list[DailyIndicator])
     return created
 
 
-def defer_prompt(db: Session, patient_id: str, indicator_id: str, principal: SessionPrincipal) -> AtypicalDayPrompt:
+def defer_prompt_batch(
+    db: Session, patient_id: str, indicator_ids: list[str], principal: SessionPrincipal,
+) -> list[AtypicalDayPrompt]:
     if principal.patient is None or principal.patient.id != patient_id:
         raise InvestigationNotFound
-    prompt = db.scalar(select(AtypicalDayPrompt).where(
+    requested_ids = list(dict.fromkeys(indicator_ids))
+    prompts = list(db.scalars(select(AtypicalDayPrompt).where(
         AtypicalDayPrompt.patient_id == patient_id,
-        AtypicalDayPrompt.daily_indicator_id == indicator_id,
-    ))
-    if prompt is None:
+        AtypicalDayPrompt.daily_indicator_id.in_(requested_ids),
+    ).order_by(AtypicalDayPrompt.indicator_date))) if requested_ids else []
+    if len(prompts) != len(requested_ids):
         raise InvestigationNotFound
-    if prompt.status == "DEFERRED":
-        return prompt
-    if prompt.status == "DEFERRED":
-        return prompt
-    prompt.status = "DEFERRED"
-    db.add(ProvenanceEvent(
-        id=str(uuid4()), activity_type="AtypicalDayInvestigationPromptDeferred",
-        entity_type="atypical_day_prompt", entity_id=prompt.id,
-        actor_user_id=principal.account.id, source_type="user", source_id=principal.patient.id,
-        occurred_at=_now(), prov_json={"activity": "AtypicalDayInvestigationPromptDeferred"},
-        metadata_json={"daily_indicator_id": prompt.daily_indicator_id, "patient_id": patient_id},
-    ))
+    for prompt in prompts:
+        if prompt.status == "DEFERRED":
+            continue
+        prompt.status = "DEFERRED"
+        db.add(ProvenanceEvent(
+            id=str(uuid4()), activity_type="AtypicalDayInvestigationPromptDeferred",
+            entity_type="atypical_day_prompt", entity_id=prompt.id,
+            actor_user_id=principal.account.id, source_type="user", source_id=principal.patient.id,
+            occurred_at=_now(), prov_json={"activity": "AtypicalDayInvestigationPromptDeferred"},
+            metadata_json={"daily_indicator_id": prompt.daily_indicator_id,
+                           "patient_id": patient_id, "batch_count": len(prompts)},
+        ))
     try:
         db.commit()
-        db.refresh(prompt)
-        return prompt
+        for prompt in prompts:
+            db.refresh(prompt)
+        return prompts
     except Exception:
         db.rollback()
         raise
+
+
+def defer_prompt(db: Session, patient_id: str, indicator_id: str, principal: SessionPrincipal) -> AtypicalDayPrompt:
+    return defer_prompt_batch(db, patient_id, [indicator_id], principal)[0]

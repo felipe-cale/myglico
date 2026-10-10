@@ -56,7 +56,7 @@ export default function NotificationCenter() {
 
   return (
     <div ref={wrapperRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-      <button 
+      <button
         onClick={() => setOpen(!open)}
         style={{ background: 'transparent', border: 'none', cursor: 'pointer', position: 'relative' }}
         aria-label={t("notifications.title")}

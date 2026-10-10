@@ -48,6 +48,7 @@ with tempfile.TemporaryDirectory(prefix="myglico-investigations-") as temp_dir:
                 "password_confirmation": "SafePass123!", "display_name": name}
         if crm:
             body.update(crm=crm, uf=uf)
+        body["privacy_notice_accepted"] = True
         response = client.post("/api/auth/register", json=body)
         assert response.status_code == 201, response.text
         return response.json()
@@ -213,6 +214,7 @@ with tempfile.TemporaryDirectory(prefix="myglico-investigations-") as temp_dir:
             for inv in (revoke_open_1, revoke_open_2):
                 stored = db.get(Investigation, inv["id"])
                 assert stored.status == "CLOSED" and stored.closed_reason == "ASSOCIATION_REVOKED"
+                assert stored.closed_by == "software-agent"
                 event = db.scalar(select(ProvenanceEvent).where(
                     ProvenanceEvent.activity_type == "InvestigationClosedByAssociationRevocation",
                     ProvenanceEvent.entity_id == inv["id"],
@@ -293,19 +295,15 @@ with tempfile.TemporaryDirectory(prefix="myglico-investigations-") as temp_dir:
             "AtypicalDayDetailViewed", "PatientDetailFilterApplied"
         }
         prompts_api = patient.get(f"/api/patients/{pid}/atypical-day-prompts").json()["prompts"]
-        matching_prompt = next(row for row in prompts_api if row["indicator_id"] == original_indicator_id)
+        matching_prompt = next(row for row in prompts_api if original_indicator_id in row["indicator_ids"])
         assert matching_prompt["status"] == "created"
-        defer = patient.post(f"/api/atypical-day-prompts/{original_indicator_id}/defer")
-        assert defer.status_code == 200 and defer.json()["prompt"]["status"] == "deferred"
-        deferred_prompt = next(
-            row for row in patient.get(f"/api/patients/{pid}/atypical-day-prompts").json()["prompts"]
-            if row["indicator_id"] == original_indicator_id
-        )
-        assert deferred_prompt == {
-            "indicator_id": original_indicator_id,
-            "date": prompt_date.isoformat(),
-            "status": "deferred",
-        }
+        defer = patient.post("/api/atypical-day-prompts/defer", json={
+            "indicator_ids": matching_prompt["indicator_ids"],
+        })
+        assert defer.status_code == 200
+        assert {row["status"] for row in defer.json()["prompts"]} == {"deferred"}
+        remaining_batches = patient.get(f"/api/patients/{pid}/atypical-day-prompts").json()["prompts"]
+        assert all(row["status"] == "deferred" for row in remaining_batches)
         manual_after_defer = patient.post("/api/investigations", json={
             "doctor_id": did2, "atypical_day_event_id": original_indicator_id,
             "title": "Manual after defer", "initial_message": "I still want to ask.",

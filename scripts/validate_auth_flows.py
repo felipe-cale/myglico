@@ -51,6 +51,7 @@ def main() -> None:
         get_settings.cache_clear()
 
         def register(client, *, role: str, email: str, display_name: str, **optional):
+            optional.setdefault("privacy_notice_accepted", True)
             return client.post(
                 "/api/auth/register",
                 json={
@@ -91,6 +92,13 @@ def main() -> None:
             ).status_code == 401
             assert unauthenticated.get("/api/doctors/search?short_id=ABC123").status_code == 401
             assert unauthenticated.get("/api/dashboard").status_code == 401
+            for private_path in (
+                "/api/investigations", "/api/notifications",
+                "/api/notifications/unread-summary", "/api/doctor-links",
+            ):
+                private_response = unauthenticated.get(private_path)
+                assert private_response.status_code == 401
+                assert "no-store" in private_response.headers.get("cache-control", "")
             assert unauthenticated.get("/api/auth/session").json() == {"authenticated": False}
 
         with TestClient(app, base_url="https://myglico.test") as patient_a:

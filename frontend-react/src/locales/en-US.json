@@ -277,7 +277,8 @@
       "periodAnalyzed": "Period analyzed",
       "defaultWindow": "Default 30-day window from the most recent available date.",
       "selectedDays": "Selected days ({{count}})",
-      "referencePeriod": "Only these days are analyzed. Reference period: {{start}} to {{end}}."
+      "referencePeriod": "Only these days are analyzed. Reference period: {{start}} to {{end}}.",
+      "customWindow": "Custom {{count}}-day period chosen in the filter."
     },
     "filter": {
       "eyebrow": "Time filter",
@@ -544,7 +545,10 @@
     "popupScopeCustom": "{{count}} atypical days in the period chosen here ({{start}} to {{end}}), different from the period shown in the detail view.",
     "popupShowAll": "Show full history",
     "popupUseActive": "Use the period shown",
-    "popupOutsideHint": "Days outside the period shown widen the detail period when the filter is applied."
+    "popupOutsideHint": "Days outside the period shown widen the detail period when the filter is applied.",
+    "previousClassification": "Previous classification",
+    "originPreviousClassification": "Opened from {{date}}, which was atypical in the analysis at the time. In the current analysis that day is no longer classified as atypical; the conversation and its origin were preserved.",
+    "originAtypicalDated": "Origin: atypical day on {{date}}"
   },
   "notifications": {
     "title": "Notifications",

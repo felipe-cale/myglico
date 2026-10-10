@@ -198,6 +198,42 @@ function MobileDetailField({ label, value, children, className = "" }) {
   );
 }
 
+const DEFAULT_WINDOW_DAYS = 30;
+
+// Mirrors the backend default (reports._resolve_date_window): the last 30 days up to the latest available date.
+function isDefaultDetailWindow(filters) {
+  const { start_date: start, end_date: end, available_start_date: availableStart, available_end_date: availableEnd } = filters ?? {};
+  if (!start || !end || !availableEnd || end !== availableEnd) return false;
+  const windowStart = new Date(`${availableEnd}T00:00:00Z`);
+  windowStart.setUTCDate(windowStart.getUTCDate() - (DEFAULT_WINDOW_DAYS - 1));
+  let expectedStart = windowStart.toISOString().slice(0, 10);
+  if (availableStart && expectedStart < availableStart) expectedStart = availableStart;
+  return start === expectedStart;
+}
+
+const PRESERVED_RANGE_KEY = "myglico.preservedRange.";
+
+// The user's period before exact days widened it; kept per tab so a reload can still restore it.
+function readPreservedRange(patientId) {
+  try {
+    const raw = window.sessionStorage.getItem(`${PRESERVED_RANGE_KEY}${patientId}`);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed?.start && parsed?.end ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writePreservedRange(patientId, value) {
+  try {
+    const key = `${PRESERVED_RANGE_KEY}${patientId}`;
+    if (value?.start && value?.end) window.sessionStorage.setItem(key, JSON.stringify({ start: value.start, end: value.end }));
+    else window.sessionStorage.removeItem(key);
+  } catch {
+    // Without storage the in-memory value still covers the current page view.
+  }
+}
+
 function rangeCoveringDates(base, dates) {
   let start = base?.start || "";
   let end = base?.end || "";
@@ -215,6 +251,9 @@ export default function PatientDetailPage() {
   const formatNumber = (value, suffix = "") => formatNumberBase(value, suffix, locale);
   const formatDate = (dateValue) => formatDateBase(dateValue, locale);
   const formatDateTime = (dateValue) => formatDateTimeBase(dateValue, locale);
+  const formatPatientEventDateTime = (event) => event.event_date && event.event_time
+    ? `${formatDate(event.event_date)} ${event.event_time}`
+    : formatDateTime(event.occurred_at);
   const formatShortDate = (dateValue) => formatShortDateBase(dateValue, locale);
   const { patientId } = useParams();
   const { session } = useAuth();
@@ -231,8 +270,17 @@ export default function PatientDetailPage() {
   );
   const [reloadToken, setReloadToken] = useState(0);
   const lastResolvedRequestRef = useRef("");
-  const preservedRangeRef = useRef(null);
-  const [periodAdjustment, setPeriodAdjustment] = useState(null);
+  const preservedRangeRef = useRef(readPreservedRange(patientId));
+  const preservedPatientRef = useRef(patientId);
+  if (preservedPatientRef.current !== patientId) {
+    preservedPatientRef.current = patientId;
+    preservedRangeRef.current = readPreservedRange(patientId);
+  }
+
+  function setPreservedRange(value) {
+    preservedRangeRef.current = value;
+    writePreservedRange(patientId, value);
+  }
   const silentReloadRef = useRef(false);
   const isDayMode = viewMode === "day";
   const summary = data?.summary;
@@ -267,10 +315,17 @@ export default function PatientDetailPage() {
     () => requestedDatesParam.split(",").map((value) => value.trim()).filter(Boolean).sort(),
     [requestedDatesParam]
   );
+  useEffect(() => {
+    if (!requestedDatesParam && preservedRangeRef.current) {
+      setPreservedRange(null);
+    }
+  }, [patientId, requestedDatesParam]);
+
   const requestKey = `${patientId}:${requestedStart || ""}:${requestedEnd || ""}:${requestedDatesParam}:${reloadToken}`;
 
   useEffect(() => {
     if (data && lastResolvedRequestRef.current === requestKey) {
+      setLoading(false);
       return;
     }
 
@@ -546,11 +601,10 @@ export default function PatientDetailPage() {
     let nextStart = draftStartDate;
     let nextEnd = draftEndDate;
     if (requestedDates.length) {
-      preservedRangeRef.current = { start: draftStartDate, end: draftEndDate };
+      setPreservedRange({ start: draftStartDate, end: draftEndDate });
       const covering = rangeCoveringDates({ start: draftStartDate, end: draftEndDate }, requestedDates);
       nextStart = covering.start;
       nextEnd = covering.end;
-      setPeriodAdjustment(covering.adjusted ? covering : null);
     }
     next.set("start_date", nextStart);
     next.set("end_date", nextEnd);
@@ -570,7 +624,7 @@ export default function PatientDetailPage() {
     const currentEnd = searchParams.get("end_date") || data?.filters?.end_date || "";
     if (exactDates.length) {
       if (!requestedDates.length || !preservedRangeRef.current) {
-        preservedRangeRef.current = { start: currentStart, end: currentEnd };
+        setPreservedRange({ start: currentStart, end: currentEnd });
       }
       // Days outside the user's period widen it explicitly; the original period is kept to restore on clear.
       const covering = rangeCoveringDates(preservedRangeRef.current, exactDates);
@@ -579,7 +633,6 @@ export default function PatientDetailPage() {
         next.set("start_date", covering.start);
         next.set("end_date", covering.end);
       }
-      setPeriodAdjustment(covering.adjusted ? covering : null);
     } else {
       const restoreStart = preservedRangeRef.current?.start || currentStart;
       const restoreEnd = preservedRangeRef.current?.end || currentEnd;
@@ -591,8 +644,7 @@ export default function PatientDetailPage() {
         next.delete("start_date");
         next.delete("end_date");
       }
-      preservedRangeRef.current = null;
-      setPeriodAdjustment(null);
+      setPreservedRange(null);
     }
     lastResolvedRequestRef.current = "";
     setSelectedDay("");
@@ -694,6 +746,14 @@ export default function PatientDetailPage() {
     setSelectedDay("");
   }
 
+  const preservedRange = preservedRangeRef.current;
+  const coveringRange = requestedDates.length && preservedRange ? rangeCoveringDates(preservedRange, requestedDates) : null;
+  const periodAdjustment = coveringRange?.adjusted ? coveringRange : null;
+  const isDefaultWindow = isDefaultDetailWindow(filters);
+  const periodDays = filters.start_date && filters.end_date
+    ? Math.round((Date.parse(`${filters.end_date}T00:00:00Z`) - Date.parse(`${filters.start_date}T00:00:00Z`)) / 86400000) + 1
+    : 0;
+
   const isOwnPatientView = Boolean(session?.patient?.id && session.patient.id === patient.id);
   const reportUrl = patientReportPdfUrl(patient.id, {
     startDate: filters.start_date,
@@ -744,7 +804,11 @@ export default function PatientDetailPage() {
               <strong>
                 {formatDate(filters.start_date)} - {formatDate(filters.end_date)}
               </strong>
-              <small>{t("patientDetail.hero.defaultWindow")}</small>
+              <small>
+                {isDefaultWindow
+                  ? t("patientDetail.hero.defaultWindow")
+                  : t("patientDetail.hero.customWindow", { count: periodDays })}
+              </small>
             </div>
           )}
         </div>
@@ -790,7 +854,7 @@ export default function PatientDetailPage() {
                 {hasInvalidRange ? <small>{t("patientDetail.filter.invalidRange")}</small> : null}
               </div>
             </form>
-            {periodAdjustment && requestedDates.length > 0 ? (
+            {periodAdjustment ? (
               <p className="react-period-notice" role="status" data-testid="period-adjusted">
                 {t("patientDetail.filter.periodAdjusted", {
                   dates: periodAdjustment.outside.map((value) => formatDate(value)).join(", "),
@@ -1185,7 +1249,7 @@ export default function PatientDetailPage() {
                     <div className="react-mobile-card__header">
                       <div>
                         <span className="react-mobile-card__eyebrow">{t("patientDetail.recentEvents.when")}</span>
-                        <h3>{formatDateTime(event.occurred_at)}</h3>
+                        <h3>{formatPatientEventDateTime(event)}</h3>
                       </div>
                       <span className="react-mobile-card__badge" title={event.event_type || ""}>
                         {eventTypeLabel}
@@ -1229,7 +1293,7 @@ export default function PatientDetailPage() {
 
                     return (
                       <tr key={`${event.occurred_at}-${event.event_type}`}>
-                        <td>{formatDateTime(event.occurred_at)}</td>
+                        <td>{formatPatientEventDateTime(event)}</td>
                         <td title={event.event_type || ""}>{eventTypeLabel}</td>
                         <td title={event.event_subtype || ""}>{eventSubtypeLabel}</td>
                         <td>

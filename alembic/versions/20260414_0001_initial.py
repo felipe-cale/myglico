@@ -154,30 +154,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_data_quality_issues_patient_id", table_name="data_quality_issues")
-    op.drop_index("ix_data_quality_issues_import_batch_id", table_name="data_quality_issues")
+    # Indexes are dropped with their tables; MySQL refuses to drop an index
+    # that still backs a foreign key.
     op.drop_table("data_quality_issues")
-
-    op.drop_index("ix_daily_indicators_indicator_date", table_name="daily_indicators")
-    op.drop_index("ix_daily_indicators_patient_id", table_name="daily_indicators")
-    op.drop_index("ix_daily_indicators_analytics_run_id", table_name="daily_indicators")
     op.drop_table("daily_indicators")
-
-    op.drop_index("ix_analytics_runs_import_batch_id", table_name="analytics_runs")
     op.drop_table("analytics_runs")
-
-    op.drop_index("ix_normalized_events_context_label", table_name="normalized_events")
-    op.drop_index("ix_normalized_events_event_type", table_name="normalized_events")
-    op.drop_index("ix_normalized_events_event_date", table_name="normalized_events")
-    op.drop_index("ix_normalized_events_occurred_at", table_name="normalized_events")
-    op.drop_index("ix_normalized_events_patient_id", table_name="normalized_events")
-    op.drop_index("ix_normalized_events_import_batch_id", table_name="normalized_events")
     op.drop_table("normalized_events")
-
-    op.drop_index("ix_raw_events_patient_id", table_name="raw_events")
-    op.drop_index("ix_raw_events_import_batch_id", table_name="raw_events")
     op.drop_table("raw_events")
-
     op.drop_table("patients")
     op.drop_table("import_batches")
-

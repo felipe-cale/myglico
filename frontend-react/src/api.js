@@ -54,8 +54,8 @@ export function confirmDoctorLink(id, version) {
 export function rejectDoctorLink(id, version) {
   return requestJson(`/api/doctor-links/${id}/reject`, { method: "POST", body: JSON.stringify({ version }) });
 }
-export function cancelDoctorLink(id) {
-  return requestJson(`/api/doctor-links/${id}/cancel`, { method: "POST" });
+export function cancelDoctorLink(id, version) {
+  return requestJson(`/api/doctor-links/${id}/cancel`, { method: "POST", body: JSON.stringify({ version }) });
 }
 export function revokeDoctorLink(id, payload) {
   return requestJson(`/api/doctor-links/${id}/revoke`, { method: "POST", body: JSON.stringify(payload) });
@@ -91,8 +91,11 @@ export function fetchAtypicalDays(patientId, params = {}) {
 export function fetchAtypicalDayPrompts(patientId) {
   return requestJson(`/api/patients/${patientId}/atypical-day-prompts`);
 }
-export function deferAtypicalDayPrompt(indicator_id) {
-  return requestJson(`/api/atypical-day-prompts/${indicator_id}/defer`, { method: "POST" });
+export function deferAtypicalDayPrompt(indicator_ids) {
+  return requestJson("/api/atypical-day-prompts/defer", {
+    method: "POST",
+    body: JSON.stringify({ indicator_ids: Array.isArray(indicator_ids) ? indicator_ids : [indicator_ids] })
+  });
 }
 
 // === NOTIFICATIONS ===

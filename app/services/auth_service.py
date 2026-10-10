@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 import secrets
 import uuid
 
@@ -62,6 +63,7 @@ def register_account(
     display_name: str,
     crm: str | None = None,
     uf: str | None = None,
+    privacy_notice_accepted: bool = False,
 ) -> RegisteredIdentity:
     normalized_email = normalize_email(email)
     display_name = display_name.strip()
@@ -69,6 +71,10 @@ def register_account(
         raise ValueError("Unsupported role.")
     if not normalized_email or not display_name:
         raise ValueError("Email and display name are required.")
+    if role == "doctor" and (not crm or not crm.strip() or not uf or not uf.strip()):
+        raise ValueError("Doctor registration requires CRM and UF.")
+    if not privacy_notice_accepted:
+        raise ValueError("Registration requires privacy_notice_accepted=true.")
     if (crm is None) != (uf is None):
         raise ValueError("CRM and UF must be supplied together.")
     crm = crm.strip() if crm is not None else None
@@ -96,6 +102,7 @@ def register_account(
                 account_status="active",
                 email_verified_at=None,
                 is_demo=False,
+                privacy_notice_accepted_at=datetime.utcnow(),
             )
             db.add(account)
             db.flush()

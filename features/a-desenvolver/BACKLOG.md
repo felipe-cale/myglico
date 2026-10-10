@@ -1170,3 +1170,897 @@ backend real, não mocks.
   Decisões de produto registradas: UserAccount com papel único (patient OU
   doctor, nunca ambos); credenciais demo públicas (patientN@email.com /
   qwerty) documentadas como exceção deliberada do dataset público UCI.
+
+## LOTE 1 — Pendências recomendadas da revisão final
+
+- 2026-10-07 — **B1/B3/B4+CSCW-CA-29/B7 corrigidos**.
+  - Cache-Control `no-store, private` agora também cobre respostas de `/api/investigations*`, `/api/notifications*` e `/api/doctor-links*`.
+  - Encerramento administrativo de investigações por revogação atribui `closed_by=software-agent`; o tamanho do campo foi ampliado para esse ator.
+  - O consumidor mínimo do outbox valida a entrega durável na caixa interna, avança PENDING→DELIVERED após sucesso e agenda retries com backoff limitado após falhas; a falha registra tipo/contagem sem guardar conteúdo sensível. O middleware de API aciona a drenagem e falhas inesperadas são registradas.
+  - Cancelamento de vínculo agora exige `{version}`; corpo ausente recebe 422 e versão desatualizada recebe 409.
+  - Testes/validadores ajustados: middleware `no-store`, atribuição do agente, entrega e retry do outbox, e conflitos de versão no cancelamento.
+- Arquivos desta correção: `app/main.py`, `app/models/entities.py`, `app/services/investigations.py`, novo `app/services/notification_outbox.py`, `app/api/routes.py`, nova migração `alembic/versions/20261007_0008_notification_delivery_and_system_closer.py`, `features/a-desenvolver/CONTRATOS-API.md`, `scripts/validate_auth_flows.py`, `scripts/validate_doctor_links.py`, `scripts/validate_investigations.py`, `tests/integration/test_outbox_and_delivery.py` e `tests/integration/README.md`.
+- Comandos e resultados:
+  - `python scripts/validate_auth_flows.py` — PASS (inclui 401 e no-store nas famílias de rota protegidas).
+  - `python scripts/validate_doctor_links.py` — PASS (cancelamento sem versão rejeitado; cancelamento válido aceito; versão obsoleta retorna conflito).
+  - `python scripts/validate_investigations.py` — PASS (encerramento por revogação registra software-agent).
+  - `python -m pytest tests/integration/test_outbox_and_delivery.py -q` — 5 passed, incluindo CSCW-CA-29, falha seguida de retry e entrega única.
+  - `python -m compileall -q app tests scripts` — PASS.
+  - `git diff --check` — PASS (apenas avisos de conversão LF/CRLF do Git).
+- `git status --short` ao concluir:
+  ```text
+   M app/api/routes.py
+   M app/main.py
+   M app/models/entities.py
+   M app/services/investigations.py
+   M features/a-desenvolver/CONTRATOS-API.md
+   M frontend-react/e2e/specs/09-atypical-popup-filters.spec.mjs
+   M frontend-react/src/locales/en-US.json
+   M frontend-react/src/locales/es.json
+   M frontend-react/src/locales/pt-BR.json
+   M frontend-react/src/pages/PatientDetailPage.jsx
+   M scripts/validate_auth_flows.py
+   M scripts/validate_doctor_links.py
+   M scripts/validate_investigations.py
+   M tests/integration/README.md
+   M tests/integration/test_outbox_and_delivery.py
+  ?? alembic/versions/20261007_0008_notification_delivery_and_system_closer.py
+  ?? app/services/notification_outbox.py
+  ```
+
+- 2026-10-07 10:50 (worker claude, O5O6-FIX, itens recomendados da revisão
+  tratados como bloqueantes) — **O5 e O6 corrigidos no frontend**
+  (`PatientDetailPage.jsx`).
+  - **O5**:
+    - o período original, anterior ao ajuste automático do N3, é persistido em
+      `sessionStorage` por aba, na chave `myglico.preservedRange.<patientId>`,
+      além da ref em memória;
+    - o aviso "Período ajustado…" passou a ser derivado dos `dates` da URL e do
+      período preservado, em vez de ficar num estado volátil, por isso volta
+      após um reload;
+    - "Limpar seleção de dias" restaura o período original mesmo depois do
+      reload;
+    - ao abrir o detalhamento sem `dates`, o valor salvo é descartado, para
+      não restar estado obsoleto.
+  - **O6**:
+    - a frase "Janela padrão de 30 dias…" só aparece quando o período resolvido
+      é de fato a janela padrão do backend (últimos 30 dias até
+      `available_end_date`, limitado por `available_start_date`, espelhando
+      `reports._resolve_date_window`);
+    - com período personalizado, mostra "Período personalizado de N dias
+      escolhido no filtro."
+    - 1 chave nova (`patientDetail.hero.customWindow`) nos 3 locales.
+  - **E2E**: novo cenário "CSCW-CA-25 (O5, O6)" em
+    `e2e/specs/09-atypical-popup-filters.spec.mjs`. Ele verifica:
+    - janela padrão sem filtro;
+    - texto de período personalizado com filtro explícito;
+    - ampliação do período por um dia fora dele;
+    - **reload** com o aviso ainda visível;
+    - limpar restaura o período original;
+    - um segundo reload sem estado obsoleto.
+  - **Execuções**:
+    - A 1ª execução teve 9 falhas de infraestrutura, alheias ao frontend: o
+      backend paralelo criou a migração `0008` durante a execução, e a `0006`
+      cria `notification_outbox` a partir do modelo ORM vivo (risco A15). Isso
+      causou `duplicate column next_attempt_at`. O backend tornou a `0008`
+      idempotente às 10:42.
+    - Reexecução de `npx playwright test e2e/specs/09-atypical-popup-filters.spec.mjs`:
+      **11 passed** (3,3 min). `npm run build` OK.
+  - **Recomendação ao backend**: a dependência da `0006` do ORM vivo continua
+    (A15) e pode voltar a quebrar a cadeia a cada coluna nova.
+
+- 2026-10-07 (worker claude, PAUSA solicitada) — Ponto seguro. Nenhuma edição
+  em andamento e nenhum arquivo pela metade.
+  - **Feito em O5/O6**: os dois estão implementados em `PatientDetailPage.jsx`
+    (período original em `sessionStorage` por aba/paciente, aviso derivado da
+    URL, "Janela padrão" só no período padrão, texto de período
+    personalizado), mais 1 chave i18n nos 3 locales e o cenário E2E
+    "CSCW-CA-25 (O5, O6)" no spec 09. Última execução: spec 09 **11 passed**.
+    `npm run build` OK. Detalhes na entrada anterior.
+  - **Falta em O5/O6**: nada de código. Ficaram de fora a reexecução da suíte
+    E2E completa (só o grupo 09 foi rodado) e a atualização da
+    `MATRIZ-ACEITE.md` com a evidência de O5/O6 (CSCW-CA-25 já está como
+    Aprovado; falta citar o cenário novo e o 11/11 do grupo 09).
+
+## LOTE 2 — Pausa solicitada antes da implementação
+
+- Estado ao pausar: criado apenas `app/core/patient_time.py`, helper que interpreta timestamps ingênuos armazenados como UTC, converte para `ZoneInfo` do paciente (fallback `America/Sao_Paulo`) e calcula datas/limites de dia local. Arquivo foi escrito integralmente; nenhuma outra alteração de código do LOTE 2 foi iniciada. Não rodei validadores nem comandos longos nesta pausa.
+- Ainda falta CSCW-CA-26/O4: adicionar timezone ao modelo Patient com default, criar migração Alembic, aplicar a conversão no bucketing do analytics/leituras e ajustar filtros/serialização por dia local; documentar a convenção de timestamps e adicionar teste próximo à meia-noite.
+- Ainda falta R2: ampliar o histórico autorizado para eventos de vínculos e investigações, limitar eventos de associações/investigações ao escopo do paciente ou do médico autorizado e deduplicar `AtypicalDayDetailViewed`; adicionar testes de cobertura/autorização/deduplicação.
+- Ainda falta R3: exigir CRM e UF no cadastro de médico no backend, exigir `privacy_notice_accepted=true` com erro claro quando ausente/falso e persistir o registro de ciência; adequar payloads de validadores e cadastro UI existente para enviar a ciência; adicionar testes para médico sem CRM/UF e ciência ausente/falsa/aceita.
+- Nenhum critério do LOTE 2 foi validado ainda; executar os testes/validadores isolados e registrar seus resultados quando o trabalho for retomado.
+
+## PAUSADO (checkpoint para retomada)
+
+- 2026-10-07 (pausa solicitada pelo usuário, para liberar uso do Claude) —
+  **Estado exato no momento da pausa:**
+  - **Lote 1 (codex): CONCLUÍDO.** B1, B3, B4/CSCW-CA-29, B7 corrigidos e
+    validados (ver entrada "LOTE1-FIX CONCLUIDA" acima).
+  - **Lote 2 (codex): PARCIAL, pausado em ponto seguro.** Só foi criado
+    `app/core/patient_time.py` (conversão de timestamp UTC para fuso do
+    paciente, fallback `America/Sao_Paulo`). **Faltam**: ligar esse helper
+    na lógica de bucketing de dia (CSCW-CA-26/O4); ampliar o endpoint de
+    proveniência com eventos de vínculo/investigação + deduplicar
+    `AtypicalDayDetailViewed` (R2); exigir CRM/UF + `privacy_notice_accepted`
+    no `POST /api/auth/register` quando `role=doctor` (R3). Nenhum validador
+    rodado ainda para esses itens. Terminal `term_0473947c...` (codex) ocioso,
+    retido.
+  - **O5/O6 (claude-frontend): CONCLUÍDO quanto ao código.** Período
+    preservado sobrevive a reload; texto "Período analisado" mostra o
+    período real quando customizado. `npx playwright test` do grupo 09:
+    **11/11 passando**, `npm run build` passa. **Faltam**: rodar a suíte E2E
+    **completa** (só o grupo 09 foi rodado desde O5/O6) e atualizar
+    `MATRIZ-ACEITE.md` com a evidência de O5/O6 (CSCW-CA-25 já está Aprovado,
+    mas sem citar o cenário novo/11-11). Terminal `term_354390d4...` (claude)
+    ocioso, retido.
+  - **Lote 3 (codex): NÃO DESPACHADO.** Planejado: A15 (DDL congelada nas
+    migrações 0003-0006, `patients.name_encrypted`/`short_id` NOT NULL após
+    backfill, VACUUM documentado), O2 (rate limit não deve bloquear por IP
+    compartilhado/NAT), O3 backend (consolidar convites de dia atípico por
+    paciente/lote em vez de 1 por dia), AUT-CA-21 (teste de baseline
+    antes/depois da proteção para comparar resultados do algoritmo).
+  - **Frontend complementar: NÃO DESPACHADO.** Depende do Lote 2/3 do
+    backend: exibir "classificação anterior" quando a origem de uma
+    investigação deixa de ser atípica (CSCW-CA-22, expor flag via R2), e
+    ajustar a UI dos convites consolidados (O3, depois do backend consolidar).
+  - **Revisão final (#5) do revisor independente: NÃO ACIONADA.** Reservada
+    para depois que Lote 2, Lote 3 e o frontend complementar estiverem
+    concluídos e validados.
+  - **Para retomar**: reenviar aos terminais retidos acima (via
+    `orca terminal send`) a continuação de cada tarefa, ou redespachar via
+    `orca orchestration worker-start --terminal <handle>` se os terminais
+    tiverem sido fechados. Nenhum commit foi feito desde
+    `6a70133` (branch `felipe-cale/auth-vinculos-cscw`); todo o trabalho
+    desta seção é diff não commitado em cima dele.
+
+- 2026-10-08 (retomada apos pausa) — Runtime do Orca reiniciado entre sessões;
+  handles de terminal mudaram e o terminal antigo do codex não sobreviveu
+  (app/core/patient_time.py que ele criou persiste no disco, confirmado).
+  Terminais atuais: **codex LOTE2** `term_53a11186...` (novo, redespachado
+  com o checkpoint acima como contexto); **frontend O5/O6** `term_48263842...`
+  (mesmo worker, resumido — rodando suíte E2E completa agora); **E2E/matriz**
+  `term_7bd5daae...`; **revisor** `term_5d27c4d4...`; **glicemia manual (F1D)**
+  `term_7ce7c4ee...`; opencode antigo `term_8fe1621c...` (não usado mais).
+
+- 2026-10-08 14:30 (worker claude, retomada do O5O6-FIX) — **Suíte E2E
+  completa e matriz.**
+  - **Frontend ajustado ao contrato atual do backend** (quebras reais
+    encontradas na suíte):
+    - `cancelDoctorLink(id, version)` passou a enviar `{version}`, que o
+      backend agora exige (correção do B7; antes dava 422);
+    - `DoctorLinksManager` repassa `link.version`;
+    - `privacy_notice_accepted` no cadastro de médico: outro agente já tinha
+      incluído em `RegisterPage.jsx`, e mantive a versão dele, removendo a
+      duplicata que eu tinha adicionado.
+    - `npm run build` OK.
+  - **Execuções da suíte completa** (`npx playwright test`), todas em
+    2026-10-08:
+    - 1ª: 52 passed / 24 failed / 1 skipped, por `no such column
+      patients.timezone`. O backend alterou o modelo às 14:04 e criou a
+      migração 0009 às 14:10, durante a execução. Além disso, CSCW-CA-05 → 422
+      no cancel (corrigido no frontend, acima).
+    - 2ª: 27 / 49 / 1, por `registration of doctorA failed with 422`. A
+      fixture `e2e/fixtures/api.mjs` só passou a enviar
+      `privacy_notice_accepted` às 14:13, durante a execução.
+    - **3ª (válida, 14:19–14:26): 74 passed, 2 failed, 1 skipped (B4), 77
+      cenários.** As duas falhas:
+      - AUT-CA-01: `ENOENT` nos traces de `e2e/.artifacts`, interferência de
+        outro processo; o grupo 01 isolado deu **5/5**;
+      - **CSCW-CA-26** (teste só de API): a leitura das 23:59 não aparece mais
+        em `dates=` do próprio dia. Ele passava em 2026-10-07 (grupo 09 com
+        11/11) e regrediu com a mudança de fuso por paciente
+        (`patients.timezone`, 0009). **Pendência do backend.**
+    - Todos os cenários de frontend de O5/O6 e N2/N3 passaram.
+  - **MATRIZ-ACEITE.md**: o cabeçalho tem a contagem real da 3ª execução e a
+    explicação das falhas. CSCW-CA-25 cita os cenários "N2, N3" e "O5, O6" e o
+    11/11 do grupo 09. CSCW-CA-26 continua Parcial, com nota da regressão. Os
+    totais não mudam: 62 · 0 · 4 · 2.
+
+- 2026-10-08 14:35 (coordenador) — **Nota para o Codex (Lote 2, CSCW-CA-26):**
+  o frontend confirmou regressão real introduzida pela migração 0009
+  (`patients.timezone`): a leitura de 23:59 deixou de aparecer em
+  `dates=<próprio dia>` depois do bucketing por fuso do paciente (passava
+  11/11 em 2026-10-07, grupo 09). Antes de declarar o Lote 2 concluído,
+  investigar e corrigir esse caso de borda em `app/core/patient_time.py`
+  e/ou no endpoint de atypical-days, e confirmar reexecutando o grupo 09 da
+  suíte E2E (ou o teste de API equivalente) antes do `worker_done`.
+
+## TASK LOTE2-FIX CONCLUIDA
+
+- 2026-10-08 — CSCW-CA-26/O4: `Patient.timezone` agora tem default `America/Sao_Paulo` (migração 0009); o analytics agrupa leituras e calcula filtros por data local, enquanto o detalhe e o PDF serializam data/hora local. A entrada manual também agenda reprocessamento para o dia local. README e contrato registram que `measured_at` é naive UTC.
+- R2: `GET /api/patients/{id}/provenance` inclui eventos autorizados de vínculo, investigação e convite, delimitados pelos agregados daquele paciente; `AtypicalDayDetailViewed` é gravado no máximo uma vez por ator/paciente por dia local.
+- R3: cadastro público de médico exige CRM, UF e `privacy_notice_accepted=true`; a ciência fica registrada em `UserAccount.privacy_notice_accepted_at`. O cadastro React e os validadores/testes enviam o novo campo; provisionamento UCI segue pelo fluxo interno de demo.
+- CSCW-CA-26: a regressão observada vinha da fixture E2E que gravava `23:59` como relógio local em coluna convencionada UTC. A fixture agora converte `23:59` e `00:01` locais para UTC usando o fuso do paciente; o endpoint inclui 23:59 no próprio `dates=` e deixa 00:01 no dia seguinte. A matriz foi atualizada: CSCW-CA-26 aprovado; totais 63 aprovados, 3 parciais e 2 não aplicáveis.
+- Testes: `python -m pytest tests/integration -q` — 48 passed; `python scripts/validate_auth_flows.py`, `validate_doctor_links.py` e `validate_investigations.py` — PASS; Playwright E2E-02 — 12/12; Playwright E2E-09 — 11/11; `python -m compileall -q app tests scripts frontend-react/e2e/scripts/seed_atypical_days.py` e `git diff --check` — PASS. O E2E foi executado com servidores/DB isolados em portas alternativas porque as portas padrão estavam ocupadas; `npm run build` sem elevação foi bloqueado por acesso negado do Vite ao filesystem, e o Playwright escalado validou Vite e os fluxos reais no browser.
+- `git status --short` ao concluir (inclui alterações de outros trabalhos já presentes neste worktree compartilhado):
+  ```text
+   M README.md
+   M app/api/routes.py
+   M app/main.py
+   M app/models/entities.py
+   M app/services/analytics.py
+   M app/services/auth_service.py
+   M app/services/investigations.py
+   M app/services/manual_entry.py
+   M app/services/reports.py
+   M features/a-desenvolver/BACKLOG.md
+   M features/a-desenvolver/CONTRATOS-API.md
+   M features/a-desenvolver/MATRIZ-ACEITE.md
+   M frontend-react/e2e/fixtures/api.mjs
+   M frontend-react/e2e/scripts/seed_atypical_days.py
+   M frontend-react/e2e/specs/02-auth-registration-session.spec.mjs
+   M frontend-react/e2e/specs/09-atypical-popup-filters.spec.mjs
+   M frontend-react/src/api.js
+   M frontend-react/src/components/DoctorLinksManager.jsx
+   M frontend-react/src/locales/en-US.json
+   M frontend-react/src/locales/es.json
+   M frontend-react/src/locales/pt-BR.json
+   M frontend-react/src/pages/PatientDetailPage.jsx
+   M frontend-react/src/pages/RegisterPage.jsx
+   M scripts/validate_auth_flows.py
+   M scripts/validate_doctor_links.py
+   M scripts/validate_investigations.py
+   M tests/integration/README.md
+   M tests/integration/conftest.py
+   M tests/integration/test_outbox_and_delivery.py
+  ?? alembic/versions/20261007_0008_notification_delivery_and_system_closer.py
+  ?? alembic/versions/20261008_0009_patient_timezone_privacy_acceptance.py
+  ?? app/core/patient_time.py
+  ?? app/services/notification_outbox.py
+  ?? debug.log
+  ?? tests/integration/test_lote2_patient_time_provenance_registration.py
+  ```
+
+- 2026-10-08 (coordenador) — Lote 2 verificado e aceito. Despachado **Lote 3**
+  ao mesmo terminal/contexto do Codex (`term_53a11186...`): A15 (congelar DDL
+  aplicado, corrigir NOT NULL ausente, documentar VACUUM pós-backfill), O2
+  (chave de rate limit não deve penalizar IP/NAT compartilhado), O3 backend
+  (consolidar atypical-day-prompts por paciente/lote; `POST .../defer` aceita
+  dispensar o lote), AUT-CA-21 (teste de integração comparando classificação
+  de anomalias antes/depois da criptografia/blind index). Liberado também o
+  frontend (`term_48263842...`) para a execução final única da suíte E2E
+  completa, já com o fix do CSCW-CA-26 confirmado.
+- 2026-10-08 14:51 (worker claude) — **Revalidação final depois da correção
+  do CSCW-CA-26 pelo Codex.**
+  - Suíte E2E completa (`npx playwright test`), execução única e sem
+    alterações concorrentes do backend, 14:44–14:51:
+    **77 passed, 0 failed, 1 skipped (B4, outbox)**, em 78 cenários.
+  - Por grupo: 01 5/5 · 02 12/12 · 03 5/5 · 04 6/6 · 05 8/8 · 06 9/9 · 07 4/4
+    · 08 8 + 1 skip · 09 11/11 · 10 9/9. Nenhuma regressão.
+  - `MATRIZ-ACEITE.md`: CSCW-CA-26 conferido como Aprovado (registrado pelo
+    Codex). Totais conferidos pela coluna Status: **63 Aprovado · 0 Reprovado
+    · 3 Parcial · 2 Não aplicável** (68). Cabeçalho e linha por grupo
+    atualizados com esta execução.
+
+## TASK O5O6-FIX CONCLUIDA
+
+  Contagem final: E2E completo 77 passed / 0 failed / 1 skipped (78
+  cenários); matriz 63 / 0 / 3 / 2.
+
+- 2026-10-08 (coordenador) — O5/O6-FIX confirmado concluído. Terminal
+  liberado para **FRONTEND-COMPLEMENTAR**: CSCW-CA-22 (exibir "classificação
+  anterior" quando a origem de uma investigação deixa de ser atípica),
+  instruído a não tocar em `ProactivePrompt.jsx`/atypical-day-prompts
+  enquanto o Codex ainda trabalha no O3 (consolidação de convites) do Lote 3
+  em paralelo no mesmo instante.
+
+- 2026-10-08 (coordenador) — Codex implementou `origin` (campo pedido pelo
+  frontend para CSCW-CA-22) no Lote 3. O frontend encontrou um bug real
+  nesse campo: `is_current_classification` retorna `true` para uma data que
+  não existe na análise mais recente do paciente — suspeita de que a busca
+  do `analysis_run` mais recente do paciente não está pegando o run correto.
+  Reportado ao Codex para correção antes de fechar o Lote 3; bloqueante para
+  o CSCW-CA-22 funcionar com dado real (o frontend contornou com mock de
+  rede só para validar a UI nesse meio-tempo).
+
+## TASK LOTE3-FIX CONCLUIDA
+
+- 2026-10-08 — A15: migrations aplicadas 0003-0006 permaneceram sem alteracao; a nova migration 20261008_0010 faz backfill de name_encrypted e short_id e aplica NOT NULL. README documenta DDL historico imutavel e VACUUM apos backfills SQLite grandes.
+- O2: rate limit agora combina IP+identidade e mantem o bucket por conta, evitando que usuarios atras do mesmo NAT se bloqueiem entre si e preservando a defesa contra brute force por conta.
+- O3: GET atypical-day-prompts agrupa convites por paciente e status em um lote com prompt_ids, indicator_ids e dates; POST /api/atypical-day-prompts/defer recebe indicator_ids e dispensa o lote registrando a proveniencia. Frontend chama o endpoint em lote.
+- AUT-CA-21: teste compara as datas e flags de anomalia antes/depois de nova criptografia AES-GCM e recalculo dos blind indexes; a classificacao permaneceu identica.
+- CSCW-CA-22 extra solicitado pelo frontend: resumos e detalhes de investigacao incluem origin com indicator_id, date, analysis_run_id e is_current_classification. A causa do falso true era get_latest_patient_analytics_run ignorar execucoes mais recentes do paciente quando elas terminavam sem linhas DailyIndicator. A consulta agora inclui execucoes concluidas associadas ao paciente pelo cabecalho mesmo sem indicadores, e execucoes globais pelos indicadores do paciente. Teste confirma true antes da execucao vazia, false depois e false apos recalc que remove a anomalia.
+- CONTRATOS-API.md registra o contrato de origin, inclusive a semantica de execucao vazia. MATRIZ-ACEITE.md atualizada: 68 criterios unicos, 65 Aprovado, 1 Parcial (CSCW-CA-29), 2 Nao aplicavel.
+
+### Evidencias executadas
+
+- python -m pytest tests/integration -q -> 52 passed, 1 warning ambiental do joblib por nao conseguir detectar nucleos fisicos no Windows; nenhum teste falhou.
+- python scripts/validate_foundational_security.py (chaves efemeras de teste) -> PASS: ciphertext, salts e tentativas de SHORTID.
+- python scripts/validate_account_migration.py -> PASS: identidade e notas cifradas, colunas em claro removidas, IDs preservados; aplicou a migration 0010.
+- python scripts/validate_auth_flows.py -> PASS: registro, login, sessao, logout, papeis e isolamento de acesso.
+- python scripts/validate_investigations.py -> PASS: fluxos de investigacao, convites em lote, filtros por datas e revogacao.
+- MYGLICO_E2E_BACKEND_PORT=8221 MYGLICO_E2E_FRONTEND_PORT=8220 com banco SQLite proprio; npm run test:e2e -- e2e/specs/06-messaging-and-closure.spec.mjs -> 11 passed, incluindo o CSCW-CA-22 real sem mock que reproduziu o falso true antes do ajuste.
+- npm run test:e2e -- e2e/specs/07-atypical-day-invitation.spec.mjs -> 4 passed, incluindo deferimento do lote.
+- git diff --check -> sem erros de whitespace; Git apenas avisou sobre conversao CRLF em arquivos preexistentes/alterados.
+- git diff --name-only -- migrations 0003-0006 -> vazio; nenhuma migration aplicada antiga foi modificada.
+- git status --short -> confirmou novos arquivos LOTE3 alembic/versions/20261008_0010_patient_identity_not_null.py e tests/integration/test_lote3_fixes.py e alteracoes LOTE3 em README, routes, rate_limit, reports, CONTRATOS-API, MATRIZ, frontend prompt/API, validadores e testes. O worktree tambem contem alteracoes compartilhadas/prévias do Lote2 e do frontend (incluindo migrations 0008/0009, patient_time.py, InvestigationOrigin.jsx e debug.log); nao foram atribuídas como parte exclusiva deste Lote3.
+
+- Resultado: A15, O2, O3 e AUT-CA-21 implementados e verificados; o contrato extra CSCW-CA-22 foi implementado e o grupo E2E 06 passou 11/11.
+
+- 2026-10-08 (worker claude, FRONTEND-COMPLEMENTAR) — **CSCW-CA-22: indicador
+  de "classificação anterior".**
+  - Leitura de SDD2 §7.4 ("Exibir que a origem corresponde a uma
+    classificação anterior") e do contrato.
+    - Constatação inicial: o backend não expunha a data de origem nem a
+      classificação atual. Os IDs de indicador mudam a cada recálculo (B9),
+      então uma heurística por ID daria falso positivo.
+    - Decisão do usuário: pedir o campo ao Codex. Proposta registrada em
+      `CONTRATOS-API.md`:
+      `origin {indicator_id, date, analysis_run_id, is_current_classification}`,
+      comparado por **data**.
+    - O Codex implementou em `_investigation_summary` (seção "Contrato
+      implementado").
+  - **Frontend**:
+    - novo `components/InvestigationOrigin.jsx`, usado em
+      `InvestigationsList.jsx` e `InvestigationPage.jsx`;
+    - com `is_current_classification === false`: selo "Classificação
+      anterior" + texto com a data e a explicação de que a conversa e a origem
+      foram preservadas;
+    - com `true`: "Origem: dia atípico de <data>";
+    - sem `origin`: comportamento anterior;
+    - 3 chaves novas nos 3 locales e CSS `.react-origin--previous`.
+    - **Não** toquei `ProactivePrompt.jsx` nem `atypical-day-prompts` (O3 com
+      o Codex).
+  - **E2E** (`e2e/specs/06-messaging-and-closure.spec.mjs`):
+    - "CSCW-CA-22 (UI)", ponta a ponta contra o backend real: abre a conversa
+      a partir de um dia atípico, corrige as leituras desse dia, reprocessa,
+      confere `origin.is_current_classification=false` na API e o selo + a
+      data na conversa;
+    - "CSCW-CA-22 (UI, contract)": intercepta a resposta e alterna
+      `is_current_classification` para validar os dois estados na conversa e
+      na lista. O Codex ajustou o título desse cenário durante a tarefa.
+  - **Ajuste na fixture de E2E**:
+    - `seed_atypical_days.py` ganhou `--flatten-date`, que copia as leituras
+      do dia anterior para o dia indicado antes de reprocessar;
+    - `seedAtypicalDays` ganhou `flattenDate`.
+    - Motivo: a 1ª versão do teste só acrescentava histórico e o dia
+      continuava atípico (a API devolvia `true`, corretamente). Uma 2ª versão
+      com valor constante 105 também continuou marcada, porque o
+      IsolationForest usa `contamination` ≥ 5% e um dia de variância zero
+      destoa.
+  - **Resultado real**: `npx playwright test` dos grupos 05 + 06 + 09 deu
+    **30 passed, 0 failed** (4,5 min). Os 3 cenários de CA-22 passam.
+    `npm run build` OK.
+  - **MATRIZ-ACEITE.md**: CSCW-CA-22 → **Aprovado**. Totais recontados:
+    **65 Aprovado · 0 Reprovado · 1 Parcial (CSCW-CA-29) · 2 Não aplicável**
+    (68).
+
+## TASK FRONTEND-COMPLEMENTAR-CSCW22 CONCLUIDA
+
+  Evidência: grupos 05 + 06 + 09 com 30/30 (inclui "CSCW-CA-22",
+  "CSCW-CA-22 (UI)" e "CSCW-CA-22 (UI, contract)"); build OK; matriz
+  65/0/1/2.
+
+- 2026-10-08 (coordenador) — **Achado e correção própria antes da Revisão
+  #5**: com os dois lotes concluídos, conferi o único item ainda "Parcial"
+  (CSCW-CA-29) e constatei que a nota estava desatualizada — dizia "não há
+  consumidor/retry da outbox (B4)", mas o consumidor real já existe desde o
+  Lote 1 (`drain_notification_outbox`, acionado pelo middleware de `/api/*`
+  em `app/main.py`). Rodei `python -m pytest
+  tests/integration/test_outbox_and_delivery.py -v` e confirmei **5 passed**,
+  incluindo `test_cscw_ca_29_failed_publication_is_retried_from_a_durable_row_without_duplicate_effects`
+  (força falha de publicação, confirma `PENDING`, dreno manual marca
+  `DELIVERED` sem duplicar o item visível). Reclassifiquei CSCW-CA-29 para
+  **Aprovado** em `MATRIZ-ACEITE.md` e corrigi o texto do `test.skip` em
+  `frontend-react/e2e/specs/08-notifications-and-unread.spec.mjs` (não dizia
+  mais a verdade sobre a ausência de consumidor). **Matriz final: 66
+  Aprovado · 0 Reprovado · 0 Parcial · 2 Não aplicável (68).**
+
+- 2026-10-08 (coordenador) — **Revisão #5 despachada** ao terminal retido do
+  revisor independente (`term_5d27c4d4-b845-4c8d-ba20-1825045601d2`, handle
+  novo pós-reinício; o antigo `...0e90-4e9f...` ficou `terminal_handle_stale`).
+  Instruído a reverificar do zero (não confiar nos relatos dos workers):
+  A15, O2, O3, AUT-CA-21, R2, R3, CSCW-CA-26/O4, CSCW-CA-22, a reclassificação
+  de CSCW-CA-29 feita por mim, e as duas observações novas da Revisão #4
+  (O5 reload / O6 resumo "Janela padrão"). Aguardando veredito.
+
+- 2026-10-08 (coordenador) — **Revisão #5: REPROVADO.** Duas regressões reais
+  introduzidas nesta rodada de correção, confirmadas empiricamente pelo
+  revisor (não apenas lidas no código):
+  - **P1 (crítico)**: deslocamento de horário de −3h. `app/core/patient_time.py`
+    e o bucketing novo tratam todo `measured_at` como UTC, mas o formulário de
+    entrada manual envia hora local sem offset (`datetime-local`) e o
+    importador UCI grava a hora local do diário — nada converte isso na
+    entrada. Teste do revisor: leitura registrada em 08/10 00:30 aparece como
+    07/10 21:30. Reimportação da base UCI real do zero mudou a classificação
+    de **18 dias atípicos** em relação à importação da Revisão #2. Derruba
+    CSCW-CA-26 e AUT-CA-21. Os testes não detectam porque a fixture E2E de
+    CSCW-CA-26 foi alterada para gravar os horários já em UTC (não reproduz o
+    caminho real), e o novo teste de AUT-CA-21 só compara antes/depois da
+    recriptografia, não antes/depois da mudança de fuso.
+  - **P2 (alto)**: vazamento de proveniência entre médicos. Paciente vinculado
+    a médicos A e B, investigação aberta só com B: A recebe 404 na rota direta
+    da investigação (correto), mas `GET /api/patients/{id}/provenance` entrega
+    a A os eventos `InvestigationOpened`/`AssociationRequested`/
+    `AssociationConfirmed` de B, incluindo `doctor_id` e `association_id`.
+    Viola SDD2 §3/§10.2/§10.6.
+  - **A15 ainda Parcial**: NOT NULL e VACUUM resolvidos, upgrade real a partir
+    do commit `6a70133` produz schema idêntico ao de um banco novo (testado
+    pelo revisor), mas migrações 0003–0006 continuam gerando tabelas a partir
+    dos modelos ORM atuais (não congeladas de fato), e o README afirma
+    reprodutibilidade que não é exata.
+  - **Confirmado correto pelo revisor**: O2, O3 (navegador, com dados UCI),
+    R3, B1, B7, CSCW-CA-22, O5, O6 (navegador), dedupe do
+    `AtypicalDayDetailViewed`, e minha reclassificação do **CSCW-CA-29**
+    (procede — ressalva: o consumidor da outbox é novo nesta rodada, não
+    existia no commit `6a70133`, e roda em toda requisição `/api/*`, o que
+    pode travar o SQLite sob carga; vale considerar no futuro, não bloqueante
+    agora).
+  - **Contagem real da matriz pela verificação do revisor**: 62 Aprovado · 2
+    Reprovado (CSCW-CA-26, AUT-CA-21) · 2 Parcial (A15, CSCW-CA-17) · 2 Não
+    aplicável — não os 66/0/0/2 que eu havia calculado.
+  - Execuções do revisor: 6/6 validadores, pytest 60 passed, E2E completo 79
+    passed/1 skip — tudo verde mesmo com as duas regressões (confirma que a
+    suíte atual não cobre esses casos).
+  - **Commit `6a70133` (aprovado na Revisão #4) continua válido e não foi
+    tocado.** Parecer completo em `REVISAO-FINAL.md`.
+
+- 2026-10-08 (coordenador) — **Lote 4 despachado ao Codex** (mesmo
+  terminal/contexto `term_53a11186...`): P1 crítico (converter hora local
+  para UTC real na entrada — formulário manual e importador UCI — usando
+  `patients.timezone`, em vez de reinterpretar o que já está armazenado;
+  corrigir a fixture E2E que mascarava o bug; novo teste de não-regressão na
+  reimportação UCI), P2 alto (filtrar `GET /api/patients/{id}/provenance`
+  pelo escopo de autorização de quem pede, teste com dois médicos), A15
+  (corrigir a afirmação do README sobre reprodutibilidade das migrations
+  0003–0006, sem reescrever o que já foi aplicado), e atualização da matriz
+  para a contagem real apurada pelo revisor. Revisão #6 só será acionada
+  depois do Lote 4 concluído e verificado por mim.
+
+## LOTE4-FIX PAUSADO
+
+Checkpoint de 2026-10-08, solicitado antes do desligamento da máquina. Nenhum
+servidor deste trabalho permanece em execução: as portas isoladas 8220/8221
+estão livres e os PIDs anotados nos logs de Playwright/Vite/uvicorn (9512,
+28548 e 25864) não existem mais. A porta 8101 não foi encerrada nem alterada.
+
+### Pronto e verificado
+
+- **P1 (fuso na entrada):** `local_datetime_to_utc_naive` em
+  `app/core/patient_time.py` converte hora local para UTC ingênuo antes de
+  persistir. O serviço `app/services/manual_entry.py` aplica o fuso de
+  `Patient.timezone` às entradas `datetime-local`; `app/services/uci_importer.py`
+  converte as horas locais do diário UCI no mesmo ponto de entrada.
+- **Dados históricos:** migration nova
+  `alembic/versions/20261008_0011_normalize_measurement_timestamps_to_utc.py`
+  converte uma vez as leituras locais já persistidas para UTC conforme o fuso
+  do paciente. A validação de migração a partir do esquema legado passou.
+- **AUT-CA-21:** teste de integração importa uma fixture UCI, compara a
+  classificação atual com a classificação de referência agrupada pelas datas
+  locais antigas e confirma que uma reimportação idempotente não muda as datas
+  atípicas. O teste passou.
+- **P2 (proveniência):** `GET /api/patients/{id}/provenance` restringe eventos
+  de vínculo e investigação ao médico autenticado; a visão do paciente mantém
+  o histórico completo. Teste de integração com dois médicos comprova o
+  isolamento e que o paciente ainda vê os dois vínculos/investigação. Passou.
+- **A15:** README corrigido para explicar que 0003–0006 são históricas, mas
+  parte do DDL deriva dos modelos ORM em tempo de execução e não é um snapshot
+  congelado; migrations aplicadas não foram reescritas. As orientações sobre
+  DDL explícita em novas revisões e `VACUUM` após backfills grandes permanecem.
+- **Validação:** `python -m pytest tests/integration -q` — **55 passed**.
+  Também passaram os seis validadores: `validate_account_migration.py`,
+  `validate_auth_flows.py`, `validate_doctor_links.py`,
+  `validate_foundational_security.py` (com chaves hexadecimais efêmeras),
+  `validate_investigations.py` e `validate_uci_demo_provisioning.py`.
+
+### Falta / atenção ao retomar
+
+- A suíte E2E completa do Lote 4 ainda não terminou. A tentativa com
+  `MYGLICO_E2E_BACKEND_PORT=8221`, `MYGLICO_E2E_FRONTEND_PORT=8220` e banco
+  descartável exclusivo começou o upgrade/startup do backend, mas o Vite foi
+  impedido pelo sandbox de ler o workspace antes de iniciar os testes de
+  navegador. A repetição com elevação foi cancelada pelo usuário antes de
+  começar. Nenhum resultado de casos E2E deve ser atribuído a este lote.
+- O caso CSCW-CA-26 foi alterado para preencher o formulário real de glicemia
+  com 00:30 e 23:30 e conferir o dia/hora pela API; **precisa ser executado**
+  pela suíte E2E completa ao retomar.
+- Atualizar `MATRIZ-ACEITE.md` após a execução E2E, com a contagem observada e
+  as evidências novas de CSCW-CA-26, AUT-CA-21 e isolamento CSCW-CA-17/AUT-CA-15.
+  A matriz ainda contém a classificação anterior à Revisão #5.
+- Ao retomar, executar a suíte completa somente nas portas alternativas
+  8221/8220 e com banco descartável exclusivo; não encerrar processos por nome
+  genérico. Em seguida rodar `git diff --check`/validadores necessários e
+  registrar os resultados finais sob `## TASK LOTE4-FIX CONCLUIDA`.
+
+- 2026-10-08 16:0x (coordenador) — **Pausa geral confirmada** (usuário vai
+  desligar a máquina). Estado dos três terminais retidos no momento da pausa:
+  - **Codex** (`term_53a11186-4e1e-42ef-a9f3-865750fa5f0e`): checkpoint acima
+    (`## LOTE4-FIX PAUSADO`). Confirmou sem processo próprio em execução;
+    portas 8220/8221 livres; porta 8101 intacta.
+  - **Frontend** (`term_48263842-bac1-4b9a-967f-22a5205faae2`): ocioso desde
+    a conclusão de `TASK FRONTEND-COMPLEMENTAR-CSCW22`. Nenhuma tarefa nova
+    pendente nele.
+  - **Revisor independente** (`term_5d27c4d4-b845-4c8d-ba20-1825045601d2`):
+    ocioso, avisado para aguardar a Revisão #6 após o Lote 4 ser concluído e
+    verificado pelo coordenador.
+  - **Para retomar**: terminar o Lote 4 no terminal do Codex (suíte E2E
+    completa + matriz), depois verificar por conta própria antes de acionar a
+    Revisão #6 no terminal do revisor. Nenhum commit foi feito desde
+    `6a70133` (aprovado só até a Revisão #4); a Revisão #5 reprovou o diff
+    atual do worktree por P1 e P2 (ver acima). Não commitar antes de uma
+    revisão final aprovar explicitamente.
+
+## TASK LOTE4-FIX CONCLUIDA
+
+2026-10-09: retomado pelo coordenador (sessão Claude, Run `run_2b2ba472438b`).
+Os terminais Codex, Frontend e Revisor da pausa anterior não existem mais.
+
+- **Verificação do checkpoint:** P1, P2 e A15 conferidos no código.
+- **P2, resíduo corrigido pelo coordenador:** o filtro usava `doctor_id`, então
+  um médico reassociado ainda via `InvestigationOpened`/eventos do ciclo
+  revogado. `api_patient_provenance` (`app/api/routes.py`) agora restringe o
+  contexto médico ao vínculo ACTIVE atual e às investigações com
+  `association_id` desse vínculo. O teste novo
+  `test_doctor_provenance_excludes_previous_cycle_after_reassociation` cobre
+  isso.
+- **Fixture E2E:** `seed_atypical_days.py --flatten-date` falhava com
+  `NameError: timezone`. Agora usa `local_date_utc_bounds`, o mesmo helper do
+  backend. CSCW-CA-22 (UI) volta a passar.
+- **Execuções (código final):**
+  - E2E completo nas portas 8221/8220 com SQLite descartável: **79 passed,
+    1 skipped, 0 failed**. CSCW-CA-26 passou com o formulário real às 00:30
+    e às 23:30.
+  - `python -m pytest tests -q`: **64 passed**.
+  - Validadores: 6/6 PASS.
+  - `git diff --check`: limpo.
+- **Matriz:** CSCW-CA-26, AUT-CA-21, AUT-CA-15 e CSCW-CA-17 marcados como
+  "Aprovado (aguarda revisão #6)".
+- **Comparação UCI real** (referência `6a70133` × atual × upgrade via 0011),
+  feita por um worker isolado em bancos SQLite próprios, com o zip local
+  (sha256 dd5c95c4…): **IGUAL**.
+  - Nos três bancos: 70 pacientes, 13531 `glucose_records`/fontes, 3860
+    buckets e 222 dias atípicos, com conjunto (data-NN, data) idêntico e 0
+    diferenças de valores.
+  - Os exemplos da #5 (data-08 1990-08-21, data-09 1990-05-01) ficam no dia
+    original.
+  - Os 13531 horários convertidos UTC→fuso voltam à hora do diário: 2059 deles
+    caem no horário de verão, e nenhum cai em janela inexistente ou ambígua.
+  - Reimportar sem `--force` não duplica nada. Com `--force`, cria um segundo
+    lote, igual ao que a referência faz (comportamento documentado).
+  - Observação, não bloqueante: `local_datetime_to_utc_naive` resolve hora
+    inexistente com fold=0, deslocando +1h. Só afeta entrada manual numa
+    janela de transição de horário de verão; America/Sao_Paulo não tem horário
+    de verão desde 2019.
+- **Próximo passo:** Revisão #6 por um worker **Codex** independente, por
+  pedido do usuário. Sem commit até a aprovação.
+
+## REVISAO #6 — APROVADO (2026-10-09)
+
+- **Revisor:** worker **Codex** independente, a pedido do usuário. Orca
+  task `task_48e024122805`, dispatch `ctx_dcc1a34ad1b8`, terminal
+  `term_cc671fa0-…`.
+- **Execução:** o Codex abriu oferecendo atualização (0.160.1 → 0.161.0); o
+  coordenador escolheu "Skip", sem autorização para atualizar a ferramenta.
+  O coordenador aprovou duas vezes a execução do E2E fora do sandbox, só para
+  o comando do escopo (portas 8230/8231).
+- **Diff avaliado:** SHA-256 `a9d8b71a…41ea`, sobre `6a70133`.
+- **Resultados independentes:**
+  - pytest: 64 passed;
+  - validadores: 6/6;
+  - E2E: 79 passed, 1 skipped, 0 failed;
+  - classificação UCI (ref × atual × upgrade 0011): idêntica, com 3860
+    buckets e 222 dias atípicos.
+- **Achados:** P1, P2 e A15 resolvidos. Observações não bloqueantes:
+  - O7: não há teto por IP;
+  - O8: a outbox é consumida dentro da requisição;
+  - credenciais demo públicas;
+  - horas locais inexistentes, por causa do horário de verão, são aceitas e
+    normalizadas;
+  - `metadata` da proveniência sem whitelist por tipo de evento.
+- **Matriz:** 66 Aprovado e 2 Não aplicável.
+- **Commit:** pendente de autorização do usuário.
+
+## AUDITORIA GERAL (Codex) — REPROVADO; correções G1/G2 (2026-10-09)
+
+O usuário pediu diretamente ao terminal Codex uma auditoria geral de todo o
+desenvolvimento contra os SDDs. O sub-agente `auditoria_integral` encontrou
+dois P2 (registrados em `REVISAO-FINAL.md`).
+
+**G1 — SDD1 §8.2: o aceite de privacidade só era registrado para médicos.**
+- Agora `privacy_notice_accepted=true` é exigido nos dois papéis:
+  - `AuthRegisterPayload` em `routes.py`;
+  - `register_account` em `auth_service.py`, que grava
+    `privacy_notice_accepted_at` para os dois papéis.
+- `RegisterPage.jsx` envia o aceite também para o paciente; o checkbox já era
+  obrigatório na UI para os dois papéis.
+- Helpers atualizados (`conftest`, 3 validadores, `e2e/fixtures/api.mjs`,
+  AUT-CA-05 do E2E-02) e `CONTRATOS-API.md`.
+- Teste novo: `test_patient_registration_records_privacy_notice_acknowledgement`.
+
+**G2 — SDD2 §10 / CSCW-CA-10: `has_investigation` atravessava ciclos.**
+- `/api/patients/{id}/atypical-days` agora filtra, no contexto do médico,
+  por `association_id` do vínculo ACTIVE atual.
+- Teste novo:
+  `test_atypical_days_has_investigation_ignores_previous_cycle_after_reassociation`.
+
+**Execuções:**
+- pytest: **66 passed**.
+- Validadores: 6/6.
+- E2E completo: 77 passed, 1 skipped, 2 failed:
+  - AUT-CA-05: payload cru sem o aceite; o teste foi corrigido.
+  - CSCW-CA-44: `sqlite3.OperationalError: database is locked`, com a outbox
+    sendo drenada dentro da requisição (O8).
+- Depois:
+  - grupos 02 e 08 rodados de novo: 20 passed, 1 skipped;
+  - CSCW-CA-44 isolado, `--repeat-each 5`: 5/5.
+- A falha da CSCW-CA-44 é intermitente e só aparece sob carga. É a primeira
+  manifestação concreta da O8 numa suíte.
+
+## O8 — Estratégia acordada (Claude × Codex), 2026-10-09
+
+- A pesquisa de padrões em redes sociais open source (Mastodon, Discourse,
+  Misskey, procrastinate) está em `O8-PROPOSTA.md`.
+- O parecer inicial do Codex foi "APROVAR COM AJUSTES"
+  (`O8-PARECER-CODEX.md`).
+- O debate (`O8-DEBATE.md`) chegou a **ACORDO** na rodada 2, sobre uma
+  estratégia com estes pontos:
+  - um único `run_once`/`run_until`, acionado por três gatilhos: loop local,
+    Vercel Cron via GET com `CRON_SECRET`, e CLI;
+  - claim por CAS com fencing;
+  - `FAILED` terminal, com observabilidade e replay;
+  - migração 0012;
+  - SQLite com `busy_timeout` e WAL opcional;
+  - SLA melhor esforço no Vercel Hobby.
+- Fato determinante: a produção roda em Vercel serverless com MySQL
+  (`vercel.json`, `README.md:243`).
+- **Implementação aguarda o aval do usuário.**
+
+## O8 — Versão enxuta implementada (decisão do usuário, 2026-10-09)
+
+**Por que a versão enxuta.** O usuário questionou a finalidade da estratégia
+completa. Para o usuário final, o comportamento é só este: o contador sobe e,
+ao abrir, a notificação sai da contagem. Isso já depende apenas da tabela
+`notifications`, gravada na transação do evento, e não da outbox. Hoje a
+outbox só confere o destinatário. Diante disso, o usuário escolheu a versão
+enxuta.
+
+**Estratégia completa como plano futuro.** A estratégia acordada com o Codex
+(`O8-DEBATE.md`) fica como desenho para quando existir um canal externo real
+(e-mail, push ou sincronização RDF).
+
+**Implementado:**
+- `app/main.py`: o middleware não consome mais a outbox. Uma task de
+  startup/shutdown roda `drain_notification_outbox` em thread a cada
+  `MYGLICO_NOTIFICATION_DISPATCH_INTERVAL_SECONDS` (padrão 5).
+- `app/core/config.py`: `notification_dispatcher` aceita `loop` ou `off`.
+  O padrão é `off` quando há `VERCEL` no ambiente, e `loop` nos demais casos.
+- `scripts/notification_outbox.py`: comandos `run [--loop]` e `stats`.
+- Testes de integração:
+  - conftest com `MYGLICO_NOTIFICATION_DISPATCHER=off`;
+  - CSCW-CA-29 reescrito com dreno explícito: a requisição deixa a linha
+    `PENDING` e a inbox fica visível antes do dreno;
+  - testes novos: `test_o8_api_requests_never_drain_the_outbox` e
+    `test_o8_dispatcher_loop_is_off_in_tests_and_drains_when_enabled`.
+- README (variáveis de ambiente e limitação no Vercel) e matriz
+  (CSCW-CA-29).
+
+**Itens da estratégia completa que ficaram de fora:**
+- `busy_timeout`: o `sqlite3` do Python já usa `timeout=5.0` por padrão, então
+  configurá-lo não acrescentaria nada.
+- WAL, lease/fencing, `FAILED`, Cron e migração 0012: só fazem sentido com um
+  canal externo e múltiplos consumidores.
+
+**Execuções:**
+- pytest: **68 passed**.
+- Validadores: 6/6.
+- CLI `run`/`stats` testado numa cópia descartável do banco de integração:
+  57 PENDING passaram a DELIVERED.
+- E2E completo 3×: em andamento.
+
+## PAUSADO — checkpoint para retomada (2026-10-09, suspensão da máquina)
+
+**Estado do worktree.** Nada foi commitado depois de `6a70133`. O diff
+contém:
+- o Lote 4 (P1, P2 e A15), aprovado na Revisão #6;
+- as correções G1 e G2 da auditoria geral, que **ainda não passaram por
+  revisão**;
+- a versão enxuta do O8, que **também não passou por revisão**.
+
+**Já verificado sobre o código atual:**
+- pytest: 68 passed;
+- validadores: 6/6;
+- CLI do O8 testado em banco descartável.
+
+**E2E (3 rodadas seguidas para medir `database is locked`).** A execução foi
+interrompida de propósito na rodada 1, no teste 45 de 80, antes da
+suspensão. Os servidores das portas 8220/8221 já tinham encerrado e as portas
+estão livres. Nenhum resultado parcial deve ser usado como evidência.
+
+**Terminais Codex no Orca:**
+- `term_cc671fa0-…`: revisor da Revisão #6 e da auditoria geral; ocioso;
+- `term_7e324769-…`: parecer e debate do O8; ocioso.
+
+Depois da suspensão, os dois podem não existir mais. Nesse caso, despachar um
+worker Codex novo. Ao despachar, escolher "Skip" no aviso de atualização do
+Codex e enviar o prompt direto pelo terminal.
+
+**Para retomar:**
+1. Rodar o E2E completo 3 vezes nas portas 8221/8220, com banco descartável.
+   Registrar passed/failed e a contagem de `database is locked` e de
+   `outbox drain failed` em cada rodada.
+2. Despachar a **Revisão #7** (Codex) sobre G1, G2 e O8 enxuto, mais a
+   regressão completa. O parecer vai em `REVISAO-FINAL.md`.
+3. Commitar somente depois de APROVADO e com autorização explícita do
+   usuário.
+
+## Retomada (2026-10-09) — E2E 3× sobre G1/G2 + O8 enxuto
+
+- O E2E completo rodou 3 vezes em sequência, nas portas 8221/8220, com SQLite
+  descartável.
+- Rodada 1: **79 passed / 1 skipped**, locked=0, drainfail=0.
+- Rodada 2: **79 passed / 1 skipped**, locked=0, drainfail=0.
+- Rodada 3: **79 passed / 1 skipped**, locked=0, drainfail=0.
+- Não houve `database is locked` nem falha de dreno. Isso é evidência do
+  cenário medido, não prova universal.
+- Próximo passo: Revisão #7 por um worker Codex **novo** (terminal novo, sem
+  contexto anterior), a pedido do usuário. Escopo em `REVISAO7-ESCOPO.md`.
+
+## REVISAO #7 — APROVADO (2026-10-09 16:57)
+
+- **Revisor:** worker Codex **novo**, num terminal novo (`term_fa47410b-…`),
+  sem contexto anterior, a pedido do usuário.
+- **Diff avaliado:** SHA-256 `334d98f8…6b6a`, sobre `6a70133`.
+- **Resultado:** G1, G2 e O8 enxuto aprovados.
+- **Execuções independentes:**
+  - pytest: 68 passed;
+  - validadores: 6/6;
+  - E2E: 79 passed, 1 skipped, 0 failed;
+  - `database is locked`: 0;
+  - CLI do O8: 63 PENDING → DELIVERED.
+- **Matriz:** 66 Aprovado e 2 N/A.
+- **Risco residual P3 (não bloqueante):**
+  - o shutdown cancela a task, mas não espera o dreno que já estiver rodando
+    em thread;
+  - com vários processos SQLite pode haver disputa transitória.
+
+  Nenhum dos dois perde a inbox nem duplica `DELIVERED`. A correção prevista
+  é o claim durável do desenho completo (`O8-DEBATE.md`), caso surjam vários
+  consumidores ou um canal externo.
+- **Aprovações do coordenador durante a revisão:** E2E fora do sandbox nas
+  portas 8230/8231 e inspeção da porta 8231. Esta última era um backend
+  órfão, da própria tentativa anterior do revisor, que foi encerrado.
+- **Commit:** aguarda autorização do usuário.
+
+## AUDITORIA INTEGRAL (Codex, sessão nova) — REPROVADO; correções (2026-10-09/10)
+
+Parecer em `AUDITORIA-INTEGRAL.md`. Todos os itens foram corrigidos por três
+agentes em paralelo, com posse de arquivos disjunta, e verificados pelo
+coordenador.
+
+### P2-01 — migrações
+
+**Decisão do usuário:** nenhuma migração foi aplicada a banco persistente e a
+produção será recriada do zero.
+
+- **DDL explícito na cadeia inteira (0001–0011):**
+  - a 0002 foi congelada com os modelos de `3093435`, idênticos aos de
+    `0920365`;
+  - as 0003–0006 têm DDL explícito, sem guardas de tabela;
+  - o downgrade da 0001 foi corrigido para MySQL;
+  - a 0009 remove o default de servidor de `timezone`.
+- **Comparações com `inspect`:** zero diferenças semânticas em SQLite e MySQL
+  8.0.46 (container descartável), nos cenários:
+  - instalação do zero comparada com `create_all`;
+  - upgrade a partir de `0920365`, com dados preservados;
+  - ciclos de downgrade e upgrade.
+- **Limitação:** a ordem física das colunas difere em 3 tabelas. Não há
+  impacto funcional.
+- **README:** quem tem banco local antigo deve recriá-lo com `alembic upgrade
+  head` e depois o import.
+
+### P2-02 — PROV-O
+
+- **Implementação:**
+  - `app/services/cscw_provenance.py`;
+  - `scripts/export_cscw_provenance.py`, ferramenta de operador sem endpoint
+    HTTP. O destino é obrigatório e recusa `artifacts/`,
+    `frontend-react/public` e `frontend-react/dist`. Os arquivos saem com
+    modo 0600;
+  - termos `mygv` novos na ontologia, somente acréscimos;
+  - o R2RML ficou sem mapear eventos CSCW, por decisão justificada: o grafo
+    compartilhado não tem autorização por paciente.
+- **Mapeamento:** os 17 `activity_type` reais seguem o SDD2 §10.5. Não há
+  conteúdo de mensagem nem PII em literais.
+- **Ajuste do coordenador:** o pseudônimo do agente passou de SHA-256 com sal
+  público para HMAC com chave (`_lookup_hmac("cscw_prov_agent", …)`).
+- **Testes:** `tests/integration/test_cscw_prov_projection.py`, com 6 testes.
+
+### P2-03 — E2E intermitente
+
+- **CSCW-CA-25 da auditoria:** não foi reproduzida em cerca de 600 cargas.
+  Várias hipóteses foram descartadas com evidência (estado global, corrida,
+  data/fuso, lock, fixture, paralelismo, jitter de rede, CPU).
+- **Intermitência real corrigida:** a CSCW-CA-23 (A1) falhava 2 vezes em 5.
+  O seed `--global-run` recalculava todos os pacientes do banco E2E e levava
+  de 65 a 122 s. Agora roda numa janela exclusiva.
+- **Diagnóstico:** `openDetail` agora espera as respostas reais da sessão e do
+  detalhe, e diagnostica a falha se ela voltar.
+- **Validação:** spec 09 com `--repeat-each=5` deu 55/55; a suíte completa
+  passou 2 vezes.
+- **Bug do app corrigido pelo coordenador:** em `PatientDetailPage.jsx`, o
+  `loading` ficava preso no retorno antecipado do efeito.
+- **Registrado e não corrigido:** um laço quadrático em
+  `app/services/analytics.py:313-316`. É desempenho do analytics offline e
+  do import UCI.
+
+### P3-01 — limpeza
+
+- O `debug.log`, ruído do Crashpad, foi removido.
+- O whitespace foi limpo nos arquivos de frontend.
+- Os espaços no fim de linha dos SDDs ficaram: são quebras de linha
+  intencionais do Markdown, e os documentos são cópia integral.
+
+### Ajustes de teste do coordenador
+
+- `conftest.py`: `INTEGRATION_DB_FILE` agora deriva de
+  `MYGLICO_INTEGRATION_DATABASE_URL`, em vez de apagar sempre
+  `data/integration.db`.
+- O teste da CSCW-CA-29 drena a outbox até ficar ociosa. Era frágil depois
+  do O8 enxuto porque havia pendências acumuladas entre os testes.
+
+### Regressão (código final)
+
+- pytest: **74 passed**.
+- Validadores: 6/6.
+- E2E 2× (portas 8221/8220): **79 passed / 1 skipped / 0 failed** nas duas, locked=0.
+
+## REAUDITORIA INTEGRAL — APROVADO (2026-10-09)
+
+O mesmo auditor Codex, de sessão independente, confirmou por execução
+própria os quatro achados como resolvidos:
+- P2-01 (DDL de 0001–0011);
+- P2-02 (PROV-O, com pseudônimo por HMAC);
+- P2-03 (E2E 2×, cada rodada com 79 passed / 1 skipped / 0 failed;
+  CSCW-CA-25 e CSCW-CA-23 passaram nas duas);
+- P3-01.
+
+Também revisou o pseudônimo HMAC, o `setLoading`, o `conftest` e a
+CSCW-CA-29. Resultados da reexecução: pytest com 74 passed, validadores 6/6,
+`git diff --check` limpo. Não houve achado novo. O parecer está em
+`AUDITORIA-INTEGRAL.md`, §6.
+
+**Estado:**
+- a entrega integral da branch frente a `main` está aprovada contra os dois
+  SDDs completos;
+- o commit aguarda autorização do usuário.
+
+## AUDITORIA INTEGRAL DO CÓDIGO FINAL — APROVADO (2026-10-09 21:41)
+
+**Auditor:** Codex **novo**, num terminal novo (`term_c62ec30c-…`, task
+`task_ada913f70293`). Pelo escopo, não podia ler os pareceres anteriores
+(`REVISAO-FINAL.md`, `AUDITORIA-INTEGRAL.md`, `O8-PARECER-CODEX.md`,
+`O8-DEBATE.md`).
+
+**Objeto:** branch inteira × `0920365`, com SHA-256 do diff
+`1c22f268…298b` (97 arquivos, +17890/−337).
+
+**Cobertura:**
+- os dois SDDs, seção por seção;
+- os 68 CAs.
+
+**Execuções próprias:**
+- pytest: 74 passed;
+- validadores: 6/6;
+- E2E: 79 passed / 1 skipped;
+- sonda própria de IDOR, AES-GCM/AAD/adulteração, ausência de PII em claro
+  e fuso;
+- `alembic heads`: head único;
+- catálogos nos três locales;
+- inspeção do diff.
+
+**Resultado:**
+- nenhum defeito P1/P2;
+- quatro divergências aceitas por decisão do dono do produto, aplicadas de
+  forma coerente:
+  - papel único;
+  - credenciais demo;
+  - cadeia de migrações reescrita, com a produção recriada do zero;
+  - O8 enxuto.
+
+**Comparação com a primeira auditoria integral:** foi mais enxuta (22 min, 1
+rodada de E2E, sonda mais estreita). Revogação, reassociação e rate limit
+ficaram cobertos pelas suítes. O parecer está em
+`AUDITORIA-INTEGRAL-FINAL.md`.
+
+**Estado:** desenvolvimento concluído e aprovado. Falta só o commit, que
+depende da autorização do usuário.

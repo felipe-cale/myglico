@@ -152,7 +152,7 @@ test.describe("Group 8 - notifications and unread counters", () => {
   });
 
   test("CSCW-CA-29 (secondary) - failed publication is retried from the durable outbox without duplicating effects", async () => {
-    test.skip(true, "Não verificável: NotificationOutbox has no consumer/publisher, rows stay PENDING (REVISAO-FINAL.md B4). Durable outbox rows are asserted in tests/integration/test_outbox_and_delivery.py.");
+    test.skip(true, "Not observable from a browser: the outbox consumer (app/services/notification_outbox.py) is real and wired since Lote 1, but forcing a publish failure requires monkeypatching the Python service directly. The full retry/no-duplicate-effects assertion is covered by tests/integration/test_outbox_and_delivery.py::test_cscw_ca_29_failed_publication_is_retried_from_a_durable_row_without_duplicate_effects (PASS).");
   });
 
   test("notification listing filters unread and a failed list load is recoverable", async ({ actor, browserSession }) => {

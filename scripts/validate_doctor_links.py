@@ -41,6 +41,7 @@ with tempfile.TemporaryDirectory(prefix="myglico-links-") as temp_dir:
         }
         if crm:
             data.update(crm=crm, uf=uf)
+        data["privacy_notice_accepted"] = True
         response = client.post("/api/auth/register", json=data)
         assert response.status_code == 201, response.text
         return response.json()
@@ -118,12 +119,13 @@ with tempfile.TemporaryDirectory(prefix="myglico-links-") as temp_dir:
         rejected = other_doctor.post(f"/api/doctor-links/{pending['id']}/reject", json={"version": 1})
         assert rejected.status_code == 200 and rejected.json()["link"]["status"] == "rejected"
         pending_again = patient.post("/api/doctor-links", json={"doctor_short_id": doctor2_short}).json()["link"]
-        cancelled = patient.post(f"/api/doctor-links/{pending_again['id']}/cancel")
+        assert patient.post(f"/api/doctor-links/{pending_again['id']}/cancel").status_code == 422
+        cancelled = patient.post(f"/api/doctor-links/{pending_again['id']}/cancel", json={"version": 1})
         assert cancelled.status_code == 200 and cancelled.json()["link"]["status"] == "cancelled"
 
         race = patient.post("/api/doctor-links", json={"doctor_short_id": doctor2_short}).json()["link"]
         assert other_doctor.post(f"/api/doctor-links/{race['id']}/confirm", json={"version": 1}).status_code == 200
-        conflict = patient.post(f"/api/doctor-links/{race['id']}/cancel")
+        conflict = patient.post(f"/api/doctor-links/{race['id']}/cancel", json={"version": 1})
         assert conflict.status_code == 409, conflict.text
 
         inbox = patient.get("/api/notifications").json()

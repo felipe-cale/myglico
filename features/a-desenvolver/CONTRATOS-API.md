@@ -18,7 +18,15 @@ endereços de e-mail distintos. O servidor rejeita a reutilização de um e-mail
 existente para registrar o segundo papel.
 
 - `POST /api/auth/register` — body `{role: "patient"|"doctor", email,
-  password, password_confirmation, display_name, crm?, uf?}` → 201
+  password, password_confirmation, display_name, crm?, uf?,
+  privacy_notice_accepted}` → 201
+  Every registration (patient or doctor) requires `privacy_notice_accepted:
+  true` (SDD1 §8.2); the server persists the acceptance time on the account.
+  Doctor registration also requires non-empty `crm` and `uf`. The UCI demo-account importer provisions its own demo doctor
+  outside this public registration endpoint.
+  `glucose_records.measured_at` is interpreted as naive UTC; analytics dates,
+  date filters, and serialized patient event dates use `Patient.timezone`, which
+  defaults to `America/Sao_Paulo`.
   `{account: {roles: ["patient"|"doctor"]}, patient?: {id, short_id,
   display_name}, doctor?: {id, short_id, name, crm, uf, is_demo,
   declared_verified}}`. Seta cookie de sessão.
@@ -40,7 +48,8 @@ existente para registrar o segundo papel.
   médicos; médico: solicitações+pacientes).
 - `POST /api/doctor-links/{id}/confirm` | `/reject` (médico destinatário,
   body `{version}`) → 200 `{link: {...}}` ou 409 se versão desatualizada.
-- `POST /api/doctor-links/{id}/cancel` (paciente solicitante).
+- `POST /api/doctor-links/{id}/cancel` (paciente solicitante, body `{version}`;
+  versão ausente retorna 422 e versão desatualizada retorna 409).
 - `POST /api/doctor-links/{id}/revoke` (qualquer participante, body
   `{reason?, version}`).
 
@@ -91,3 +100,28 @@ existente para registrar o segundo papel.
 Toda string nova do frontend precisa de chave em `pt-BR`, `en-US` e `es`
 (`frontend-react/src/locales/*.json`), e no PDF (`STRINGS` em
 `app/services/clinical_pdf.py`) se afetar relatório clínico.
+
+## Contrato implementado - origem historica da investigacao (CSCW-CA-22)
+
+Registrada em 2026-10-08 pelo worker de frontend. O frontend já consome este
+campo (`InvestigationOrigin.jsx`) e, enquanto ele não existir, cai no texto
+genérico atual.
+
+- `GET /api/investigations` e `GET /api/investigations/{id}` acrescentam ao
+  resumo da investigação:
+  `origin: {indicator_id, date: "YYYY-MM-DD", analysis_run_id,
+  is_current_classification: bool} | null`.
+  - `null` quando `atypical_day_event_id` é nulo.
+  - `date` e `analysis_run_id` vêm do indicador histórico preservado
+    (`atypical_day_event_id`).
+  - `is_current_classification` é `true` quando, na análise mais recente do
+    paciente (a mesma fonte do card e do popup), a mesma **data** continua com
+    `anomaly_flag = true`. É `false` quando a data não está mais classificada
+    como atípica ou não existe na análise atual.
+  - A comparação é **por data**, não por ID: os IDs dos indicadores mudam a
+    cada recálculo (B9).
+- UI: com `is_current_classification === false`, aparece o selo
+  "Classificação anterior" e um texto dizendo que o dia era atípico na
+  análise da época e não é mais (SDD2 §7.4).
+
+- Current-analysis lookup includes completed patient-scoped runs even when no indicator rows were produced, so an empty newer execution clears older classifications. Global runs are associated with a patient through their DailyIndicator rows.

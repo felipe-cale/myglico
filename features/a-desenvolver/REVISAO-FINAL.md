@@ -1,11 +1,277 @@
-# Revisão final independente — revisão #4 (atual, final)
+# Revisão final independente — Revisão #7 (atual)
+
+**Revisor:** Codex, worker independente; não autor das alterações revisadas. **Data/hora:** 2026-10-09 16:57 -03:00 (America/Sao_Paulo).
+
+**Objeto:** worktree sobre `6a70133`, sem commit. Identificador do diff rastreado, excluindo este arquivo para evitar hash circular: SHA-256 **`334d98f87e2804e525d55784894708f8cef988cfcea7af3d34a327f82d3d6b6a`**, calculado em 2026-10-09 16:50 -03:00. Havia 18 arquivos novos não rastreados, inspecionados separadamente; eles não entram no hash do `git diff`.
+
+## Veredito #7
+
+# **APROVADO**
+
+G1 e G2 foram corrigidos e confirmados por execução. O8 enxuto atende ao escopo escolhido: as requisições não drenam a outbox, inbox e contadores continuam disponíveis pela persistência transacional, e retry/idempotência permanecem demonstrados. Não encontrei regressão obrigatória na amostragem da matriz. Registro abaixo um risco operacional P3 de encerramento/concorrência que não bloqueia este escopo, pois a outbox atual não produz efeitos externos e o caminho de produção Vercel mantém o dispatcher desligado.
+
+## Critérios desta revisão
+
+### G1 — aviso de privacidade para paciente e médico: aprovado, sem achado
+
+**Critério:** SDD1 §8.2. **Gravidade:** sem achado. **Arquivos/linhas:** `app/api/routes.py:69-105, 190-198`; `app/services/auth_service.py:57-105`; `frontend-react/src/pages/RegisterPage.jsx:33-48`.
+
+A API rejeita aceite ausente, falso ou nulo com 422: o campo default `false` e o validador cobrem ausência/falso, e `null` é inválido para o tipo booleano. `register_account` repete a exigência no serviço e grava `privacy_notice_accepted_at` para ambos os papéis. A UI bloqueia o envio sem marcar a caixa e inclui `privacy_notice_accepted` no payload compartilhado por paciente e médico. O registro é armazenado como ciência do aviso nesse campo específico, sem ser usado como consentimento genérico.
+
+**Execução:** `tests/integration/test_lote4_timezone_and_provenance.py::test_patient_registration_records_privacy_notice_acknowledgement` passou; testa paciente com valor ausente, falso, nulo e verdadeiro, além da persistência do timestamp. O E2E de cadastro do médico confirmou payload com aceite verdadeiro. A validação comum da API e do serviço aplica-se aos dois papéis.
+
+### G2 — flag de investigação não atravessa ciclos nem médicos: aprovado, sem achado
+
+**Critério:** SDD2 §10 / CSCW-CA-10. **Gravidade:** sem achado. **Arquivo/linhas:** `app/api/routes.py:724-750`; regressões em `tests/integration/test_lote4_timezone_and_provenance.py:90-108`.
+
+No contexto médico, a rota localiza o vínculo ACTIVE atual e restringe `has_investigation` por `doctor_id` e `association_id`; sem vínculo ativo, a comparação com `None` não encontra investigação. Reassociar o mesmo médico não expõe a flag do ciclo revogado. No contexto do paciente não há esse filtro médico, então ele mantém a visão das próprias investigações.
+
+**Execução:** o teste de reassociação passou: médico A vê `true` antes da revogação e `false` depois da nova associação; paciente continua vendo `true`. Fiz também uma verificação adicional com dois médicos e dois dias de origem: cada médico recebeu `true` apenas para a própria investigação, e o paciente recebeu `true` para ambas. E2E AUT-CA-15/CSCW-CA-17 também confirmou isolamento entre médicos.
+
+### O8 — versão enxuta: aprovada
+
+**Critério:** escopo O8 em `BACKLOG.md`, CSCW-CA-29, durabilidade/retry/idempotência e independência da inbox. **Gravidade:** sem achado obrigatório; risco residual P3 abaixo. **Arquivos/linhas:** `app/main.py:39-73`; `app/core/config.py:43-50`; `app/services/notification_outbox.py:23-64`; `scripts/notification_outbox.py:1-62`; `README.md:219-230, 339-343`.
+
+- O middleware não chama o consumidor. `test_o8_api_requests_never_drain_the_outbox` passou: consultas repetidas de notificações e vínculos deixam a linha em `PENDING`, com zero tentativas.
+- O loop inicia no startup apenas com `notification_dispatcher=loop`, cancela no shutdown e captura/loga exceções para nova tentativa. Config aceita `loop|off`; Vercel usa `off` por padrão. O README corresponde ao código.
+- `scripts/notification_outbox.py stats` informou 63 pendentes no SQLite descartável; `run` processou 63 com 0 falhas; o segundo `stats` mostrou 159 `DELIVERED` e nenhum `PENDING`. Foi usado `data/integration.db`, não `data/myglico.db`.
+- `test_cscw_ca_29_failed_publication_is_retried_from_a_durable_row_without_duplicate_effects` passou: falha deixa `PENDING`, persiste tentativa/backoff e classe do erro sem conteúdo privado; retry marca `DELIVERED` e mantém exatamente uma notificação de inbox. O E2E correspondente é skip deliberado porque falha exige injeção Python; a cobertura de integração passou.
+- Inbox e contadores são gravados junto com a mutação em tabelas próprias e foram recuperados nos testes de persistência/reconexão; não dependem do consumidor da outbox.
+
+**Risco operacional P3 — cancelamento durante trabalho em thread e concorrência SQLite.** **Critério:** ciclo de vida e múltiplos workers O8. **Arquivo/linhas:** `app/main.py:45-73`; `app/services/notification_outbox.py:31-62`. `asyncio.to_thread` executa o dreno fora do event loop; cancelar a task awaiter no shutdown não interrompe a thread já iniciada. Com múltiplos processos SQLite, `FOR UPDATE SKIP LOCKED` não fornece exclusão efetiva e pode haver disputa/`database is locked`; exceções são registradas e o loop tenta de novo, e a transação evita confirmar tentativa parcialmente. No MySQL, o bloqueio de linha serializa o lote; na Vercel o loop fica desligado. O “delivery” atual só confirma a existência do registro de inbox já persistido, então seleções concorrentes não criam notificações ou efeitos externos duplicados; `attempts` conta tentativas confirmadas, não seleções. **Impacto:** encerramento abrupto pode adiar atualização de status até outro ciclo; concorrência SQLite pode gerar erro transitório e ruído de log, sem perder a inbox ou duplicar `DELIVERED` neste desenho. **Correção esperada:** aguardar trabalho em curso com limite no shutdown e, caso múltiplos consumidores SQLite ou efeitos externos sejam adicionados, introduzir claim/serialização durável antes da publicação. Não é pendência obrigatória para o O8 enxuto avaliado.
+
+## Regressão executada
+
+- `python -m pytest tests -q -rxXs`: **68 passed**, sem falhas ou skips; um aviso de `joblib` sobre detecção de núcleos físicos no Windows.
+- Seis `scripts/validate_*.py`, com `MYGLICO_ENCRYPTION_KEY_V1` e `MYGLICO_LOOKUP_HMAC_KEY` efêmeras e hexadecimais no ambiente dos processos: **6/6 passaram**. As chaves não foram impressas nem gravadas.
+- `cd frontend-react && MYGLICO_E2E_BACKEND_PORT=8231 MYGLICO_E2E_FRONTEND_PORT=8230 npx playwright test`: **79 passed, 1 skipped, 0 failed** em SQLite descartável. **`database is locked`: 0 ocorrências** na execução concluída. A primeira tentativa parou antes da suíte por bloqueio de leitura do workspace pelo sandbox; a repetição autorizada executou os 80 casos.
+- Usei apenas as portas **8230/8231**. Não usei 8000/8001/8101/8220/8221 nem `data/myglico.db`; as portas 8230/8231 ficaram livres após o Playwright.
+
+## Matriz de aceite e amostragem
+
+Recontei **68 critérios: 66 Aprovado e 2 Não aplicável** (AUT-CA-19 e CSCW-CA-33), sem status parcial/reprovado na matriz. A suíte E2E cobriu AUT-CA-01..23 e CSCW-CA-01..45 por cenários de landing/cadastro/sessão, autorização/troca de conta, busca/vínculos/revogação, isolamento de investigações, mensagens/encerramento, convites, notificações/contadores, filtros de dias atípicos, fuso local, idiomas e PDF. A suíte backend cobriu criptografia/transações, autorização, idempotência, concorrência e retry da outbox; CSCW-CA-29 foi verificado nela por causa do skip no navegador. A verificação cruzada confirmou G1 em AUT-CA-03/04/05 e G2 em AUT-CA-15/CSCW-CA-10/17. O8 não regrediu CSCW-CA-29, CSCW-CA-39..44 nem a inbox/contadores.
+
+---
+## Registro histórico — Revisão #6, auditoria geral e revisões anteriores
+
+### Revisão final independente — revisão #6 (registro histórico)
+
+**Revisor:** Codex, worker independente; não autor das alterações revisadas. Revisão conduzida em 2026-10-09, horário local America/Sao_Paulo.
+
+**Objeto:** branch `felipe-cale/auth-vinculos-cscw`, diff do worktree sobre `6a70133`, sem commit. Identificador do código avaliado (excluindo este arquivo para evitar hash circular): `git diff 6a70133 -- . ':(exclude)features/a-desenvolver/REVISAO-FINAL.md'` — 40 arquivos rastreados, **+1367/−220**, SHA-256 **`a9d8b71a945408c9d478359f9b29adb68b61fdb25f5b0db5232440f3f95441ea`**, medido em **2026-10-09 09:34 -03:00**. Havia ainda 11 arquivos novos não rastreados; foram inspecionados separadamente. Não editei código, testes, migrações nem a matriz.
+
+## Veredito
+
+# **APROVADO**
+
+As pendências obrigatórias da revisão #5 foram verificadas e resolvidas no diff avaliado. Nenhum defeito obrigatório ficou rebaixado a observação. Os riscos abaixo são limitações não bloqueantes, conforme a lista de liberação da revisão #5.
+## Auditoria geral posterior — **REPROVADO**
+
+Em resposta ao pedido de confrontar todo o desenvolvimento com os SDDs, um segundo agente fez leitura independente do diff e dos requisitos. Esta auditoria ampliada não invalida os testes que passaram nem o veredito da revisão #6 dentro do escopo delimitado; ela encontrou duas lacunas obrigatórias fora dos casos que aquele parecer confirmou. Portanto, **o desenvolvimento como um todo não está aprovado até corrigir ou decidir formalmente os itens abaixo**.
+
+### G1 — aceite do aviso de privacidade não é registrado para pacientes
+
+- **Requisito:** SDD1 §8.2, registrar a ciência do aviso de privacidade. **Gravidade:** P2, média. **Arquivo/linhas:** `frontend-react/src/pages/RegisterPage.jsx:45-47`; `app/services/auth_service.py:105`.
+- **Comportamento:** o formulário só envia `privacy_notice_accepted` quando `role === "doctor"`; o serviço só preenche `privacy_notice_accepted_at` para médicos. O formulário de paciente não persiste a ciência.
+- **Impacto:** o registro de aceite fica ausente para contas de paciente, apesar do requisito geral de cadastro.
+- **Correção esperada:** enviar, validar e registrar a ciência também para pacientes, sem tratá-la como consentimento genérico.
+
+### G2 — sinalizador de conversa atravessa ciclos de reassociação
+
+- **Requisito:** SDD2 §10 e CSCW-CA-10; reassociação não restaura contexto anterior. **Gravidade:** P2, média. **Arquivo/linhas:** `app/api/routes.py:729-739`.
+- **Comportamento:** `has_investigation` filtra por paciente e indicador e, no contexto médico, por `doctor_id`, mas não pelo `association_id` ativo. Se o mesmo médico for reassociado, uma investigação do ciclo revogado pode fazer o endpoint retornar `has_investigation: true`.
+- **Impacto:** o médico descobre a existência e o dia de uma conversa do ciclo anterior, embora continue sem acesso ao conteúdo.
+- **Correção esperada:** filtrar pela associação ACTIVE atual e adicionar regressão cobrindo a flag antes/depois da reassociação.
+
+A auditoria adicional reportou pytest com 64 aprovados e os seis validadores aprovados; não repetiu o E2E, cujo resultado da revisão #6 permanece 79 aprovados, 1 skip e nenhuma falha. O agente informou que a execução pytest reconstruiu `data/integration.db`; `data/myglico.db` não foi tocado. A divergência das credenciais demo públicas permanece registrada como não bloqueante por instrução explícita anterior do usuário. O agente adicional não localizou `REVISAO6-ESCOPO.md` no worktree no momento da sua leitura; o escopo havia sido lido na revisão #6 anterior.
+
+## Verificações e achados
+
+### P1 — fuso horário, migração e classificação UCI: resolvido
+
+**Requisito:** CSCW-CA-26, AUT-CA-21, SDD1 §6.5 e SDD2 §9.3. **Gravidade original:** crítica. **Status:** corrigido e aprovado.
+
+- `app/services/manual_entry.py:34-39` interpreta o `datetime-local` sem offset no fuso do paciente e grava UTC ingênuo. `app/services/uci_importer.py:449` aplica a mesma conversão às horas locais do diário. A leitura converte o UTC para o fuso do paciente (`app/api/routes.py:985`, `app/services/analytics.py:125-126`, `app/services/reports.py:444`). A busca por intervalos também usa limites UTC do dia local (`app/services/analytics.py:259-260`). A busca por escritores de `measured_at` não encontrou outro caminho de produção que grave hora local sem conversão; inserções diretas restantes são fixtures/testes e a migração.
+- A migration `alembic/versions/20261008_0011_normalize_measurement_timestamps_to_utc.py:24-42` percorre os registros legados por lotes e converte conforme `patients.timezone`. Fiz um upgrade real: usei `git archive 6a70133`, apliquei o schema desse código, importei os dados UCI para um SQLite temporário e então apliquei a cadeia atual até 0011 e recalculei a análise. O banco descartável `data/myglico.db` não foi tocado.
+- Repeti a classificação UCI completa (29.297 eventos brutos, 13.531 leituras de glicose, 70 pacientes). Referência `6a70133`: 3.860 buckets diários e 222 dias atípicos. Código atual importado do zero: **mesmos 3.860 buckets e 222 dias**. Upgrade real de `6a70133` pela 0011, seguido de recálculo: **mesmos 3.860 buckets e 222 dias**. Comparei por código externo de paciente e data: zero dias atípicos adicionados/removidos e zero divergência nos buckets (contagem de leituras, média, flag atípica e cluster). Os 18 deslocamentos reportados na revisão #5 não se reproduziram. Correção esperada (atendida): converter no ponto de entrada, migrar uma vez os horários legados e sempre apresentar no fuso do paciente.
+- A sonda E2E preencheu o formulário real com **00:30 e 23:30**; a consulta da API devolveu ambos no dia e horário locais esperados (`frontend-react/e2e/specs/09-atypical-popup-filters.spec.mjs:210-225`). Isso confirma CSCW-CA-26 e AUT-CA-21.
+- Conferi as regras históricas de `America/Sao_Paulo` em 1990/91. A zona identifica lacunas no início do horário de verão; por exemplo, `1990-10-21 00:30` não existiu e o helper atual a interpreta como `03:30 UTC`, que volta como `01:30` local. Nenhuma leitura UCI estava na hora 00 nas datas de transição consultadas, e a comparação completa confirma que isso não alterou a classificação. **Observação de robustez, baixa e não bloqueante:** entradas manuais históricas em horas locais inexistentes são aceitas e normalizadas silenciosamente; seria melhor rejeitá-las e documentar a escolha `fold` para horas ambíguas. Correção esperada: validar lacunas na entrada e auditar casos legados impossíveis antes de converter. Não há evidência de ocorrência nos dados UCI avaliados nem impacto nos critérios obrigatórios desta rodada.
+
+### P2 — escopo da proveniência: resolvido
+
+**Requisito:** CSCW-CA-17, AUT-CA-15, CSCW-CA-32 e SDD2 §§3, 10.2 e 10.6. **Gravidade original:** alta. **Status:** corrigido e aprovado.
+
+- `app/api/routes.py:745-780` exige acesso ao paciente; para médico, restringe vínculos e investigações ao vínculo ACTIVE atual (`:754-763`) antes de listar os eventos (`:767-775`).
+- Executei os casos de `tests/integration/test_lote4_timezone_and_provenance.py`: com dois médicos, A não recebeu eventos de associação/investigação de B; B recebeu o próprio histórico; o paciente recebeu o histórico completo dos dois. Após revogar e reassociar o mesmo médico, a resposta médica não continha eventos nem investigação do ciclo anterior; o paciente manteve o histórico anterior. A suíte e `test_cscw_ca_32_revoked_doctor_cannot_use_provenance_or_audit_endpoints` confirmaram que médico revogado recebe negação sem conteúdo; as fronteiras para outro paciente também passaram.
+- **Metadata:** a filtragem de eventos por médico/ciclo está correta, sem evidência de metadados de B ou do ciclo revogado no retorno de A. A rota ainda serializa `metadata_json` integralmente (`routes.py:779`), que pode incluir IDs internos como `patient_id`, `doctor_id` e `daily_indicator_id`, datas e versões. Esses valores pertencem ao próprio contexto autorizado e não constituíram vazamento entre médicos nesta verificação; ainda assim, são mais detalhe interno do que a UI precisa. Correção esperada para a observação: projetar apenas os campos de auditoria necessários em cada tipo de evento. **Observação baixa, não bloqueante:** preferir uma projeção de campos permitidos por tipo de evento. Correção esperada: substituir o repasse integral de metadata por whitelist e manter auditoria técnica em endpoint de privilégio específico.
+
+### A15 — afirmação do README sobre 0003–0006: resolvido
+
+**Requisito:** A15 / histórico imutável de migrations. **Gravidade anterior:** parcial. **Status:** aprovado.
+
+`README.md:122-129` agora afirma explicitamente que 0003–0006 foram preservadas como escritas, mas parte do DDL deriva dos modelos ORM em tempo de execução e, portanto, os resultados não são snapshots congelados. Também orienta novas migrations a usar DDL explícita e não reescrever revisões aplicadas. Isso corresponde ao código histórico e não cria uma promessa incorreta de reprodutibilidade. Correção esperada (atendida): explicitar a limitação e exigir DDL explícita nas novas migrations, preservando as revisões já aplicadas. Não alterei as migrations antigas.
+
+## Regressões e execução independente
+
+- `python -m pytest tests -q -rxXs`: **64 passed**, sem falhas ou skips (um aviso de `joblib` sobre detecção de núcleos físicos no Windows).
+- Seis `scripts/validate_*.py`, com chaves hexadecimais aleatórias geradas só no processo e nunca impressas ou gravadas: **6/6 passaram**.
+- `cd frontend-react && MYGLICO_E2E_BACKEND_PORT=8231 MYGLICO_E2E_FRONTEND_PORT=8230 npx playwright test`: backend e Vite reais, SQLite descartável, **79 passed, 1 skipped, 0 failed**. O skip é o cenário secundário de falha de publicação de CSCW-CA-29, coberto pelo teste de integração da outbox. Após a execução, as portas 8230/8231 estavam livres.
+
+## Matriz de aceite
+
+Recontei as linhas dos critérios: **68 no total**, 66 Aprovado e 2 Não aplicáveis (AUT-CA-19 e CSCW-CA-33). Confirmei como aprovados os quatro itens pendentes da revisão #5: **CSCW-CA-26, AUT-CA-21, AUT-CA-15 e CSCW-CA-17**. A suíte completa E2E cobre os grupos funcionais AUT-CA-01..23 e CSCW-CA-01..45; a suíte pytest cobre transações, criptografia, autorização, concorrência, proveniência e outbox. Para critérios sem mudança desde a #5, conferi a execução integral e amostras cruzadas de landing/cadastro, busca/vínculo/revogação, investigação/mensagens, notificações, filtros, idiomas/PDF e limites entre pacientes e médicos. CSCW-CA-29 mantém a evidência de integração porque seu caso de falha injetada não é exercitável pelo navegador.
+
+## Observações não bloqueantes registradas
+
+- **O7 — sem teto por IP:** `app/core/rate_limit.py:17-26` usa baldes por IP+identidade e por identidade; não há balde independente por IP. Uma origem pode tentar várias identidades distintas sem teto agregado por origem. Impacto: menor contenção de password spraying distribuído por contas. Correção futura esperada: limite por IP com política que evite bloquear usuários atrás de NAT, ou rate limiter compartilhado.
+- **O8 — consumidor da outbox na requisição:** `app/main.py:43-52` chama `drain_notification_outbox` depois de toda resposta `/api/*`. Impacto possível: trabalho de entrega e disputa de banco no caminho da requisição; o try/except preserva a resposta já produzida. Correção futura esperada: mover o consumo para worker ou execução em background com orçamento limitado, mantendo retry/idempotência.
+- **Credenciais demo públicas:** README e configuração documentam `qwerty` para contas `*.demo.myglico.invalid`. Isso diverge de SDD1 §8.1, mas é uma decisão explícita para demonstração de dataset público e foi solicitado como não bloqueante nesta revisão. Manter a restrição a contas públicas de demonstração; não reutilizar em contas reais.
+
+---
+
+## Registro histórico — revisão #5
+
+### Revisão #5 (registro histórico)
+
+**Revisor:** o mesmo worker Claude independente das revisões #1 a #4. Não edita código: só lê, executa e escreve este parecer.
+
+**Objeto:**
+- Branch `felipe-cale/auth-vinculos-cscw`. O estado aprovado na revisão #4 já está commitado em `6a70133 feat: add account auth and doctor-patient linking with CSCW collaboration`.
+- Esta revisão cobre o **diff do worktree sobre `6a70133`**, inspecionado entre **2026-10-08 15:27 e 15:45**: 39 arquivos rastreados (+1113/−203) e 8 novos. Os novos são as migrações 0008–0010, `app/core/patient_time.py`, `app/services/notification_outbox.py`, `InvestigationOrigin.jsx` e dois arquivos de teste de integração.
+
+**Escopo:** o dono do produto passou a tratar como bloqueantes as pendências da revisão #4: A15, O2, O3, AUT-CA-21, R2, R3, CSCW-CA-26/O4 e CSCW-CA-22. Também verifico a reclassificação do CSCW-CA-29 feita pelo coordenador e as observações O5/O6 que registrei na #4.
+
+## Veredito #5
+
+# **REPROVADO — não fazer o commit deste diff ainda**
+
+A maior parte das correções é real e verifiquei cada uma: O2, O3, R3, B1, B4/CSCW-CA-29, B7, CSCW-CA-22, O5 e O6.
+
+Mas a rodada **introduziu duas regressões**, ambas confirmadas por execução, e nenhuma é pega pela suíte:
+
+1. **P1, crítico: deslocamento de −3h em todos os horários reais (CSCW-CA-26 e AUT-CA-21).**
+2. **P2, alto: o endpoint de proveniência vaza metadados das conversas e do vínculo de outro médico (SDD2 §3, §10.2, §10.6).**
+
+Por isso, a afirmação de **66 Aprovado / 0 Parcial** da `MATRIZ-ACEITE.md` **não se sustenta**.
+
+O commit `6a70133`, aprovado na revisão #4, continua válido. O problema está só no diff atual.
+
+## Evidência de execução (revisão #5)
+
+| Verificação | Resultado |
+| --- | --- |
+| 6 validadores (`scripts/validate_*.py`, SQLite isolado, chaves efêmeras) | **6/6 PASS**. |
+| `python -m pytest tests -q -rxXs` | **60 passed, 0 skipped, 0 xfail** (67 s). |
+| Suíte E2E completa (`npx playwright test`, backend e Vite reais) | **79 passed, 1 skipped** (CSCW-CA-29 secundário, `test.skip` documentado), **0 falhas** (7,8 min). |
+| Caminho de upgrade real: banco criado pelo código do commit `6a70133` (`git archive`) até 0007, com um paciente legado; depois `alembic upgrade head` com o código atual | 0008 → 0010 aplicadas. **Schema idêntico** ao de um banco criado do zero (colunas e índices). O paciente legado ficou com `short_id`/`name_encrypted` não nulos e `timezone=America/Sao_Paulo`. |
+| Upgrade do banco UCI real da revisão #2 (em 0007) até 0010 e navegação | Ok. Ver O3/O5/O6 abaixo. |
+| Importação UCI real do zero com o código atual, comparada com a importação da revisão #2 | Ver **P1**. |
+| Sondas de API (`TestClient`, SQLite novo) | Ver P1, P2, R3, B7 e O2. |
+
+## Regressões bloqueantes
+
+### P1 — Crítico: horários reais deslocados em −3h; dias mudam perto da meia-noite; classificação UCI mudou
+
+**Requisitos afetados:** CSCW-CA-26 ("leitura próxima da meia-noite pertence ao dia correto"), AUT-CA-21 ("dias atípicos preservam os resultados anteriores"), SDD2 §9.3 e SDD1 §6.5.
+
+**Causa:**
+- `app/core/patient_time.py` e os novos usos em `reports.py`, `analytics.py` e `manual_entry.py` passaram a interpretar **todo `measured_at` armazenado como UTC** e a convertê-lo para `patients.timezone`.
+- Nenhum caminho real de entrada grava UTC:
+  - o formulário manual (`ManualGlucoseEntryForm.jsx:19,56,83`) envia o valor de `datetime-local`, que é hora de parede **sem offset**, e o backend grava exatamente esse valor;
+  - o importador UCI grava a hora local do diário;
+  - não há migração convertendo as linhas existentes.
+
+**Evidência:**
+- Sonda via API, fazendo exatamente o que o formulário envia:
+  - `POST measured_at="2026-10-08T00:30"` → armazenado `2026-10-08 00:30` → exibido no detalhe como **`2026-10-07 21:30`**;
+  - `"2026-10-08T12:00"` → exibido **`09:00`**.
+- Importação UCI real (29 297 registros), código atual contra o código da revisão #2: o mesmo número de dias atípicos (222), mas **18 dias atípicos mudaram de data e 18 surgiram em outras datas**, por exemplo `uci-08 1990-08-21 → 1990-08-04` e `uci-09 1990-05-01 → 1990-04-30`. Um bucket diário também desapareceu (3860 → 3859).
+
+**Por que os testes passam:**
+- `frontend-react/e2e/scripts/seed_atypical_days.py` foi alterado para converter a hora de parede em UTC antes de gravar ("so this fixture tests the same boundary contract as real API records"). Os registros reais da API, porém, **não** são convertidos.
+- O teste de AUT-CA-21 compara apenas antes e depois da recriptografia, e não antes e depois da mudança de fuso.
+
+**Correção esperada:** escolher uma convenção única e aplicá-la de ponta a ponta. Uma das duas:
+- (a) tratar o `measured_at` armazenado como hora de parede local do paciente e não converter na leitura;
+- (b) converter para UTC **na entrada**: o formulário manual interpreta a hora no fuso do paciente, e o importador UCI usa o fuso do dataset. Isso exige uma migração de dados idempotente para as linhas existentes, e o fixture do E2E deve usar o mesmo caminho da API real.
+
+Em qualquer caso, incluir:
+- um E2E que registre uma leitura pelo formulário real às 00:30 e às 23:30 e confira data e hora exibidas;
+- um teste que compare a classificação UCI antes e depois.
+
+### P2 — Alto: `/api/patients/{id}/provenance` expõe a um médico os metadados do vínculo e da investigação de outro médico
+
+**Requisitos afetados:**
+- SDD2 §3 ("Ser médico associado não concede acesso às conversas de outros médicos");
+- §7.3 ("Não expor conversas de outro médico nesse indicador");
+- §10.2 ("Metadados que identifiquem contextos clínicos precisam das mesmas restrições de acesso");
+- §10.6 ("consulta técnica de auditoria usa permissão específica, sem conceder acesso geral a médicos");
+- AUT-CA-15 e CSCW-CA-17 (isolamento).
+
+**Causa:** a correção de R2 (`routes.py`, `api_patient_provenance`) inclui eventos de **todos** os `patient_doctor_links` e de **todas** as `investigations` do paciente. Basta o solicitante passar em `_require_patient_access`, que aceita qualquer médico com vínculo ACTIVE. O `metadata_json` sai completo.
+
+**Evidência (sonda):**
+- Paciente P vinculado aos médicos A e B. P abre uma investigação com B.
+- `GET /api/investigations/{id}` feito por A → **404** (correto).
+- `GET /api/patients/P/provenance` feito por A → devolve **`InvestigationOpened`, `AssociationRequested` e `AssociationConfirmed` de B**, com `doctor_id` e `association_id` de B e o `atypical_day_event_id` da conversa.
+
+**Correção esperada:**
+- Para o contexto Médico, limitar os eventos a vínculos e investigações com `doctor_id == principal.doctor.id`, do ciclo autorizado.
+- Para o Paciente, manter o histórico completo.
+- Reduzir o `metadata` exposto ao mínimo necessário.
+- Adicionar um teste de integração com dois médicos.
+
+## Situação dos itens pedidos
+
+| Item | Situação | Evidência |
+| --- | --- | --- |
+| **A15** (congelar DDL; NOT NULL; VACUUM) | **Parcial** | NOT NULL ok (0010, conferido no upgrade real). `VACUUM` documentado (README:117-121). As novas 0007–0010 têm DDL explícita e idempotente. **Mas 0003–0006 continuam com `Model.__table__.create`**, ou seja, derivam a DDL dos modelos vivos, e o README:122-124 diz que elas "permanecem inalteradas para reprodutibilidade", o que não é exato. Hoje o schema resultante é idêntico (verificado), mas cada coluna futura obriga a migração nova a se proteger com `inspect` (como 0008/0009 fizeram). Correção: congelar 0003–0006 com a DDL equivalente à que o commit `6a70133` produz, ou corrigir a afirmação no README e registrar a regra. |
+| **O2** (rate limit e NAT) | **Corrigido**, com nota | Baldes por (IP, identidade) e por identidade (`rate_limit.py`). Sonda: 11 falhas na mesma conta → 429; login válido de **outra** conta no mesmo IP → **200**. Nota (O7): não há mais teto por IP; 40 e-mails distintos a partir de um IP → todos 401, sem 429. Ou seja, *password spraying* a partir de um IP não é limitado. É um tradeoff aceitável para o MVP, desde que fique registrado. |
+| **O3** (convites consolidados) | **Corrigido** | Navegador (UCI `patient1`): **1** banner, "Identificamos 7 dias atípicos nas suas leituras, entre 25 de abr. de 1991 e 22 de ago. de 1991…", com um único "Agora não". Dispensar e recarregar → 0 banners. O endpoint agrupa por paciente e status (`batch_id`, `indicator_ids`, `dates`); `POST /api/atypical-day-prompts/defer` em lote. |
+| **AUT-CA-21** (baseline) | **Reprovado** (P1) | O teste novo cobre apenas a recriptografia. Na base UCI real, a mudança de fuso alterou 18 dias atípicos. |
+| **R2** (proveniência e dedupe) | **Dedupe corrigido; endpoint com regressão P2** | `AtypicalDayDetailViewed` deduplicado por ator e dia local. O histórico agora inclui vínculos, investigações e convites, mas sem o filtro por médico (P2). |
+| **R3** (CRM+UF+privacidade) | **Corrigido** | API: médico sem CRM → 422; sem `privacy_notice_accepted` → 422; com `false` → 422; paciente sem o campo → 201. `user_accounts.privacy_notice_accepted_at` gravado para o médico (migração 0009). |
+| **CSCW-CA-26 / O4** (fuso do paciente) | **Reprovado** (P1) | O agrupamento por fuso existe, mas parte de uma premissa de armazenamento em UTC que nenhum caminho de entrada cumpre. |
+| **CSCW-CA-22** (origem / "classificação anterior") | **Corrigido** | `origin.is_current_classification` na API; `InvestigationOrigin.jsx:22-25` mostra o selo "classificação anterior". O teste `test_cscw_ca_22_recompute_that_drops_the_flag…` passa (true → false após uma execução vazia e após recálculo). E2E grupo 06 verde. |
+| **CSCW-CA-29** (reclassificado pelo coordenador) | **Aprovado — a reclassificação procede** | `drain_notification_outbox` existe (`app/services/notification_outbox.py`, arquivo novo nesta rodada, e não "desde o Lote 1" do commit) e é chamado no middleware `/api/*` (`main.py`). O teste força a falha (`PENDING`, `attempts=1`, `last_error` só com o nome da classe), refaz (`DELIVERED`, `attempts=2`) e confirma que não há notificação duplicada. **Notas (O8):** (i) a "entrega" é só uma confirmação de que o destinatário existe, porque a caixa de entrada lê a tabela `notifications` diretamente, independentemente do estado da outbox; (ii) o consumo roda de forma síncrona em **toda** requisição `/api/*`, com uma transação de escrita a mais, o que pode gerar contenção (`database is locked`) em SQLite sob carga. Recomendo mover para um job ou worker. |
+| **B1** (`no-store`) | **Corrigido** | `main.py` inclui `/api/investigations`, `/api/notifications` e `/api/doctor-links`. |
+| **B7** (cancelar sem versão) | **Corrigido** | Sem corpo → 422. |
+| **O5** (limpar após reload) | **Corrigido** | Navegador: período 01/06–31/08, aplicar 25/04 → ampliado com aviso; **reload** → aviso continua; limpar → `start_date=1991-06-01&end_date=1991-08-31` restaurado (`sessionStorage`, `PatientDetailPage.jsx:214-231`). |
+| **O6** (rótulo "Janela padrão") | **Corrigido** | Período padrão → "Janela padrão de 30 dias…"; período 01/06–31/08 → "**Período personalizado de 92 dias escolhido no filtro.**" |
+
+## Matriz (`MATRIZ-ACEITE.md`)
+
+O arquivo afirma **66 Aprovado / 0 Reprovado / 0 Parcial / 2 Não aplicável** (recontei a coluna Status). Com base no que verifiquei, o correto é:
+
+| Critério | Matriz | Revisor #5 | Motivo |
+| --- | --- | --- | --- |
+| CSCW-CA-26 | Aprovado | **Reprovado** | P1: a evidência citada ("Fixture converte hora de parede em UTC") é justamente o que mascara a regressão. |
+| AUT-CA-21 | Aprovado | **Reprovado** | P1: a classificação UCI real mudou (18 dias). |
+| AUT-CA-15 / CSCW-CA-17 | Aprovado | **Parcial** | P2: o conteúdo da conversa está isolado, mas os metadados da conversa e do vínculo de outro médico vazam pela proveniência. |
+| CSCW-CA-32 | Aprovado | Aprovado | Médico revogado continua recebendo 404 na proveniência (`_require_patient_access`). |
+| Demais | Aprovado / N/A | Confere | A suíte completa, o pytest e os validadores passam. |
+
+**Totais do revisor: 62 Aprovado · 2 Reprovado · 2 Parcial · 2 Não aplicável.**
+
+## Para liberar o commit (revisão #6)
+
+1. **P1**: convenção única de fuso aplicada à entrada, ao armazenamento e à leitura, com migração de dados se for a opção (b). E2E com o formulário real perto da meia-noite. Teste de não regressão da classificação UCI antes e depois.
+2. **P2**: proveniência filtrada pelo escopo do médico, com teste de dois médicos.
+3. **A15**: congelar 0003–0006 ou corrigir a afirmação do README.
+4. Atualizar a matriz: CSCW-CA-26, AUT-CA-21, AUT-CA-15 e CSCW-CA-17.
+
+**Recomendado, sem bloquear:** registrar O7 (sem teto por IP), O8 (consumidor da outbox na requisição) e a divergência já aceita das credenciais demo públicas.
+
+---
+
+# Registro: revisão #4
 
 **Revisor:** o mesmo worker Claude independente das revisões #1 a #3. Não edita código: só lê, executa e escreve este parecer.
 **Objeto:** diff do worktree `C:\Users\felip\orca\workspaces\myglico\doliolid` (branch `felipe-cale/feature-orca-prompt-features`, **sem commit**), inspecionado entre **2026-10-07 10:00 e 10:25 (horário local)**. Base: `0920365`.
 
 ## Veredito final
 
-# **APROVADO**
+**APROVADO** (revisão #4, sobre o estado hoje commitado em `6a70133`)
 
 Nenhum critério obrigatório está reprovado. Os N2 e N3 da revisão #3 foram corrigidos, e verifiquei isso por execução, sem me apoiar nos relatos. A suíte completa, que ninguém tinha rodado depois de N2/N3, passa sem falhas.
 

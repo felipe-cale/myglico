@@ -47,6 +47,10 @@ def main() -> None:
                 )
             )
             connection.execute(text("CREATE INDEX ix_patients_name ON patients(name)"))
+            # Minimal stand-ins for 0002 tables referenced by later foreign keys;
+            # SQLite batch migrations reflect referenced tables and need them.
+            connection.execute(text("CREATE TABLE provenance_events (id VARCHAR(36) PRIMARY KEY)"))
+            connection.execute(text("CREATE TABLE daily_indicators (id VARCHAR(36) PRIMARY KEY)"))
             connection.execute(
                 text(
                     "INSERT INTO patients (id, name, email, created_at, updated_at) "

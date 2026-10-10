@@ -13,14 +13,16 @@ async function json(response) {
 }
 
 export async function register(request, profile, overrides = {}) {
+  const role = overrides.role || profile.roles[0];
   const body = {
-    role: overrides.role || profile.roles[0],
+    role,
     email: profile.email,
     password: profile.password,
     password_confirmation: overrides.password_confirmation || profile.password,
     display_name: profile.display_name,
     ...(profile.crm ? { crm: profile.crm } : {}),
     ...(profile.uf ? { uf: profile.uf } : {}),
+    privacy_notice_accepted: true,
     ...overrides,
   };
   const response = await request.post("/api/auth/register", { data: body });

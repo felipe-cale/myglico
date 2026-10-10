@@ -6,10 +6,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.crypto import crm_uf_lookup, decrypt_field
+from app.core.patient_time import local_date_utc_bounds, patient_local_datetime
 from app.core.security import (
     SESSION_COOKIE_NAME,
     SessionPrincipal,
@@ -37,11 +38,14 @@ from app.services.doctor_links import (
 )
 from app.services.investigations import (
     InvestigationConflict, InvestigationNotFound, advance_read_position,
-    append_message, close_investigation, defer_prompt, investigation_detail,
+    append_message, close_investigation, defer_prompt, defer_prompt_batch, investigation_detail,
     investigation_list, open_investigation, unread_message_count,
 )
 from app.services.manual_entry import create_manual_glucose_record
-from app.services.reports import get_paginated_patients, get_patient_detail_context, get_patient_report_context
+from app.services.reports import (
+    get_latest_patient_analytics_run, get_paginated_patients,
+    get_patient_detail_context, get_patient_report_context,
+)
 
 
 router = APIRouter()
@@ -72,6 +76,7 @@ class AuthRegisterPayload(BaseModel):
     display_name: str = Field(min_length=1, max_length=160)
     crm: str | None = Field(default=None, max_length=40)
     uf: str | None = Field(default=None, min_length=2, max_length=2)
+    privacy_notice_accepted: bool = False
 
     @field_validator("email")
     @classmethod
@@ -93,6 +98,11 @@ class AuthRegisterPayload(BaseModel):
     def validate_password_confirmation(self) -> "AuthRegisterPayload":
         if self.password.get_secret_value() != self.password_confirmation.get_secret_value():
             raise ValueError("Password confirmation does not match.")
+        if self.role == "doctor":
+            if not self.crm or not self.crm.strip() or not self.uf or not self.uf.strip():
+                raise ValueError("Doctor registration requires CRM and UF.")
+        if not self.privacy_notice_accepted:
+            raise ValueError("Registration requires privacy_notice_accepted=true.")
         return self
 
 
@@ -101,6 +111,11 @@ class AuthLoginPayload(BaseModel):
 
     email: str = Field(min_length=1, max_length=254)
     password: SecretStr = Field(min_length=1, max_length=256)
+
+
+class AtypicalPromptDeferBatchPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    indicator_ids: list[str] = Field(min_length=1, max_length=100)
 
 
 class DoctorLinkRequestPayload(BaseModel):
@@ -180,6 +195,7 @@ def api_auth_register(
             display_name=payload.display_name,
             crm=payload.crm,
             uf=payload.uf,
+            privacy_notice_accepted=payload.privacy_notice_accepted,
         )
     except AuthConflict as exc:
         raise HTTPException(status_code=409, detail="Account could not be created.") from exc
@@ -382,14 +398,9 @@ def api_doctor_link_reject(
 
 @router.post("/api/doctor-links/{link_id}/cancel")
 def api_doctor_link_cancel(
-    link_id: str, payload: DoctorLinkVersionPayload | None = None,
+    link_id: str, payload: DoctorLinkVersionPayload,
     principal: SessionPrincipal = Depends(require_session), db: Session = Depends(get_db),
 ) -> dict[str, object]:
-    if payload is None:
-        current = db.get(PatientDoctorLink, link_id)
-        if current is None:
-            raise HTTPException(status_code=404, detail="Association not found.")
-        payload = DoctorLinkVersionPayload(version=current.version)
     return _mutate_link(link_id, "cancel", payload, principal, db)
 
 
@@ -460,9 +471,29 @@ def _investigation_summary(db: Session, item, context_role: str) -> dict[str, ob
                        "short_id": patient.short_id if patient else None,
                        "display_name": patient.display_name if patient else None}
     title = decrypt_field(item.title_encrypted, table="investigations", column="title", record_id=item.id)
+    origin = None
+    if item.atypical_day_event_id:
+        historical_indicator = db.get(DailyIndicator, item.atypical_day_event_id)
+        if historical_indicator is not None and historical_indicator.patient_id == item.patient_id:
+            latest_run = get_latest_patient_analytics_run(db, item.patient_id)
+            current_flag = False
+            if latest_run is not None:
+                current_flag = db.scalar(select(DailyIndicator.id).where(
+                    DailyIndicator.analysis_run_id == latest_run.id,
+                    DailyIndicator.patient_id == item.patient_id,
+                    DailyIndicator.indicator_date == historical_indicator.indicator_date,
+                    DailyIndicator.anomaly_flag.is_(True),
+                ).limit(1)) is not None
+            origin = {
+                "indicator_id": historical_indicator.id,
+                "date": historical_indicator.indicator_date.isoformat(),
+                "analysis_run_id": historical_indicator.analysis_run_id,
+                "is_current_classification": current_flag,
+            }
     return {
         "id": item.id, "patient_id": item.patient_id, "doctor_id": item.doctor_id,
         "association_id": item.association_id, "atypical_day_event_id": item.atypical_day_event_id,
+        "origin": origin,
         "title": title, "status": item.status.lower(), "awaiting_role": item.awaiting_role.lower() if item.awaiting_role else None,
         "opened_by_role": item.opened_by_role.lower(), "opened_by_domain_id": item.opened_by_domain_id,
         "opened_at": item.opened_at.isoformat(), "closed_at": item.closed_at.isoformat() if item.closed_at else None,
@@ -601,11 +632,26 @@ def api_atypical_day_prompts(
     prompts = db.scalars(select(AtypicalDayPrompt).where(
         AtypicalDayPrompt.patient_id == patient_id,
     ).order_by(AtypicalDayPrompt.indicator_date.desc())).all()
-    return {"prompts": [{
-        "indicator_id": item.daily_indicator_id,
-        "date": item.indicator_date.isoformat(),
-        "status": item.status.lower(),
-    } for item in prompts]}
+    if not prompts:
+        return {"prompts": []}
+    by_status: dict[str, list[AtypicalDayPrompt]] = {}
+    for item in prompts:
+        by_status.setdefault(item.status, []).append(item)
+    batches = []
+    for status, items in by_status.items():
+        ordered = sorted(items, key=lambda item: item.indicator_date)
+        dates = [item.indicator_date.isoformat() for item in ordered]
+        indicator_ids = [item.daily_indicator_id for item in ordered]
+        batches.append({
+            "batch_id": f"{patient_id}:{status.lower()}",
+            "prompt_ids": [item.id for item in ordered],
+            "indicator_ids": indicator_ids,
+            "indicator_id": indicator_ids[0],
+            "dates": dates,
+            "date": dates[0],
+            "status": status.lower(),
+        })
+    return {"prompts": batches}
 
 
 @router.get("/api/patients/{patient_id}/atypical-days")
@@ -642,11 +688,21 @@ def api_atypical_days(
                 "dates": [item.isoformat() for item in exact_dates] if exact_dates is not None else None,
             },
         ))
-    db.add(ProvenanceEvent(
-        activity_type="AtypicalDayDetailViewed", entity_type="patient", entity_id=patient_id,
-        actor_user_id=principal.account.id, source_type="user", source_id=principal.account.id,
-        metadata_json={"actor_role": actor_role},
-    ))
+    patient = db.get(Patient, patient_id)
+    local_today = patient_local_datetime(datetime.utcnow(), patient.timezone if patient else None).date()
+    view_start, view_end = local_date_utc_bounds(local_today, patient.timezone if patient else None)
+    already_viewed = db.scalar(select(ProvenanceEvent.id).where(
+        ProvenanceEvent.activity_type == "AtypicalDayDetailViewed",
+        ProvenanceEvent.entity_type == "patient", ProvenanceEvent.entity_id == patient_id,
+        ProvenanceEvent.actor_user_id == principal.account.id,
+        ProvenanceEvent.occurred_at >= view_start, ProvenanceEvent.occurred_at < view_end,
+    ).limit(1))
+    if already_viewed is None:
+        db.add(ProvenanceEvent(
+            activity_type="AtypicalDayDetailViewed", entity_type="patient", entity_id=patient_id,
+            actor_user_id=principal.account.id, source_type="user", source_id=principal.account.id,
+            metadata_json={"actor_role": actor_role},
+        ))
     latest_run = db.scalar(select(AnalysisRun).join(
         DailyIndicator, DailyIndicator.analysis_run_id == AnalysisRun.id,
     ).where(
@@ -668,6 +724,13 @@ def api_atypical_days(
     if exact_dates is None and end_date:
         query = query.where(DailyIndicator.indicator_date <= end_date)
     indicators = db.scalars(query.order_by(DailyIndicator.indicator_date.desc())).all()
+    active_link_id = None
+    if principal.doctor is not None and (principal.patient is None or principal.patient.id != patient_id):
+        active_link_id = db.scalar(select(PatientDoctorLink.id).where(
+            PatientDoctorLink.patient_id == patient_id,
+            PatientDoctorLink.doctor_id == principal.doctor.id,
+            PatientDoctorLink.status == "ACTIVE",
+        ))
     results = []
     for indicator in indicators:
         investigation_query = select(Investigation.id).where(
@@ -675,7 +738,10 @@ def api_atypical_days(
             Investigation.atypical_day_event_id == indicator.id,
         )
         if principal.doctor is not None and (principal.patient is None or principal.patient.id != patient_id):
-            investigation_query = investigation_query.where(Investigation.doctor_id == principal.doctor.id)
+            investigation_query = investigation_query.where(
+                Investigation.doctor_id == principal.doctor.id,
+                Investigation.association_id == active_link_id,
+            )
         results.append({
             "indicator_id": indicator.id,
             "date": indicator.indicator_date.isoformat(),
@@ -692,18 +758,53 @@ def api_patient_provenance(
     principal: SessionPrincipal = Depends(require_session), db: Session = Depends(get_db),
 ) -> dict[str, object]:
     _require_patient_access(db, patient_id, principal)
-    events = db.scalars(select(ProvenanceEvent).where(
-        ProvenanceEvent.entity_type == "patient",
-        ProvenanceEvent.entity_id == patient_id,
-        ProvenanceEvent.activity_type.in_(
-            ("AtypicalDayDetailViewed", "PatientDetailFilterApplied")
-        ),
-    ).order_by(ProvenanceEvent.occurred_at.desc()).limit(limit)).all()
+    from app.models.entities import AtypicalDayPrompt
+    link_query = select(PatientDoctorLink.id).where(PatientDoctorLink.patient_id == patient_id)
+    investigation_query = select(Investigation.id).where(Investigation.patient_id == patient_id)
+    if principal.patient is None or principal.patient.id != patient_id:
+        # Doctor context: only the currently authorized cycle. Earlier cycles'
+        # links/investigations stay out, as re-association never restores them.
+        active_link_id = db.scalar(select(PatientDoctorLink.id).where(
+            PatientDoctorLink.patient_id == patient_id,
+            PatientDoctorLink.doctor_id == principal.doctor.id,
+            PatientDoctorLink.status == "ACTIVE",
+        ))
+        link_query = link_query.where(PatientDoctorLink.id == active_link_id)
+        investigation_query = investigation_query.where(Investigation.association_id == active_link_id)
+    link_ids = link_query
+    investigation_ids = investigation_query
+    prompt_ids = select(AtypicalDayPrompt.id).where(AtypicalDayPrompt.patient_id == patient_id)
+    event_scope = or_(
+        (ProvenanceEvent.entity_type == "patient") & (ProvenanceEvent.entity_id == patient_id)
+        & ProvenanceEvent.activity_type.in_(("AtypicalDayDetailViewed", "PatientDetailFilterApplied")),
+        (ProvenanceEvent.entity_type == "patient_doctor_link") & ProvenanceEvent.entity_id.in_(link_ids),
+        (ProvenanceEvent.entity_type == "investigation") & ProvenanceEvent.entity_id.in_(investigation_ids),
+        (ProvenanceEvent.entity_type == "atypical_day_prompt") & ProvenanceEvent.entity_id.in_(prompt_ids),
+    )
+    events = db.scalars(select(ProvenanceEvent).where(event_scope)
+                        .order_by(ProvenanceEvent.occurred_at.desc()).limit(limit)).all()
     return {"events": [{
         "activity_type": event.activity_type,
         "occurred_at": event.occurred_at.isoformat(),
         "metadata": event.metadata_json or {},
     } for event in events]}
+
+
+@router.post("/api/atypical-day-prompts/defer")
+def api_atypical_day_prompt_batch_defer(
+    payload: AtypicalPromptDeferBatchPayload,
+    principal: SessionPrincipal = Depends(require_session), db: Session = Depends(get_db),
+) -> dict[str, object]:
+    if principal.patient is None:
+        raise HTTPException(status_code=403, detail="Patient access required.")
+    try:
+        prompts = defer_prompt_batch(db, principal.patient.id, payload.indicator_ids, principal)
+    except InvestigationNotFound as exc:
+        raise HTTPException(status_code=404, detail="Prompt not found.") from exc
+    except InvestigationConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"prompts": [{"indicator_id": item.daily_indicator_id, "status": item.status.lower()}
+                        for item in prompts]}
 
 
 @router.post("/api/atypical-day-prompts/{indicator_id}/defer")
@@ -891,7 +992,7 @@ def api_create_manual_glucose_record(
         "glucose_record": {
             "id": record.id,
             "patient_id": record.patient_id,
-            "measured_at": record.measured_at.isoformat(),
+            "measured_at": patient_local_datetime(record.measured_at, patient.timezone).replace(tzinfo=None).isoformat(),
             "glucose_mg_dl": record.glucose_mg_dl,
             "context_label": record.context_label,
             "analytics_status": "stale",

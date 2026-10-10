@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import InvestigationOrigin from "../components/InvestigationOrigin";
 import { fetchInvestigationDetail, sendInvestigationMessage, closeInvestigation, readInvestigation } from "../api";
 
 function formatDateTime(value, locale) {
@@ -121,7 +122,7 @@ export default function InvestigationPage() {
         <p>{t(inv.counterpart?.role === "doctor" ? "cscw.counterpartDoctor" : "cscw.counterpartPatient")}: {counterpartName}</p>
       )}
       <p>{t("cscw.statusLabel")}: {t(`cscw.status.${inv.status}`, { defaultValue: inv.status })} | {t("cscw.awaiting")}: {roleLabel(inv.awaiting_role)}</p>
-      <p>{inv.atypical_day_event_id ? t("cscw.originAtypical") : t("cscw.noAtypical")}</p>
+      <InvestigationOrigin investigation={inv} />
       {inv.status === "closed" && (
         <p className="react-investigation-closed" role="status">
           {t(`cscw.closedReason.${inv.closed_reason}`, { defaultValue: t("cscw.closedReason.default") })}

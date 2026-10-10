@@ -10,11 +10,12 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.entities import AnalysisOutbox, AnalysisRun, DailyIndicator, DailyMetricsCurrent, GlucoseRecord, ProvenanceEvent
+from app.core.patient_time import local_range_utc_bounds, patient_local_date, patient_local_datetime
+from app.models.entities import AnalysisOutbox, AnalysisRun, DailyIndicator, DailyMetricsCurrent, GlucoseRecord, Patient, ProvenanceEvent
 from app.services.investigations import create_prompts_for_indicators
 
 
@@ -110,7 +111,9 @@ def _payload_fingerprint(payload: object) -> str:
     return sha256(repr(payload).encode("utf-8")).hexdigest()
 
 
-def _prepare_glucose_frame(records: list[GlucoseRecord]) -> pd.DataFrame:
+def _prepare_glucose_frame(
+    records: list[GlucoseRecord], timezones: dict[str, str] | None = None,
+) -> pd.DataFrame:
     if not records:
         return pd.DataFrame()
 
@@ -119,8 +122,8 @@ def _prepare_glucose_frame(records: list[GlucoseRecord]) -> pd.DataFrame:
             {
                 "record_id": record.id,
                 "patient_id": record.patient_id,
-                "event_date": record.measured_at.date(),
-                "event_time": record.measured_at.time(),
+                "event_date": patient_local_date(record.measured_at, (timezones or {}).get(record.patient_id)),
+                "event_time": patient_local_datetime(record.measured_at, (timezones or {}).get(record.patient_id)).time(),
                 "context_label": record.context_label,
                 "glucose_mg_dl": float(record.glucose_mg_dl),
             }
@@ -243,12 +246,21 @@ def compute_analytics(
     end_date: date | None = None,
     trigger_type: str = "script",
 ) -> AnalysisRun:
+    timezone_query = select(Patient.id, Patient.timezone)
+    if patient_id:
+        timezone_query = timezone_query.where(Patient.id == patient_id)
+    timezones = dict(db.execute(timezone_query).all())
     query = select(GlucoseRecord).order_by(GlucoseRecord.patient_id, GlucoseRecord.measured_at, GlucoseRecord.id)
     if patient_id:
         query = query.where(GlucoseRecord.patient_id == patient_id)
-    start_dt, end_dt_exclusive = _date_bounds(start_date, end_date)
-    if start_dt and end_dt_exclusive:
-        query = query.where(GlucoseRecord.measured_at >= start_dt, GlucoseRecord.measured_at < end_dt_exclusive)
+    if start_date is not None and end_date is not None:
+        patient_bounds = [
+            and_(GlucoseRecord.patient_id == pid,
+                 GlucoseRecord.measured_at >= local_range_utc_bounds(start_date, end_date, timezone)[0],
+                 GlucoseRecord.measured_at < local_range_utc_bounds(start_date, end_date, timezone)[1])
+            for pid, timezone in timezones.items()
+        ]
+        query = query.where(or_(*patient_bounds) if patient_bounds else False)
 
     records = db.scalars(query).all()
     input_fingerprint = _records_fingerprint(records)
@@ -268,7 +280,7 @@ def compute_analytics(
     db.add(analysis_run)
     db.flush()
 
-    frame = _prepare_glucose_frame(records)
+    frame = _prepare_glucose_frame(records, timezones)
     if frame.empty:
         analysis_run.status = "completed"
         analysis_run.finished_at = datetime.utcnow()
@@ -299,7 +311,8 @@ def compute_analytics(
 
     fingerprints_by_day: dict[tuple[str, date], str] = {}
     for (row_patient_id, event_date), group in frame.groupby(["patient_id", "event_date"], sort=True):
-        day_records = [record for record in records if record.patient_id == row_patient_id and record.measured_at.date() == event_date]
+        day_records = [record for record in records if record.patient_id == row_patient_id and
+                       patient_local_date(record.measured_at, timezones.get(str(row_patient_id))) == event_date]
         fingerprints_by_day[(str(row_patient_id), event_date)] = _records_fingerprint(day_records)
 
     _upsert_daily_metrics(db, rows, fingerprints_by_day)

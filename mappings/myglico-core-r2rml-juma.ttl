@@ -1,6 +1,14 @@
 # Mapping created in the style of the provided Juma/R2RML example.
 # Simplified semantic scope:
 # Patient -> GlucoseMeasurement -> RawRecord -> DataSource.
+#
+# CSCW provenance (provenance_events: associations, investigations, messages,
+# prompts, notifications) is intentionally NOT mapped here. This mapping feeds
+# the shared clinical graph without per-patient authorization, while who
+# collaborated with whom is protected clinical metadata (SDD2 §10.2/§10.5). It
+# is projected to PROV-O by app/services/cscw_provenance.py and exported only
+# to protected destinations by scripts/export_cscw_provenance.py, using the
+# mygv terms declared in ontology/mygv-dpo-extension.owl.ttl.
 
 @prefix mygv: <https://w3id.org/myglico/vocab/> .
 @prefix rr: <http://www.w3.org/ns/r2rml#> .

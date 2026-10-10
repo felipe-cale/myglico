@@ -5,6 +5,7 @@ from hashlib import sha256
 
 from sqlalchemy.orm import Session
 
+from app.core.patient_time import local_datetime_to_utc_naive, patient_local_date
 from app.models.entities import GlucoseRecord, GlucoseRecordSource, Patient, ProvenanceEvent
 from app.services.analysis_queue import mark_analysis_pending
 
@@ -30,10 +31,11 @@ def create_manual_glucose_record(
     notes: str | None = None,
     actor_user_id: str | None = None,
 ) -> GlucoseRecord:
+    measured_at_utc = local_datetime_to_utc_naive(measured_at, patient.timezone)
     try:
         glucose_record = GlucoseRecord(
             patient_id=patient.id,
-            measured_at=measured_at,
+            measured_at=measured_at_utc,
             glucose_mg_dl=glucose_mg_dl,
             context_label=context_label,
             notes=notes,
@@ -71,7 +73,7 @@ def create_manual_glucose_record(
                 content_hash=_content_hash(prov_payload),
             )
         )
-        mark_analysis_pending(db, patient.id, measured_at.date(), "manual_entry")
+        mark_analysis_pending(db, patient.id, patient_local_date(measured_at_utc, patient.timezone), "manual_entry")
         db.commit()
         db.refresh(glucose_record)
         return glucose_record

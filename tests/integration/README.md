@@ -19,12 +19,16 @@ teste termina em um de três resultados:
 - **`pytest.skip` dentro do teste**: o critério não é verificável no código
   atual. O motivo cita o achado e informa o que foi verificado antes do skip.
 
-Última execução (`python -m pytest tests -q -rxXs`): **51 passed, 1 skipped,
-1 xfailed** (45 de integração + 8 de `tests/test_clinical_pdf.py`).
+Última execução completa anterior à correção B4 (`python -m pytest tests -q
+-rxXs`): **51 passed, 1 skipped, 1 xfailed**; esse número é histórico, não foi
+recalculado após os novos fixes.
 
-- Skip: `CSCW-CA-29`. A outbox não tem consumidor ou retry (**B4**). O teste
-  verifica antes que a linha de outbox é gravada `PENDING` junto com a
-  mutação e o evento.
+- **B4 / CSCW-CA-29 corrigido (2026-10-07)**: um consumidor agora processa o
+  inbox persistido após respostas da API. Sucesso marca `DELIVERED`; falhas
+  deixam `PENDING`, `attempts`, `last_error` e `next_attempt_at` com backoff.
+  `python -m pytest tests/integration/test_outbox_and_delivery.py -q` passou
+  (**5 passed**), cobrindo falha, backoff, retry, deduplicação e acesso após
+  revogação.
 - `CSCW-CA-32` passa. O endpoint `GET /api/patients/{id}/provenance`
   (correção de A12) já existe: o teste descobre as rotas de
   proveniência/histórico e exige 200 enquanto o vínculo está ATIVO e negação
@@ -82,8 +86,9 @@ python -m pytest tests -q -rxXs          # inclui tests/test_clinical_pdf.py
 | `test_concurrency.py` | AUT-CA-09, AUT-CA-18, CSCW-CA-03, CSCW-CA-04, CSCW-CA-30 | 5 passed |
 | `test_crypto_and_secrets.py` | AUT-CA-07, AUT-CA-08, AUT-CA-22, AUT-CA-23, CSCW-CA-31 | 7 passed |
 | `test_idempotency_recompute_import.py` | AUT-CA-16, AUT-CA-17, AUT-CA-21, CSCW-CA-11, CSCW-CA-12, CSCW-CA-22, CSCW-CA-34, CSCW-CA-45 | 10 passed, 1 xfailed (NEW-1) |
-| `test_outbox_and_delivery.py` | CSCW-CA-19, CSCW-CA-29, CSCW-CA-43, CSCW-CA-44 | 4 passed, 1 skipped (B4) |
+| `test_outbox_and_delivery.py` | CSCW-CA-19, CSCW-CA-29, CSCW-CA-43, CSCW-CA-44 | 5 passed (B4 corrigido) |
 | `test_authorization_boundaries.py` | AUT-CA-11, AUT-CA-12, AUT-CA-13, CSCW-CA-16, CSCW-CA-17, CSCW-CA-32 | 7 passed |
+| `test_lote2_patient_time_provenance_registration.py` | CSCW-CA-26 patient timezone, R2 provenance scope/view dedupe, R3 doctor registration consent | 3 passed |
 | `test_provenance_events.py` | CSCW-CA-04, CSCW-CA-05, CSCW-CA-12, CSCW-CA-28, CSCW-CA-37, CSCW-CA-43 + ator humano × SoftwareAgent | 6 passed |
 
 Contas com os dois papéis não são testadas: por decisão do produto, cada conta

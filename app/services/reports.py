@@ -6,9 +6,10 @@ from pathlib import Path
 from statistics import mean
 from urllib.parse import quote
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.patient_time import local_range_utc_bounds, patient_local_date, patient_local_datetime
 from app.models.entities import (
     AnalysisRun,
     DailyIndicator,
@@ -160,17 +161,24 @@ def get_latest_analytics_run(db: Session) -> AnalysisRun | None:
 
 
 def get_latest_patient_analytics_run(db: Session, patient_id: str) -> AnalysisRun | None:
-    """Get the newest completed run that actually contains this patient's indicators.
+    """Get the newest completed run owned by or containing this patient.
 
     Dataset imports may create global AnalysisRuns (patient_id is NULL), so
-    ownership is determined through DailyIndicator rather than the run header.
+    include output rows for those runs. Patient-scoped runs with no output are
+    still authoritative: they represent a newer analysis with no classified
+    dates and must not leave an older result looking current.
     """
     return db.scalars(
         select(AnalysisRun)
-        .join(DailyIndicator, DailyIndicator.analysis_run_id == AnalysisRun.id)
         .where(
-            DailyIndicator.patient_id == patient_id,
             AnalysisRun.status == "completed",
+            or_(
+                AnalysisRun.patient_id == patient_id,
+                select(DailyIndicator.id).where(
+                    DailyIndicator.analysis_run_id == AnalysisRun.id,
+                    DailyIndicator.patient_id == patient_id,
+                ).exists(),
+            ),
         )
         .order_by(AnalysisRun.finished_at.desc(), AnalysisRun.created_at.desc())
     ).first()
@@ -427,16 +435,17 @@ def _serialize_metric(metric: DailyMetricsCurrent) -> dict[str, object]:
     }
 
 
-def _serialize_record(record: GlucoseRecord) -> dict[str, object]:
+def _serialize_record(record: GlucoseRecord, timezone_name: str | None = None) -> dict[str, object]:
     event_type = "glucose_measurement"
     event_subtype = record.context_label
     context_label = record.context_label
     timestamp_quality = _record_timestamp_quality(record)
 
+    local_datetime = patient_local_datetime(record.measured_at, timezone_name)
     return {
-        "occurred_at": record.measured_at.isoformat(),
-        "event_date": record.measured_at.date().isoformat(),
-        "event_time": record.measured_at.strftime("%H:%M"),
+        "occurred_at": local_datetime.isoformat(),
+        "event_date": local_datetime.date().isoformat(),
+        "event_time": local_datetime.strftime("%H:%M"),
         "event_type": event_type,
         "event_type_label": _enum_label(event_type, EVENT_TYPE_LABELS),
         "event_subtype": event_subtype,
@@ -450,14 +459,15 @@ def _serialize_record(record: GlucoseRecord) -> dict[str, object]:
     }
 
 
-def _serialize_report_record(record: GlucoseRecord) -> dict[str, object]:
+def _serialize_report_record(record: GlucoseRecord, timezone_name: str | None = None) -> dict[str, object]:
     event_type = "glucose_measurement"
     event_subtype = record.context_label
     context_label = record.context_label
+    local_datetime = patient_local_datetime(record.measured_at, timezone_name)
     return {
-        "occurred_at": record.measured_at.isoformat(),
-        "event_date": record.measured_at.date().isoformat(),
-        "event_time": record.measured_at.strftime("%H:%M"),
+        "occurred_at": local_datetime.isoformat(),
+        "event_date": local_datetime.date().isoformat(),
+        "event_time": local_datetime.strftime("%H:%M"),
         "event_type": event_type,
         "event_type_label": _enum_label(event_type, EVENT_TYPE_LABELS),
         "event_subtype": event_subtype,
@@ -492,8 +502,8 @@ def get_patient_detail_context(
             GlucoseRecord.patient_id == patient_id,
         )
     ).one()
-    record_start = record_bounds[0].date() if record_bounds[0] else None
-    record_end = record_bounds[1].date() if record_bounds[1] else None
+    record_start = patient_local_date(record_bounds[0], patient.timezone) if record_bounds[0] else None
+    record_end = patient_local_date(record_bounds[1], patient.timezone) if record_bounds[1] else None
     available_start = metric_bounds[0] or record_start
     available_end = metric_bounds[1] or record_end
     if exact_dates is not None:
@@ -542,14 +552,17 @@ def get_patient_detail_context(
         .order_by(GlucoseRecord.measured_at)
     )
     if resolved_start and resolved_end:
-        start_dt = datetime.combine(resolved_start, time.min)
-        end_dt = datetime.combine(resolved_end + timedelta(days=1), time.min)
+        start_dt, end_dt = local_range_utc_bounds(resolved_start, resolved_end, patient.timezone)
         record_query = record_query.where(GlucoseRecord.measured_at >= start_dt, GlucoseRecord.measured_at < end_dt)
         glucose_query = glucose_query.where(GlucoseRecord.measured_at >= start_dt, GlucoseRecord.measured_at < end_dt)
     if exact_dates is not None:
-        exact_date_strings = [day.isoformat() for day in exact_dates]
-        record_query = record_query.where(func.date(GlucoseRecord.measured_at).in_(exact_date_strings))
-        glucose_query = glucose_query.where(func.date(GlucoseRecord.measured_at).in_(exact_date_strings))
+        local_bounds = [local_range_utc_bounds(day, day, patient.timezone) for day in exact_dates]
+        exact_filter = or_(*[
+            (GlucoseRecord.measured_at >= start) & (GlucoseRecord.measured_at < end)
+            for start, end in local_bounds
+        ])
+        record_query = record_query.where(exact_filter)
+        glucose_query = glucose_query.where(exact_filter)
 
     recent_records = db.scalars(record_query.limit(20)).all()
     glucose_records = db.scalars(glucose_query).all()
@@ -575,10 +588,11 @@ def get_patient_detail_context(
     hourly_lows = {hour: 0 for hour in range(24)}
     hourly_highs_250 = {hour: 0 for hour in range(24)}
     for record in glucose_records:
+        local_hour = patient_local_datetime(record.measured_at, patient.timezone).hour
         if record.glucose_mg_dl < 70:
-            hourly_lows[record.measured_at.hour] += 1
+            hourly_lows[local_hour] += 1
         if record.glucose_mg_dl > 250:
-            hourly_highs_250[record.measured_at.hour] += 1
+            hourly_highs_250[local_hour] += 1
 
     cluster_profiles = _build_cluster_profile_map(indicators)
     daily_indicators_json = (
@@ -624,8 +638,8 @@ def get_patient_detail_context(
         "hourly_highs_250": [{"hour": hour, "count": count} for hour, count in hourly_highs_250.items()],
         "cluster_profiles": cluster_profiles,
         "daily_indicators_json": daily_indicators_json,
-        "glucose_events_json": [_serialize_record(record) for record in glucose_records],
-        "recent_events_json": [_serialize_record(record) for record in recent_records],
+        "glucose_events_json": [_serialize_record(record, patient.timezone) for record in glucose_records],
+        "recent_events_json": [_serialize_record(record, patient.timezone) for record in recent_records],
         "line_chart_points": build_line_chart_points([row.get("avg_glucose") or 0 for row in daily_indicators_json]),
     }
 
@@ -651,8 +665,8 @@ def get_patient_report_context(
             GlucoseRecord.patient_id == patient_id,
         )
     ).one()
-    record_start = record_bounds[0].date() if record_bounds[0] else None
-    record_end = record_bounds[1].date() if record_bounds[1] else None
+    record_start = patient_local_date(record_bounds[0], patient.timezone) if record_bounds[0] else None
+    record_end = patient_local_date(record_bounds[1], patient.timezone) if record_bounds[1] else None
     available_start = metric_bounds[0] or record_start
     available_end = metric_bounds[1] or record_end
     resolved_start, resolved_end = _resolve_date_window(available_start, available_end, start_date, end_date)
@@ -681,8 +695,7 @@ def get_patient_report_context(
 
     glucose_query = select(GlucoseRecord).where(GlucoseRecord.patient_id == patient_id).order_by(GlucoseRecord.measured_at)
     if resolved_start and resolved_end:
-        start_dt = datetime.combine(resolved_start, time.min)
-        end_dt = datetime.combine(resolved_end + timedelta(days=1), time.min)
+        start_dt, end_dt = local_range_utc_bounds(resolved_start, resolved_end, patient.timezone)
         glucose_query = glucose_query.where(GlucoseRecord.measured_at >= start_dt, GlucoseRecord.measured_at < end_dt)
     glucose_records = db.scalars(glucose_query).all()
 
@@ -715,7 +728,7 @@ def get_patient_report_context(
         },
         "summary": summary,
         "daily_indicators_json": daily_indicators_json,
-        "glucose_events_json": [_serialize_report_record(record) for record in glucose_records],
+        "glucose_events_json": [_serialize_report_record(record, patient.timezone) for record in glucose_records],
     }
 
 

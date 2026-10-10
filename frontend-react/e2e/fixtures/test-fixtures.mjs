@@ -173,10 +173,11 @@ export async function linkActive(patient, doctor) {
 }
 
 // Runs e2e/scripts/seed_atypical_days.py against the E2E database.
-export function seedAtypicalDays(patientId, { days = 40, spikes = [10, 25], start = "2026-06-01", globalRun = false, midnightDay } = {}) {
+export function seedAtypicalDays(patientId, { days = 40, spikes = [10, 25], start = "2026-06-01", globalRun = false, midnightDay, flattenDate } = {}) {
   const args = [seedScript, "--patient-id", patientId, "--days", String(days), "--spikes", spikes.join(","), "--start", start];
   if (globalRun) args.push("--global-run");
   if (midnightDay !== undefined) args.push("--midnight-day", String(midnightDay));
+  if (flattenDate) args.push("--flatten-date", flattenDate);
   const result = spawnSync(process.env.MYGLICO_E2E_PYTHON || "python", args, {
     cwd: repoRoot,
     encoding: "utf-8",

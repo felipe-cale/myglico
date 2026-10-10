@@ -1,11 +1,11 @@
 # Features a desenvolver
 
-Backlog de especificações, incluído em 06/10/2026. **Nenhuma das duas features foi implementada por esta organização dos documentos.**
+Backlog de especificações, incluído em 06/10/2026. **As duas features estão implementadas e aprovadas na auditoria integral independente (Codex, sessão nova, 2026-10-09), que confrontou toda a branch com os dois SDDs completos, e na reauditoria das correções; o código final foi aprovado por uma segunda auditoria integral independente, com um revisor novo**; ver também [AUDITORIA-INTEGRAL.md](AUDITORIA-INTEGRAL.md) e [AUDITORIA-INTEGRAL-FINAL.md](AUDITORIA-INTEGRAL-FINAL.md); ver [REVISAO-FINAL.md](REVISAO-FINAL.md) e [MATRIZ-ACEITE.md](MATRIZ-ACEITE.md) (66 Aprovado, 2 Não aplicável).
 
 | Ordem | Feature | Especificação | Estado |
 | --- | --- | --- | --- |
-| 1 | Cadastro, autenticação e proteção de dados | [SDD v1.0](01-cadastro-autenticacao/MyGlico_SDD_Cadastro_Autenticacao.md) | A desenvolver |
-| 2 | Vínculos, colaboração CSCW e proveniência | [SDD v1.1](02-vinculos-cscw-proveniencia/MyGlico_SDD_Vinculos_CSCW_Proveniencia.md) | A desenvolver; depende da base da feature 1 |
+| 1 | Cadastro, autenticação e proteção de dados | [SDD v1.0](01-cadastro-autenticacao/MyGlico_SDD_Cadastro_Autenticacao.md) | Implementada e aprovada (auditoria integral) |
+| 2 | Vínculos, colaboração CSCW e proveniência | [SDD v1.1](02-vinculos-cscw-proveniencia/MyGlico_SDD_Vinculos_CSCW_Proveniencia.md) | Implementada e aprovada (auditoria integral) |
 
 Os SDDs foram copiados integralmente dos documentos fornecidos. As instruções internas são requisitos para a implementação futura; a solicitação atual foi apenas organizá-los no projeto e preparar a delegação ao Orca.
 

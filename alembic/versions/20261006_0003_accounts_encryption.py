@@ -11,9 +11,6 @@ from alembic import op
 import sqlalchemy as sa
 
 from app.core.crypto import encrypt_field, generate_short_id
-from app.db.base import Base
-from app.models import entities  # noqa: F401
-from app.models.entities import Doctor, UserAccount
 
 
 revision = "20261006_0003"
@@ -26,11 +23,48 @@ def _columns(connection, table_name: str) -> set[str]:
     return {column["name"] for column in sa.inspect(connection).get_columns(table_name)}
 
 
+def _create_account_tables() -> None:
+    # Frozen DDL: mirrors the UserAccount/Doctor models as of this revision and
+    # must never be derived from the current ORM metadata.
+    op.create_table(
+        "user_accounts",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("email_encrypted", sa.LargeBinary(), nullable=False),
+        sa.Column("email_lookup", sa.String(length=64), nullable=False),
+        sa.Column("password_hash", sa.String(length=512), nullable=False),
+        sa.Column("account_status", sa.String(length=32), nullable=False),
+        sa.Column("email_verified_at", sa.DateTime(), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=False),
+        sa.Column("is_demo", sa.Boolean(), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("email_lookup", name="uq_user_accounts_email_lookup"),
+    )
+    op.create_table(
+        "doctors",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("short_id", sa.String(length=6), nullable=False),
+        sa.Column("user_account_id", sa.String(length=36), nullable=False),
+        sa.Column("name_encrypted", sa.LargeBinary(), nullable=False),
+        sa.Column("crm_encrypted", sa.LargeBinary(), nullable=True),
+        sa.Column("uf_encrypted", sa.LargeBinary(), nullable=True),
+        sa.Column("crm_uf_lookup", sa.String(length=64), nullable=True),
+        sa.Column("is_demo", sa.Boolean(), nullable=False),
+        sa.Column("declared_verified", sa.Boolean(), nullable=False),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), nullable=False),
+        sa.ForeignKeyConstraint(["user_account_id"], ["user_accounts.id"]),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("short_id", name="uq_doctors_short_id"),
+        sa.UniqueConstraint("user_account_id", name="uq_doctors_user_account_id"),
+        sa.UniqueConstraint("crm_uf_lookup", name="uq_doctors_crm_uf_lookup"),
+    )
+
+
 def upgrade() -> None:
     connection = op.get_bind()
     # Create only the new tables, preserving every existing table and row.
-    UserAccount.__table__.create(connection, checkfirst=True)
-    Doctor.__table__.create(connection, checkfirst=True)
+    _create_account_tables()
 
     patient_columns = _columns(connection, "patients")
     if "name_encrypted" not in patient_columns:
@@ -90,10 +124,18 @@ def upgrade() -> None:
         tuple(constraint.get("column_names", []))
         for constraint in sa.inspect(connection).get_unique_constraints("patients")
     }
-    if "uq_patients_short_id" not in indexes and ("short_id",) not in constraint_columns:
-        op.create_index("uq_patients_short_id", "patients", ["short_id"], unique=True)
-    if "uq_patients_user_account_id" not in indexes and ("user_account_id",) not in constraint_columns:
-        op.create_index("uq_patients_user_account_id", "patients", ["user_account_id"], unique=True)
+    missing_uniques = [
+        (name, column)
+        for name, column in (("uq_patients_short_id", "short_id"), ("uq_patients_user_account_id", "user_account_id"))
+        if name not in indexes and (column,) not in constraint_columns
+    ]
+    # SQLite rebuilds the table below, so the uniques become table constraints
+    # there, matching the model's UniqueConstraint; elsewhere a unique index is
+    # the same object as a unique constraint.
+    sqlite_rebuild = has_legacy_plaintext and connection.dialect.name == "sqlite"
+    if not sqlite_rebuild:
+        for name, column in missing_uniques:
+            op.create_index(name, "patients", [column], unique=True)
 
     # Plaintext columns are dropped only after every row has been encrypted.
     if has_legacy_plaintext:
@@ -103,16 +145,20 @@ def upgrade() -> None:
             if should_drop and (connection.dialect.name == "sqlite" or not is_unique):
                 op.drop_index(index["name"], table_name="patients")
         if connection.dialect.name == "sqlite":
-            with op.batch_alter_table("patients", recreate="always") as batch_op:
-                if "user_account_id" not in patient_columns:
-                    batch_op.create_foreign_key(
-                        "fk_patients_user_account_id_user_accounts",
-                        "user_accounts",
-                        ["user_account_id"],
-                        ["id"],
+            reflect_args = []
+            if "user_account_id" not in patient_columns:
+                # Unnamed FK, like the model's ForeignKey and the non-SQLite path;
+                # batch create_foreign_key would require a constraint name.
+                reflect_args.append(
+                    sa.Column(
+                        "user_account_id", sa.String(length=36), sa.ForeignKey("user_accounts.id"), nullable=True
                     )
+                )
+            with op.batch_alter_table("patients", recreate="always", reflect_args=reflect_args) as batch_op:
                 batch_op.drop_column("name")
                 batch_op.drop_column("email")
+                for name, column in missing_uniques:
+                    batch_op.create_unique_constraint(name, [column])
         else:
             for constraint in sa.inspect(connection).get_unique_constraints("patients"):
                 if "email" in constraint.get("column_names", []) and constraint.get("name"):

@@ -277,7 +277,8 @@
       "periodAnalyzed": "Período analizado",
       "defaultWindow": "Ventana predeterminada de 30 días a partir de la fecha más reciente disponible.",
       "selectedDays": "Días seleccionados ({{count}})",
-      "referencePeriod": "Solo se analizan estos días. Período de referencia: {{start}} a {{end}}."
+      "referencePeriod": "Solo se analizan estos días. Período de referencia: {{start}} a {{end}}.",
+      "customWindow": "Período personalizado de {{count}} días elegido en el filtro."
     },
     "filter": {
       "eyebrow": "Filtro temporal",
@@ -544,7 +545,10 @@
     "popupScopeCustom": "{{count}} días atípicos en el período elegido aquí ({{start}} a {{end}}), distinto del período mostrado en el detalle.",
     "popupShowAll": "Ver todo el historial",
     "popupUseActive": "Usar el período mostrado",
-    "popupOutsideHint": "Los días fuera del período mostrado amplían el período del detalle al aplicar el filtro."
+    "popupOutsideHint": "Los días fuera del período mostrado amplían el período del detalle al aplicar el filtro.",
+    "previousClassification": "Clasificación anterior",
+    "originPreviousClassification": "Abierto a partir del día {{date}}, que era atípico en el análisis de ese momento. En el análisis actual ese día ya no se clasifica como atípico; la conversación y su origen se preservaron.",
+    "originAtypicalDated": "Origen: día atípico del {{date}}"
   },
   "notifications": {
     "title": "Notificaciones",

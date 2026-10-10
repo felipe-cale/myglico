@@ -200,6 +200,70 @@ test.describe("Group 6 - messaging and closure", () => {
     });
   });
 
+  test("CSCW-CA-22 (UI) - the conversation shows that its origin is a previous classification after a recompute", async ({ actor, browserSession }) => {
+    const patient = await actor("patientA");
+    const doctor = await actor("doctorA");
+    await linkActive(patient, doctor);
+    const first = seedAtypicalDays(patient.patientId, { days: 40, spikes: [10, 25] });
+    const origin = first.flagged[0];
+    const inv = await openInvestigationAsPatient(patient, doctor, { atypical_day_event_id: origin.indicator_id, initial_message: "sobre o dia" });
+    // Correct the readings of the flagged day and reprocess: the new run no longer flags it.
+    const second = seedAtypicalDays(patient.patientId, { days: 0, flattenDate: origin.date });
+    expect(second.run_id).not.toBe(first.run_id);
+    expect(second.flagged.map((item) => item.date)).not.toContain(origin.date);
+
+    const detail = (await api.getInvestigation(patient.request, inv.id)).body;
+    expect(detail.investigation.origin?.date).toBe(origin.date);
+    expect(detail.investigation.origin?.is_current_classification).toBe(false);
+
+    const [y, m, d] = origin.date.split("-");
+    const ui = await conversationPage(browserSession, "patientA", inv.id);
+    const originLine = ui.page.getByTestId("investigation-origin");
+    await expect(originLine).toContainText(t("cscw.previousClassification"));
+    await expect(originLine).toContainText(new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(Number(y), Number(m) - 1, Number(d))));
+    await expect(ui.page.getByText("sobre o dia")).toBeVisible();
+  });
+
+  test("CSCW-CA-22 (UI, contract) - origin badge renders from the API `origin` field (response augmented in the browser)", async ({ actor, browserSession }) => {
+    const patient = await actor("patientA");
+    const doctor = await actor("doctorA");
+    await linkActive(patient, doctor);
+    const first = seedAtypicalDays(patient.patientId, { days: 40, spikes: [10, 25] });
+    const origin = first.flagged[0];
+    const inv = await openInvestigationAsPatient(patient, doctor, { atypical_day_event_id: origin.indicator_id, initial_message: "sobre o dia" });
+
+    const ui = await browserSession("patientA");
+    await ui.authenticateWithApi();
+    let currentClassification = false;
+    const augment = (summary) => (summary.id === inv.id
+      ? { ...summary, origin: { ...(summary.origin ?? { indicator_id: origin.indicator_id, date: origin.date, analysis_run_id: first.run_id }), is_current_classification: currentClassification } }
+      : summary);
+    await ui.context.route(/\/api\/investigations(\/[^/]+)?(\?.*)?$/, async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      if (body.investigation) body.investigation = augment(body.investigation);
+      if (Array.isArray(body.investigations)) body.investigations = body.investigations.map(augment);
+      await route.fulfill({ response, json: body });
+    });
+    const [y, m, d] = origin.date.split("-");
+    const dateLabel = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(Number(y), Number(m) - 1, Number(d)));
+
+    // Previous classification: badge + explanation in the conversation and in the list.
+    await ui.page.goto(ROUTES.investigation(inv.id));
+    const originLine = ui.page.getByTestId("investigation-origin");
+    await expect(originLine).toContainText(t("cscw.previousClassification"));
+    await expect(originLine).toContainText(dateLabel);
+    await expect(ui.page.getByText("sobre o dia")).toBeVisible();
+    await ui.page.goto("/dashboard#investigations");
+    await expect(ui.page.locator(".react-investigation-card").getByTestId("investigation-origin")).toContainText(t("cscw.previousClassification"));
+
+    // Still atypical in the current analysis: dated origin, no "previous" badge.
+    currentClassification = true;
+    await ui.page.goto(ROUTES.investigation(inv.id));
+    await expect(originLine).toHaveText(t("cscw.originAtypicalDated", "pt-BR", { date: dateLabel }));
+    await expect(originLine).not.toContainText(t("cscw.previousClassification"));
+  });
+
   test("AUT-CA-15 (secondary) - two linked doctors never share conversations", async ({ actor }) => {
     const patient = await actor("patientA");
     const doctorA = await actor("doctorA");

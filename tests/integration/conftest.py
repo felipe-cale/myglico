@@ -40,11 +40,17 @@ from typing import Any, Iterator
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-INTEGRATION_DB_FILE = REPO_ROOT / "data" / "integration.db"
+_DEFAULT_INTEGRATION_DB_FILE = REPO_ROOT / "data" / "integration.db"
 
 INTEGRATION_DB_URL = os.environ.get(
     "MYGLICO_INTEGRATION_DATABASE_URL",
-    f"sqlite:///{INTEGRATION_DB_FILE.as_posix()}",
+    f"sqlite:///{_DEFAULT_INTEGRATION_DB_FILE.as_posix()}",
+)
+# Rebuild/raw access must target the database the URL names, never a fixed path.
+INTEGRATION_DB_FILE = (
+    Path(INTEGRATION_DB_URL.removeprefix("sqlite:///"))
+    if INTEGRATION_DB_URL.startswith("sqlite:///")
+    else _DEFAULT_INTEGRATION_DB_FILE
 )
 _HEX_KEY = re.compile(r"^[0-9a-fA-F]{64}$")
 
@@ -67,6 +73,8 @@ os.environ["MYGLICO_PROVENANCE_DIR"] = str(_SCRATCH_DIR / "provenance")
 os.environ["MYGLICO_RAW_DATA_DIR"] = str(_SCRATCH_DIR / "raw")
 os.environ.setdefault("MYGLICO_APP_ENV", "test")
 os.environ.setdefault("MYGLICO_DEBUG", "false")
+# Tests drive the outbox explicitly; no background drain racing assertions.
+os.environ["MYGLICO_NOTIFICATION_DISPATCHER"] = "off"
 
 if "app.core.config" in sys.modules:
     sys.modules["app.core.config"].get_settings.cache_clear()
@@ -219,6 +227,7 @@ class World:
             "password": password,
             "password_confirmation": password,
             "display_name": display_name or f"{role.title()} {uuid.uuid4().hex[:8]}",
+            "privacy_notice_accepted": True,
         }
         if role == "doctor":
             payload["crm"] = crm or self.new_crm()

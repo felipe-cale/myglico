@@ -18,6 +18,7 @@ from unlzw3 import unlzw
 
 from app.core.config import get_settings
 from app.core.crypto import email_lookup, encrypt_field, generate_short_id, hash_password
+from app.core.patient_time import local_datetime_to_utc_naive
 from app.models.entities import (
     AnalysisOutbox,
     DataQualityIssue,
@@ -445,7 +446,7 @@ def import_uci_diabetes(db: Session, skip_if_loaded: bool = True) -> tuple[Impor
             if normalized_payload["is_glucose"] and normalized_payload["glucose_mg_dl"] is not None:
                 glucose_record = GlucoseRecord(
                     patient_id=patient.id,
-                    measured_at=occurred_at,
+                    measured_at=local_datetime_to_utc_naive(occurred_at, patient.timezone),
                     glucose_mg_dl=float(normalized_payload["glucose_mg_dl"]),
                     context_label=normalized_payload["context_label"],
                     notes=quality_note or None,

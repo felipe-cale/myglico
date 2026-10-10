@@ -9,12 +9,27 @@ import { t, tx } from "../fixtures/i18n.mjs";
 import * as api from "../fixtures/api.mjs";
 
 const RANGE = { start_date: "2026-06-01", end_date: "2026-07-31" };
+// Window used only by the global-run scenario (see CSCW-CA-23 (A1)).
+const GLOBAL_RUN_RANGE = { start_date: "2025-02-03", end_date: "2025-03-31" };
 const dayOf = (row) => row.indicator_date || row.date || row.metric_date;
 
+// The trigger only exists once the session and the patient detail have loaded.
+// Waiting on those real responses (instead of only on the button) makes a
+// failed load report which request failed and where the page ended up.
 async function openDetail(browserSession, key, patientId, search = "") {
   const ui = await browserSession(key);
   await ui.authenticateWithApi();
+  const responseTo = (pathname) => ui.page
+    .waitForResponse((r) => r.request().method() === "GET" && new URL(r.url()).pathname === pathname, { timeout: 20_000 })
+    .catch((error) => error);
+  const sessionResponse = responseTo("/api/auth/session");
+  const detailResponse = responseTo(`/api/patients/${patientId}`);
   await ui.page.goto(ROUTES.patientDetailQuery(patientId, search));
+  for (const [label, pending] of [["/api/auth/session", sessionResponse], [`/api/patients/${patientId}`, detailResponse]]) {
+    const response = await pending;
+    if (response instanceof Error) throw new Error(`GET ${label} never answered (page at ${ui.page.url()}): ${response.message}`);
+    expect(response.status(), `GET ${label} (page at ${ui.page.url()})`).toBe(200);
+  }
   await expect(ui.page.getByRole("button", { name: tx("cscw.popupButton") })).toBeVisible();
   return ui;
 }
@@ -40,9 +55,12 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
 
   test("CSCW-CA-23 (A1) - UCI-style global analysis run: popup is not empty", async ({ actor }) => {
     const patient = await actor("patientA");
-    const seeded = seedAtypicalDays(patient.patientId, { globalRun: true });
+    // The global run is bounded to a window no other test seeds, so it only
+    // covers this test's data instead of every patient left in the shared E2E
+    // database (P2-03: unbounded, it took >60 s after a few repetitions).
+    const seeded = seedAtypicalDays(patient.patientId, { globalRun: true, start: GLOBAL_RUN_RANGE.start_date });
     expect(seeded.run_patient_id).toBeNull();
-    const days = (await api.atypicalDays(patient.request, patient.patientId, RANGE)).body.days;
+    const days = (await api.atypicalDays(patient.request, patient.patientId, GLOBAL_RUN_RANGE)).body.days;
     expect(days.map((d) => d.indicator_id).sort()).toEqual(seeded.flagged.map((f) => f.indicator_id).sort());
   });
 
@@ -159,20 +177,70 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
     await expect(ui.page.getByTestId("period-adjusted")).toHaveCount(0);
   });
 
-  test("CSCW-CA-26 - a reading at 23:59 belongs to its own calendar day", async ({ actor, browserSession }) => {
+  test("CSCW-CA-25 (O5, O6) - the original period survives a reload after an automatic widening; the summary tells default from custom periods", async ({ actor, browserSession }) => {
     const patient = await actor("patientA");
-    seedAtypicalDays(patient.patientId, { midnightDay: 5 });
-    const day = "2026-06-06";
-    const next = "2026-06-07";
-    const sameDay = (await api.patientDetail(patient.request, patient.patientId, { dates: day })).body;
-    expect(sameDay.glucose_events.some((e) => e.occurred_at.startsWith(`${day}T23:59`))).toBe(true);
-    const nextDay = (await api.patientDetail(patient.request, patient.patientId, { dates: next })).body;
-    expect(nextDay.glucose_events.some((e) => e.occurred_at.includes("23:59"))).toBe(false);
-    expect(nextDay.glucose_events.every((e) => e.occurred_at.startsWith(next))).toBe(true);
-    test.info().annotations.push({
-      type: "partial",
-      description: "Readings are naive local datetimes; there is no per-patient timezone, so the day boundary is the stored wall-clock date (browser runs in America/Sao_Paulo).",
-    });
+    const seeded = seedAtypicalDays(patient.patientId);
+    const outsideDay = seeded.flagged.map((item) => item.date).sort().at(-1);
+    const dayBefore = new Date(`${outsideDay}T00:00:00Z`);
+    dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+    const shortRange = { start_date: RANGE.start_date, end_date: dayBefore.toISOString().slice(0, 10) };
+
+    // O6: no period filter -> default window text.
+    const ui = await openDetail(browserSession, "patientA", patient.patientId);
+    const summary = ui.page.getByTestId("period-summary");
+    await expect(summary).toContainText(t("patientDetail.hero.defaultWindow"));
+
+    // O6: explicit custom period -> no default-window text.
+    await ui.page.goto(ROUTES.patientDetailQuery(patient.patientId, `?start_date=${shortRange.start_date}&end_date=${shortRange.end_date}`));
+    await expect(ui.page.getByRole("button", { name: tx("cscw.popupButton") })).toBeVisible();
+    const customDays = Math.round((Date.parse(`${shortRange.end_date}T00:00:00Z`) - Date.parse(`${shortRange.start_date}T00:00:00Z`)) / 86400000) + 1;
+    await expect(summary).toContainText(t("patientDetail.hero.customWindow", "pt-BR", { count: customDays }));
+    await expect(summary).not.toContainText(t("patientDetail.hero.defaultWindow"));
+
+    // Widen the period by picking a day outside it.
+    const dialog = await openPopup(ui.page);
+    await dialog.getByRole("button", { name: tx("cscw.popupShowAll") }).click();
+    const popupLabel = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(`${outsideDay}T00:00:00`));
+    await dialog.getByRole("listitem").filter({ hasText: popupLabel }).getByRole("checkbox").check();
+    await dialog.getByRole("button", { name: tx("cscw.popupApply") }).click();
+    await expect.poll(() => new URL(ui.page.url()).searchParams.get("end_date")).toBe(outsideDay);
+    await expect(ui.page.getByTestId("period-adjusted")).toBeVisible();
+
+    // O5: after a reload the notice is still there and clearing restores the original period.
+    await ui.page.reload();
+    await expect(ui.page.getByRole("button", { name: tx("cscw.popupButton") })).toBeVisible();
+    await expect(ui.page).toHaveURL(new RegExp(`dates=${outsideDay}`));
+    await expect(ui.page.getByTestId("period-adjusted")).toBeVisible();
+    await ui.page.locator(".react-selected-days").getByRole("button", { name: tx("cscw.popupClearDays") }).click();
+    await expect(ui.page).not.toHaveURL(/dates=/);
+    await expect.poll(() => new URL(ui.page.url()).searchParams.get("start_date")).toBe(shortRange.start_date);
+    await expect.poll(() => new URL(ui.page.url()).searchParams.get("end_date")).toBe(shortRange.end_date);
+    await expect(ui.page.getByTestId("period-adjusted")).toHaveCount(0);
+    await expect(summary).toContainText(t("patientDetail.hero.customWindow", "pt-BR", { count: customDays }));
+
+    // A further reload without dates keeps the restored period (no stale state).
+    await ui.page.reload();
+    await expect(ui.page.getByRole("button", { name: tx("cscw.popupButton") })).toBeVisible();
+    await expect.poll(() => new URL(ui.page.url()).searchParams.get("end_date")).toBe(shortRange.end_date);
+    await expect(ui.page.getByTestId("period-adjusted")).toHaveCount(0);
+  });
+
+  test("CSCW-CA-26 - the real manual form preserves both sides of local midnight", async ({ actor, browserSession }) => {
+    const patient = await actor("patientA");
+    const ui = await openDetail(browserSession, "patientA", patient.patientId);
+    const form = ui.page.locator(".react-manual-entry-form");
+    const dateInput = form.locator('input[type="datetime-local"]');
+    const glucoseInput = form.locator('input[type="number"]');
+    for (const localTime of ["2026-10-08T00:30", "2026-10-08T23:30"]) {
+      await dateInput.fill(localTime);
+      await glucoseInput.fill("123");
+      await form.getByRole("button", { name: tx("manualEntry.submit") }).click();
+      await expect(form.getByRole("status")).toBeVisible();
+    }
+    const sameDay = (await api.patientDetail(patient.request, patient.patientId, { dates: "2026-10-08" })).body;
+    expect(sameDay.glucose_events.filter((event) => event.event_date === "2026-10-08").map((event) => event.event_time))
+      .toEqual(expect.arrayContaining(["00:30", "23:30"]));
+    expect(sameDay.glucose_events.every((event) => event.event_date === "2026-10-08")).toBe(true);
   });
 
   test("CSCW-CA-27 - empty, loading and error states are accessible and invent nothing", async ({ actor, browserSession }) => {

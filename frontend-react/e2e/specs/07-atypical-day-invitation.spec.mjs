@@ -21,7 +21,9 @@ test.describe("Group 7 - atypical-day invitation", () => {
     expect(seeded.flagged.length).toBeGreaterThan(0);
 
     const prompts = (await api.atypicalPrompts(patient.request, patient.patientId)).body.prompts;
-    expect(prompts.map((p) => p.indicator_id).sort()).toEqual(seeded.flagged.map((f) => f.indicator_id).sort());
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0].indicator_ids.sort()).toEqual(seeded.flagged.map((f) => f.indicator_id).sort());
+    expect(prompts[0].dates.sort()).toEqual(seeded.flagged.map((f) => f.date).sort());
     expect(prompts.every((p) => p.status === "created")).toBe(true);
     const notes = (await api.notifications(patient.request)).body.notifications.filter((n) => n.notification_type === "atypical_day_prompt");
     expect(notes.length).toBeGreaterThan(0);
@@ -53,11 +55,11 @@ test.describe("Group 7 - atypical-day invitation", () => {
     const deferButtons = region.getByRole("button", { name: tx("cscw.defer") });
     await expect(deferButtons.first()).toBeVisible();
     const before = await deferButtons.count();
-    const deferred = ui.page.waitForResponse((r) => /\/api\/atypical-day-prompts\/[^/]+\/defer$/.test(r.url()));
+    const deferred = ui.page.waitForResponse((r) => r.url().endsWith("/api/atypical-day-prompts/defer"));
     await deferButtons.first().click();
     const response = await deferred;
     expect(response.status()).toBe(200);
-    const deferredId = response.url().split("/").at(-2);
+    const deferredId = (await response.json()).prompts[0].indicator_id;
     await expect(deferButtons).toHaveCount(before - 1);
 
     await ui.page.reload();
@@ -65,7 +67,8 @@ test.describe("Group 7 - atypical-day invitation", () => {
     await expect(deferButtons).toHaveCount(before - 1);
 
     const prompts = (await api.atypicalPrompts(patient.request, patient.patientId)).body.prompts;
-    expect(prompts.find((p) => p.indicator_id === deferredId)?.status).toBe("deferred");
+    const deferredBatch = prompts.find((p) => p.indicator_ids.includes(deferredId));
+    expect(deferredBatch?.status).toBe("deferred");
     // Deferring twice is idempotent.
     expect((await api.deferAtypicalPrompt(patient.request, deferredId)).body.prompt.status).toBe("deferred");
     // Manual opening for the deferred day is still possible.
@@ -77,7 +80,7 @@ test.describe("Group 7 - atypical-day invitation", () => {
     const other = await actor("patientB");
     const stillCreated = prompts.find((p) => p.status === "created");
     if (stillCreated) {
-      expect([403, 404]).toContain((await api.deferAtypicalPrompt(other.request, stillCreated.indicator_id)).status);
+      expect([403, 404]).toContain((await api.deferAtypicalPrompt(other.request, stillCreated.indicator_ids[0])).status);
     }
   });
 
@@ -137,9 +140,10 @@ test.describe("Group 7 - atypical-day invitation", () => {
     seedAtypicalDays(patient.patientId, { days: 0, spikes: [] });
     const promptsAfter = (await api.atypicalPrompts(patient.request, patient.patientId)).body.prompts;
     expect(promptsAfter.length).toBe(promptsBefore.length);
-    expect(new Set(promptsAfter.map((p) => p.date)).size).toBe(promptsAfter.length);
+    expect(promptsAfter).toHaveLength(1);
+    expect(promptsAfter[0].indicator_ids).toHaveLength(first.flagged.length);
     const notesAfterSecond = (await api.notifications(patient.request)).body.notifications.filter((n) => n.notification_type === "atypical_day_prompt");
     expect(notesAfterSecond).toHaveLength(1);
-    for (const p of promptsAfter) expect(p.date.startsWith("2026-0")).toBe(true);
+    for (const promptDate of promptsAfter[0].dates) expect(promptDate.startsWith("2026-0")).toBe(true);
   });
 });

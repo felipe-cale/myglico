@@ -17,8 +17,11 @@ _lock = Lock()
 def consume(scope: str, ip_address: str, identity: str) -> tuple[bool, int]:
     """Consume one attempt; return (allowed, retry_after_seconds)."""
     limit = _RULES[scope]
+    # A shared NAT should not make unrelated accounts compete for one bucket.
+    # The account bucket still caps brute force across IPs, while the pair
+    # bucket prevents one source from hammering the same account.
     tokens = (
-        sha256(f"{scope}\0ip\0{ip_address}".encode("utf-8")).hexdigest(),
+        sha256(f"{scope}\0ip_identity\0{ip_address}\0{identity}".encode("utf-8")).hexdigest(),
         sha256(f"{scope}\0identity\0{identity}".encode("utf-8")).hexdigest(),
     )
     now = monotonic()

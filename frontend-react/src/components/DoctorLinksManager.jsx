@@ -20,7 +20,7 @@ function DoctorTrustBadges({ doctor }) {
 export default function DoctorLinksManager() {
   const { t } = useTranslation();
   const { session } = useAuth();
-  
+
   const [links, setLinks] = useState([]);
   const [searchParams, setSearchParams] = useState({ short_id: "", crm: "", uf: "" });
   const [searchResult, setSearchResult] = useState(null);
@@ -77,7 +77,7 @@ export default function DoctorLinksManager() {
   const handleAction = async (action, id, version) => {
     try {
       if (action === 'revoke') await revokeDoctorLink(id, { version });
-      if (action === 'cancel') await cancelDoctorLink(id);
+      if (action === 'cancel') await cancelDoctorLink(id, version);
       if (action === 'confirm') await confirmDoctorLink(id, version);
       if (action === 'reject') await rejectDoctorLink(id, version);
       loadLinks();
@@ -92,7 +92,7 @@ export default function DoctorLinksManager() {
   return (
     <div style={{ marginTop: '2rem' }}>
       <h3>{isPatient ? t("dashboard.myDoctors") : t("dashboard.myLinks")}</h3>
-      
+
       {isPatient && (
         <div style={{ background: '#f9f9f9', padding: '1rem', marginBottom: '1rem', borderRadius: '4px' }}>
           <h4>{t("dashboard.searchDoctor")}</h4>

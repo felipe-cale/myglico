@@ -9,7 +9,6 @@ which is what the analytics worker/importer runs. Nothing is mocked.
 Usage:
     python seed_atypical_days.py --patient-id <id> [--days 40]
         [--spikes 10,25] [--start 2026-06-01] [--global-run]
-        [--midnight-day 5]
 
 Prints a JSON object with the flagged dates and the run id.
 """
@@ -34,19 +33,23 @@ def main() -> None:
     parser.add_argument("--start", default="2026-06-01")
     parser.add_argument("--global-run", action="store_true",
                         help="run analytics with patient_id=NULL, like the UCI importer does")
-    parser.add_argument("--midnight-day", type=int, default=None,
-                        help="offset of a day that also gets a 23:59 and a 00:01 reading")
+    parser.add_argument("--flatten-date", default=None,
+                        help="YYYY-MM-DD whose existing readings are corrected to a normal value before reprocessing")
     args = parser.parse_args()
 
     from sqlalchemy import select
 
+    from app.core.patient_time import local_date_utc_bounds, local_datetime_to_utc_naive
     from app.db.session import SessionLocal
-    from app.models.entities import DailyIndicator, GlucoseRecord
+    from app.models.entities import DailyIndicator, GlucoseRecord, Patient
     from app.services.analytics import compute_analytics
 
     start = date.fromisoformat(args.start)
     spikes = {int(value) for value in args.spikes.split(",") if value.strip()}
     with SessionLocal() as db:
+        patient = db.get(Patient, args.patient_id)
+        if patient is None:
+            raise SystemExit(f"patient not found: {args.patient_id}")
         for offset in range(args.days):
             day = start + timedelta(days=offset)
             for reading in range(4):
@@ -54,20 +57,45 @@ def main() -> None:
                     value = 420.0 + reading * 15
                 else:
                     value = 100.0 + ((offset * 7 + reading * 3) % 20)
+                local_time = datetime.combine(day, datetime.min.time()) + timedelta(hours=6 + reading * 4)
                 db.add(GlucoseRecord(
                     patient_id=args.patient_id,
-                    measured_at=datetime.combine(day, datetime.min.time()) + timedelta(hours=6 + reading * 4),
+                    measured_at=local_datetime_to_utc_naive(local_time, patient.timezone),
                     glucose_mg_dl=value,
                 ))
-            if args.midnight_day is not None and offset == args.midnight_day:
-                db.add(GlucoseRecord(patient_id=args.patient_id,
-                                     measured_at=datetime.combine(day, datetime.min.time()) + timedelta(hours=23, minutes=59),
-                                     glucose_mg_dl=111.0))
+        if args.flatten_date:
+            # Corrects an already-flagged day (stored naive UTC, patient wall date) so the
+            # next run drops its atypical classification, as in CSCW-CA-22.
+            flat_day = date.fromisoformat(args.flatten_date)
+            day_start, day_end = local_date_utc_bounds(flat_day, patient.timezone)
+            # Copy the previous day's readings: a constant value would itself look atypical.
+            previous = {
+                record.measured_at + timedelta(days=1): record.glucose_mg_dl
+                for record in db.scalars(select(GlucoseRecord).where(
+                    GlucoseRecord.patient_id == args.patient_id,
+                    GlucoseRecord.measured_at >= day_start - timedelta(days=1),
+                    GlucoseRecord.measured_at < day_start,
+                ))
+            }
+            for record in db.scalars(select(GlucoseRecord).where(
+                GlucoseRecord.patient_id == args.patient_id,
+                GlucoseRecord.measured_at >= day_start,
+                GlucoseRecord.measured_at < day_end,
+            )):
+                record.glucose_mg_dl = previous.get(record.measured_at, 110.0)
         db.commit()
 
     with SessionLocal() as db:
-        run = compute_analytics(db, patient_id=None if args.global_run else args.patient_id,
-                                trigger_type="e2e_seed")
+        if args.global_run:
+            # A patient_id=NULL run, like the UCI importer's, bounded to the seeded
+            # window. Unbounded, it would recompute every patient left in the shared
+            # E2E database by earlier tests: its runtime grows with the suite (P2-03)
+            # and it would become the newest run of all of those patients.
+            window_end = start + timedelta(days=max(args.days, 1) - 1)
+            run = compute_analytics(db, patient_id=None, start_date=start, end_date=window_end,
+                                    trigger_type="e2e_seed")
+        else:
+            run = compute_analytics(db, patient_id=args.patient_id, trigger_type="e2e_seed")
         flagged = db.scalars(select(DailyIndicator).where(
             DailyIndicator.analysis_run_id == run.id,
             DailyIndicator.patient_id == args.patient_id,

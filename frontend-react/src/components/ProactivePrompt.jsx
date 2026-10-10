@@ -28,10 +28,11 @@ export default function ProactivePrompt() {
     }
   }, [session]);
 
-  const handleDefer = async (indicator_id) => {
+  const handleDefer = async (prompt) => {
     try {
-      await deferAtypicalDayPrompt(indicator_id);
-      setPrompts(prompts.filter(p => p.indicator_id !== indicator_id));
+      const indicatorIds = prompt.indicator_ids?.length ? prompt.indicator_ids : [prompt.indicator_id];
+      await deferAtypicalDayPrompt(indicatorIds);
+      setPrompts(prompts.filter(p => p.batch_id !== prompt.batch_id));
     } catch(e) {}
   };
 
@@ -67,7 +68,7 @@ export default function ProactivePrompt() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button className="react-button" style={{ background: '#ffc107', border: 'none' }} onClick={() => handleViewDay(p)}>{p.dates?.length > 1 ? t("cscw.viewDays") : t("cscw.viewDay")}</button>
             <button className="react-button" style={{ background: '#005fcc', color: '#fff', border: 'none' }} onClick={() => handleOpenInvestigation(p.indicator_id)}>{t("cscw.open")}</button>
-            <button className="react-button" style={{ background: 'transparent', border: '1px solid #ccc' }} onClick={() => handleDefer(p.indicator_id)}>{t("cscw.defer")}</button>
+            <button className="react-button" style={{ background: 'transparent', border: '1px solid #ccc' }} onClick={() => handleDefer(p)}>{t("cscw.defer")}</button>
           </div>
         </div>
       ))}

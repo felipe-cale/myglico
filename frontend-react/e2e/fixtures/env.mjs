@@ -27,5 +27,3 @@ export const frontendUrl = `http://localhost:${FRONTEND_PORT}`;
 // rebuilt by e2e/scripts/start-backend.mjs on every run.
 export const testDatabaseFile = path.join(repoRoot, "data", "e2e-myglico.db");
 export const testDatabaseUrl = `sqlite:///${testDatabaseFile.split(path.sep).join("/")}`;
-
-

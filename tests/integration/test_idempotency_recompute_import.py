@@ -309,6 +309,56 @@ def test_aut_ca_21_recompute_preserves_indicators_and_readings(world: World):
     assert api_days == {d.isoformat() for d in atypical}
 
 
+def test_aut_ca_21_uci_import_preserves_pre_timezone_anomaly_classification(uci_import, world: World):
+    """The UCI import's UTC storage must preserve the former patient-local day buckets."""
+    from app.core.patient_time import patient_local_datetime
+    from app.db.session import SessionLocal
+    from app.models.entities import DailyIndicator, GlucoseRecord, Patient
+    from app.services.analytics import compute_analytics
+    from sqlalchemy import select
+
+    patient_id = uci_import["first"]["patient_ids"][0]
+    with SessionLocal() as db:
+        imported_patient = db.get(Patient, patient_id)
+        imported_records = [(record.measured_at, record.glucose_mg_dl, record.context_label) for record in db.scalars(select(GlucoseRecord).where(
+            GlucoseRecord.patient_id == patient_id,
+        ).order_by(GlucoseRecord.measured_at))]
+        timezone_name = imported_patient.timezone
+        assert imported_records
+        assert all(measured_at.hour in (11, 15, 21, 1) for measured_at, _, _ in imported_records)
+
+    # Recreate the previous implementation's input contract: local wall times
+    # were stored directly and grouped by their naive calendar date.
+    baseline = world.patient()
+    with SessionLocal() as db:
+        baseline_profile = db.get(Patient, baseline.id)
+        baseline_profile.timezone = "UTC"
+        for measured_at, glucose, context in imported_records:
+            wall_time = patient_local_datetime(measured_at, timezone_name).replace(tzinfo=None)
+            db.add(GlucoseRecord(
+                patient_id=baseline.id, measured_at=wall_time,
+                glucose_mg_dl=glucose, context_label=context,
+            ))
+        db.commit()
+
+    def atypical_dates(patient_key: str) -> set[date]:
+        with SessionLocal() as db:
+            run = compute_analytics(db, patient_id=patient_key, trigger_type="lote4-baseline")
+            return set(db.scalars(select(DailyIndicator.indicator_date).where(
+                DailyIndicator.analysis_run_id == run.id,
+                DailyIndicator.anomaly_flag.is_(True),
+            )).all())
+
+    baseline_dates = atypical_dates(baseline.id)
+    current_dates = atypical_dates(patient_id)
+    assert current_dates == baseline_dates
+
+    # Re-import is intentionally idempotent; it must not shift stored rows or
+    # recompute a different clinical classification.
+    uci_import["run"]()
+    assert atypical_dates(patient_id) == baseline_dates
+
+
 def test_cscw_ca_22_recompute_that_drops_the_flag_keeps_the_investigation_and_its_origin(world: World):
     """CSCW-CA-22: investigation survives reclassification with its historical origin."""
     from sqlalchemy import select, update
@@ -323,6 +373,26 @@ def test_cscw_ca_22_recompute_that_drops_the_flag_keeps_the_investigation_and_it
     investigation = world.open_investigation(patient, doctor, event_id=origin["indicator_id"])
     reply = doctor.client.post(f"/api/investigations/{investigation['id']}/messages", json={"content": "Seen"})
     assert reply.status_code == 201
+    origin_before = patient.client.get(f"/api/investigations/{investigation['id']}").json()["investigation"]["origin"]
+    assert origin_before["indicator_id"] == origin["indicator_id"]
+    assert origin_before["date"] == origin["date"]
+    assert origin_before["analysis_run_id"]
+    assert origin_before["is_current_classification"] is True
+
+    # An empty patient-scoped execution is still the newest classification.
+    from app.services.analytics import compute_analytics
+    from app.services.reports import get_latest_patient_analytics_run
+
+    with SessionLocal() as db:
+        empty_run = compute_analytics(
+            db, patient_id=patient.id, start_date=date(2026, 7, 1), end_date=date(2026, 7, 2),
+            trigger_type="integration-empty-current-range",
+        )
+        assert empty_run.status == "completed"
+        assert get_latest_patient_analytics_run(db, patient.id).id == empty_run.id
+    after_empty_run = patient.client.get(f"/api/investigations/{investigation['id']}").json()["investigation"]["origin"]
+    assert after_empty_run["indicator_id"] == origin_before["indicator_id"]
+    assert after_empty_run["is_current_classification"] is False
 
     # Correct the readings of the flagged day so it is no longer atypical, then reprocess.
     flagged_day = date.fromisoformat(origin["date"])
@@ -346,9 +416,17 @@ def test_cscw_ca_22_recompute_that_drops_the_flag_keeps_the_investigation_and_it
         assert world.count(InvestigationMessage, InvestigationMessage.investigation_id == investigation["id"]) == 2
     detail = patient.client.get(f"/api/investigations/{investigation['id']}").json()
     assert detail["investigation"]["atypical_day_event_id"] == origin["indicator_id"]
+    assert detail["investigation"]["origin"] == {
+        **origin_before,
+        "is_current_classification": False,
+    }
     assert detail["investigation"]["status"] == "open"
     assert [m["content"] for m in detail["messages"]] == ["Initial message", "Seen"]
-    assert doctor.client.get(f"/api/investigations/{investigation['id']}").status_code == 200
+    doctor_detail = doctor.client.get(f"/api/investigations/{investigation['id']}")
+    assert doctor_detail.status_code == 200
+    assert doctor_detail.json()["investigation"]["origin"] == detail["investigation"]["origin"]
+    listed = patient.client.get("/api/investigations").json()["investigations"]
+    assert next(item for item in listed if item["id"] == investigation["id"])["origin"] == detail["investigation"]["origin"]
 
 
 def test_cscw_ca_45_reimport_does_not_duplicate_historical_notices(uci_import):

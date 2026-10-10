@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { fetchInvestigations, fetchInvestigationDetail, createInvestigation, fetchDoctorLinks } from "../api";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import InvestigationOrigin from "./InvestigationOrigin";
 
 function formatDate(value, locale) {
   if (!value) return "";
@@ -179,7 +180,7 @@ export default function InvestigationsList() {
                 {" · "}
                 {t("cscw.awaiting")}: {inv.awaiting_role ? t(`cscw.roles.${inv.awaiting_role}`, { defaultValue: inv.awaiting_role }) : t("cscw.nobody")}
               </p>
-              <p>{inv.atypical_day_event_id ? t("cscw.originAtypical") : t("cscw.noAtypical")}</p>
+              <InvestigationOrigin investigation={inv} />
               <Link to={`/investigations/${inv.id}`}>{t("cscw.openConversation")}</Link>
             </article>
           );

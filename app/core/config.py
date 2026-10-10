@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     encryption_key_v2: str | None = None
     lookup_hmac_key: str | None = None
     session_ttl_hours: int = Field(default=12, gt=0)
+    # "loop" drains the notification outbox in a background task of a
+    # long-running server; "off" leaves it to scripts/notification_outbox.py.
+    # Serverless functions are frozen between invocations, so Vercel defaults
+    # to "off".
+    notification_dispatcher: str = Field(default="off" if _ON_VERCEL else "loop", pattern="^(loop|off)$")
+    notification_dispatch_interval_seconds: float = Field(default=5.0, gt=0)
 
 
 @lru_cache

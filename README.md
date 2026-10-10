@@ -117,6 +117,21 @@ the deployment environment before running `docker compose up --build`.
 Migrations preserve existing IDs and encrypt legacy patient identity values.
 On SQLite, run `VACUUM` on a stopped/disposable database after the migration to
 reclaim pages that may still contain remnants of removed plaintext columns.
+For large SQLite backfills, stop all application processes and run `VACUUM`
+after the backfill has completed; this reclaims freed pages and is not part of
+the migration transaction. Treat every released/applied Alembic revision as
+immutable: schema fixes go into a new forward migration, and new migrations
+must declare their DDL explicitly instead of deriving it from current ORM
+models. The whole chain (0001–0011) now declares frozen, explicit DDL
+(`op.create_table`, `op.create_index`, `op.add_column`, `op.drop_table`):
+0002 creates the clinical core as it was defined when that revision was
+written, 0003–0006 create the account/CSCW tables as originally produced, and
+later columns and type changes belong to 0007–0010. Every new revision must
+follow the same rule and never call `Model.__table__.create()` or
+`Base.metadata.create_all()`. Developers with an older local database must
+recreate it from scratch (drop it, run `alembic upgrade head` on an empty
+database, then re-run `python scripts/import_uci_diabetes.py`) instead of
+relying on its previous schema.
 
 The UCI importer provisions demo accounts only when explicitly requested:
 
@@ -131,6 +146,13 @@ free-text fields (patient names/emails, doctor identity fields, investigation
 content, and glucose-record notes) are encrypted at rest. Numeric glucose,
 measurement time, context labels, and aggregate metric values remain queryable
 for the current analytics algorithm and public UCI analysis workflow.
+
+`glucose_records.measured_at` is stored as a naive UTC timestamp. Manual entries
+and UCI diary times are interpreted in the patient's IANA timezone and converted
+to UTC before storage; migration 0011 converts historical local wall times once.
+Daily analytics, date filters, and displayed event dates convert that instant back
+to the patient's timezone (`patients.timezone`); existing and imported patients
+default to `America/Sao_Paulo`.
 
 The built-in rate limiter is an in-memory fixed-window guard per API worker.
 Deployments with multiple workers or instances should add a shared rate-limit
@@ -199,6 +221,15 @@ python scripts/init_db.py
 - `MYGLICO_DEBUG=true`: enables FastAPI debug mode.
 - `VITE_API_TARGET`: sets the backend target for the React frontend in
   development.
+- `MYGLICO_NOTIFICATION_DISPATCHER` (`loop` | `off`) and
+  `MYGLICO_NOTIFICATION_DISPATCH_INTERVAL_SECONDS` (default `5`): how the
+  notification outbox is drained. In-app notifications and unread counters are
+  committed together with the event that creates them, so they are visible
+  immediately; the outbox only records processing state and retries. With
+  `loop` (default on a long-running server) a background task drains it; with
+  `off` (default on Vercel, and in the integration tests) use
+  `python scripts/notification_outbox.py run [--loop]` or `... stats`. API
+  requests never drain the outbox themselves.
 
 ## Generated artifacts
 
@@ -210,6 +241,36 @@ python scripts/init_db.py
   checkpoints
 - `artifacts/reports/MyGlico_RelatorioFinal.pdf` — final report (see
   "Final report" below)
+
+### CSCW provenance export (PROV-O, operator only)
+
+Collaboration events (associations, investigations, messages, prompts,
+notifications, authorized detail access) stay in `provenance_events` and are
+**not** written to `artifacts/`, which is served publicly at `/artifacts`.
+An operator with database access projects them to PROV-O on demand:
+
+```bash
+python scripts/export_cscw_provenance.py --output /secure/audit/dir \
+  [--patient-id <uuid>] [--since 2026-10-01T00:00:00] [--until 2026-10-08T00:00:00]
+```
+
+- `--output` is mandatory; the script refuses `artifacts/`, the provenance
+  directory, `frontend-react/public` and `frontend-react/dist`. It writes
+  `cscw-provenance[-<patient>].json` (PROV-JSON) and `.ttl` (Turtle).
+- No HTTP endpoint exposes it. Who collaborated with whom is clinical
+  metadata, so keep the output under the same protection as the database.
+- No message content, titles, names, e-mails, CRM, SHORTIDs, revocation
+  reasons or filter dates appear as literals. Human agents are pseudonymous
+  IRIs (keyed HMAC of the account id under `MYGLICO_LOOKUP_HMAC_KEY`, so they
+  are stable across exports and cannot be confirmed without the key) with only
+  `mygv:domainRole`.
+- Each event becomes a `prov:Activity` (`myg:prov-event/<event id>`).
+  Associations and investigations are versioned entities linked by
+  `prov:wasRevisionOf`/`prov:specializationOf`. System actions use
+  `prov:SoftwareAgent`. Domain terms (`mygv:CollaborationActivity`,
+  `mygv:investigatesAtypicalDay`, …) are declared in
+  `ontology/mygv-dpo-extension.owl.ttl`. The `activity_type` → PROV-O table
+  is in the docstring of `app/services/cscw_provenance.py`.
 
 ## Final report
 
@@ -311,6 +372,10 @@ MYGLICO_DATABASE_URL="mysql+pymysql://user:password@host:3306/dbname" python scr
   impacted.
 - New dependencies should be added to `requirements.txt` only when they are
   reachable from `app.main`'s request-time import graph.
+- Serverless functions are frozen between invocations, so the notification
+  outbox loop is off here. Notifications and counters are unaffected; pending
+  outbox rows can be processed from a local machine with
+  `MYGLICO_DATABASE_URL=... python scripts/notification_outbox.py run`.
 
 ## Citation
 

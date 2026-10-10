@@ -122,6 +122,45 @@ mygv:hasGlucoseMeasurement rdf:type owl:ObjectProperty ;
                                       "tem medição glicêmica"@pt .
 
 
+###  https://w3id.org/myglico/vocab/investigatesAtypicalDay
+mygv:investigatesAtypicalDay rdf:type owl:ObjectProperty ;
+                             rdfs:domain mygv:Investigation ;
+                             rdfs:range mygv:DailyIndicator ;
+                             rdfs:comment "Relaciona uma investigação colaborativa ao resultado de dia atípico que motivou sua abertura. Complementa prov:used da atividade de abertura."@pt ,
+                                          "Relates a collaborative investigation to the atypical-day result that motivated its opening. Complements prov:used of the opening activity."@en ;
+                             rdfs:label "investigates atypical day"@en ,
+                                        "investiga dia atípico"@pt .
+
+
+###  https://w3id.org/myglico/vocab/partOfInvestigation
+mygv:partOfInvestigation rdf:type owl:ObjectProperty ;
+                         rdfs:range mygv:Investigation ;
+                         rdfs:comment "Relaciona uma mensagem ou um marcador de leitura à investigação a que pertence, sem expor seu conteúdo."@pt ,
+                                      "Relates a message or a read marker to the investigation it belongs to, without exposing its content."@en ;
+                         rdfs:label "part of investigation"@en ,
+                                    "parte da investigação"@pt .
+
+
+###  https://w3id.org/myglico/vocab/promptsForAtypicalDay
+mygv:promptsForAtypicalDay rdf:type owl:ObjectProperty ;
+                           rdfs:domain mygv:AtypicalDayPrompt ;
+                           rdfs:range mygv:DailyIndicator ;
+                           rdfs:comment "Relaciona um convite de investigação ao resultado de dia atípico que o originou."@pt ,
+                                        "Relates an investigation prompt to the atypical-day result that originated it."@en ;
+                           rdfs:label "prompts for atypical day"@en ,
+                                      "convida a investigar o dia atípico"@pt .
+
+
+###  https://w3id.org/myglico/vocab/underAssociation
+mygv:underAssociation rdf:type owl:ObjectProperty ;
+                      rdfs:domain mygv:Investigation ;
+                      rdfs:range mygv:PatientDoctorAssociation ;
+                      rdfs:comment "Relaciona uma investigação ao vínculo paciente-médico que autorizou sua abertura."@pt ,
+                                   "Relates an investigation to the patient-doctor association that authorized its opening."@en ;
+                      rdfs:label "under association"@en ,
+                                 "sob o vínculo"@pt .
+
+
 #################################################################
 #    Data properties
 #################################################################
@@ -184,6 +223,66 @@ mygv:sourceRecordId rdf:type owl:DatatypeProperty ;
                                  "Registra o identificador que permite localizar o registro em sua fonte original."@pt ;
                     rdfs:label "identificador do registro original"@pt ,
                                "original record identifier"@en .
+
+
+###  https://w3id.org/myglico/vocab/activityType
+mygv:activityType rdf:type owl:DatatypeProperty ;
+                  rdfs:domain mygv:CollaborationActivity ;
+                  rdfs:range xsd:string ;
+                  rdfs:comment "Nome do evento de aplicação persistido (por exemplo, AssociationConfirmed). É um conceito do MyGlico, não um termo da W3C."@pt ,
+                               "Name of the persisted application event (for example, AssociationConfirmed). It is a MyGlico concept, not a W3C term."@en ;
+                  rdfs:label "activity type"@en ,
+                             "tipo de atividade"@pt .
+
+
+###  https://w3id.org/myglico/vocab/domainRole
+mygv:domainRole rdf:type owl:DatatypeProperty ;
+                rdfs:domain prov:Agent ;
+                rdfs:range xsd:string ;
+                rdfs:comment "Papel de domínio (patient ou doctor) com que um agente humano pseudonimizado atuou."@pt ,
+                             "Domain role (patient or doctor) under which a pseudonymized human agent acted."@en ;
+                rdfs:label "domain role"@en ,
+                           "papel de domínio"@pt .
+
+
+###  https://w3id.org/myglico/vocab/entityVersion
+mygv:entityVersion rdf:type owl:DatatypeProperty ;
+                   rdfs:domain prov:Entity ;
+                   rdfs:range xsd:int ;
+                   rdfs:comment "Número de versão do agregado (vínculo ou investigação) representado por esta especialização."@pt ,
+                                "Version number of the aggregate (association or investigation) represented by this specialization."@en ;
+                   rdfs:label "entity version"@en ,
+                              "versão da entidade"@pt .
+
+
+###  https://w3id.org/myglico/vocab/lifecycleStatus
+mygv:lifecycleStatus rdf:type owl:DatatypeProperty ;
+                     rdfs:domain prov:Entity ;
+                     rdfs:range xsd:string ;
+                     rdfs:comment "Estado do ciclo de vida produzido para uma versão (por exemplo, PENDING, ACTIVE, REVOKED, OPEN, CLOSED)."@pt ,
+                                  "Lifecycle status produced for a version (for example, PENDING, ACTIVE, REVOKED, OPEN, CLOSED)."@en ;
+                     rdfs:label "lifecycle status"@en ,
+                                "estado do ciclo de vida"@pt .
+
+
+###  https://w3id.org/myglico/vocab/messageSequence
+mygv:messageSequence rdf:type owl:DatatypeProperty ;
+                     rdfs:domain mygv:InvestigationMessage ;
+                     rdfs:range xsd:int ;
+                     rdfs:comment "Posição da mensagem na sequência da investigação."@pt ,
+                                  "Position of the message in the investigation sequence."@en ;
+                     rdfs:label "message sequence"@en ,
+                                "sequência da mensagem"@pt .
+
+
+###  https://w3id.org/myglico/vocab/readSequence
+mygv:readSequence rdf:type owl:DatatypeProperty ;
+                  rdfs:domain mygv:InvestigationReadPosition ;
+                  rdfs:range xsd:int ;
+                  rdfs:comment "Última sequência de mensagem lida registrada pelo marcador."@pt ,
+                               "Last message sequence recorded as read by the marker."@en ;
+                  rdfs:label "read sequence"@en ,
+                             "sequência lida"@pt .
 
 
 #################################################################
@@ -290,6 +389,78 @@ mygv:RawRecord rdf:type owl:Class ;
                             "Represents the original record from which an RDF-published glucose measurement was derived."@en ;
                rdfs:label "Original record"@en ,
                           "Registro original"@pt .
+
+
+###  https://w3id.org/myglico/vocab/AtypicalDayPrompt
+mygv:AtypicalDayPrompt rdf:type owl:Class ;
+                       rdfs:subClassOf prov:Entity ;
+                       rdfs:comment "Convite persistido para o paciente decidir se abre uma investigação sobre um dia atípico."@pt ,
+                                    "Persisted prompt for the patient to decide whether to open an investigation about an atypical day."@en ;
+                       rdfs:label "Atypical-day investigation prompt"@en ,
+                                  "Convite de investigação de dia atípico"@pt .
+
+
+###  https://w3id.org/myglico/vocab/CollaborationActivity
+mygv:CollaborationActivity rdf:type owl:Class ;
+                           rdfs:subClassOf prov:Activity ;
+                           rdfs:comment "Ação de colaboração paciente-médico persistida como evento de proveniência (vínculo, investigação, convite, notificação ou consulta autorizada)."@pt ,
+                                        "Patient-doctor collaboration action persisted as a provenance event (association, investigation, prompt, notification or authorized access)."@en ;
+                           rdfs:label "Collaboration activity"@en ,
+                                      "Atividade de colaboração"@pt .
+
+
+###  https://w3id.org/myglico/vocab/DailyIndicator
+mygv:DailyIndicator rdf:type owl:Class ;
+                    rdfs:subClassOf prov:Entity ;
+                    rdfs:comment "Resultado diário de análise glicêmica; quando atípico, pode originar convite e investigação."@pt ,
+                                 "Daily glycemic analysis result; when atypical, it may originate a prompt and an investigation."@en ;
+                    rdfs:label "Daily indicator"@en ,
+                               "Indicador diário"@pt .
+
+
+###  https://w3id.org/myglico/vocab/Investigation
+mygv:Investigation rdf:type owl:Class ;
+                   rdfs:subClassOf prov:Entity ;
+                   rdfs:comment "Conversa clínica colaborativa entre paciente e médico vinculados. Versões são especializações do objeto geral."@pt ,
+                                "Collaborative clinical conversation between an associated patient and doctor. Versions are specializations of the general object."@en ;
+                   rdfs:label "Investigation"@en ,
+                              "Investigação"@pt .
+
+
+###  https://w3id.org/myglico/vocab/InvestigationMessage
+mygv:InvestigationMessage rdf:type owl:Class ;
+                          rdfs:subClassOf prov:Entity ;
+                          rdfs:comment "Mensagem de uma investigação. O conteúdo é cifrado na base e nunca exportado na proveniência."@pt ,
+                                       "Message of an investigation. Its content is encrypted at rest and never exported in provenance."@en ;
+                          rdfs:label "Investigation message"@en ,
+                                     "Mensagem de investigação"@pt .
+
+
+###  https://w3id.org/myglico/vocab/InvestigationReadPosition
+mygv:InvestigationReadPosition rdf:type owl:Class ;
+                               rdfs:subClassOf prov:Entity ;
+                               rdfs:comment "Marcador de leitura de um participante em uma investigação."@pt ,
+                                            "A participant's read marker in an investigation."@en ;
+                               rdfs:label "Investigation read position"@en ,
+                                          "Marcador de leitura da investigação"@pt .
+
+
+###  https://w3id.org/myglico/vocab/Notification
+mygv:Notification rdf:type owl:Class ;
+                  rdfs:subClassOf prov:Entity ;
+                  rdfs:comment "Notificação interna persistida, referenciada sem seu conteúdo."@pt ,
+                               "Persisted internal notification, referenced without its content."@en ;
+                  rdfs:label "Notification"@en ,
+                             "Notificação"@pt .
+
+
+###  https://w3id.org/myglico/vocab/PatientDoctorAssociation
+mygv:PatientDoctorAssociation rdf:type owl:Class ;
+                              rdfs:subClassOf prov:Entity ;
+                              rdfs:comment "Vínculo entre paciente e médico. Versões são especializações do objeto geral ligadas por prov:wasRevisionOf."@pt ,
+                                           "Association between a patient and a doctor. Versions are specializations of the general object linked by prov:wasRevisionOf."@en ;
+                              rdfs:label "Patient-doctor association"@en ,
+                                         "Vínculo paciente-médico"@pt .
 
 
 #################################################################
