@@ -1,193 +1,363 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { searchDoctors, requestDoctorLink, fetchDoctorLinks, revokeDoctorLink, cancelDoctorLink, confirmDoctorLink, rejectDoctorLink } from "../api";
-import { Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import StateBlock from "./StateBlock";
+import ConfirmDialog from "./ConfirmDialog";
+
+const STATUS_ORDER = { active: 0, pending: 1, revoked: 2, rejected: 3, cancelled: 4 };
+
+function formatDate(value, locale) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(parsed);
+}
 
 function DoctorTrustBadges({ doctor }) {
   const { t } = useTranslation();
-  if (!doctor) return null;
+  if (!doctor || (!doctor.is_demo && !(doctor.crm && !doctor.declared_verified))) return null;
   return (
-    <span className="react-badges">
-      {doctor.is_demo && <span className="react-badge react-badge--soft">{t("dashboard.demoDoctor")}</span>}
+    <span className="react-badges react-badges--inline">
+      {doctor.is_demo && <span className="react-badge react-badge--soft react-badge--compact">{t("dashboard.demoDoctor")}</span>}
       {doctor.crm && !doctor.declared_verified && (
-        <span className="react-badge react-badge--soft">{t("dashboard.declaredUnverified")}</span>
+        <span className="react-badge react-badge--soft react-badge--compact">{t("dashboard.declaredUnverified")}</span>
       )}
     </span>
   );
 }
 
-export default function DoctorLinksManager() {
+function StatusChip({ status }) {
   const { t } = useTranslation();
-  const { session } = useAuth();
+  return (
+    <span className={`react-status-chip react-status-chip--${status}`}>
+      {t(`dashboard.status.${status}`, { defaultValue: status })}
+    </span>
+  );
+}
 
+function DoctorIdentity({ doctor }) {
+  const { t } = useTranslation();
+  return (
+    <div className="react-link-card__identity">
+      <strong>{doctor?.name}</strong>
+      <span className="react-link-card__meta">
+        {doctor?.crm ? t("dashboard.crmUfValue", { crm: doctor.crm, uf: doctor.uf }) : null}
+        {doctor?.crm && doctor?.short_id ? " · " : null}
+        {doctor?.short_id ? t("dashboard.doctorCode", { code: doctor.short_id }) : null}
+      </span>
+      <DoctorTrustBadges doctor={doctor} />
+    </div>
+  );
+}
+
+function useDoctorLinks() {
   const [links, setLinks] = useState([]);
-  const [searchParams, setSearchParams] = useState({ short_id: "", crm: "", uf: "" });
-  const [searchResult, setSearchResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [linksStatus, setLinksStatus] = useState("loading");
-
-  const loadLinks = async () => {
+  const [status, setStatus] = useState("loading");
+  const reload = useCallback(async () => {
     try {
       const data = await fetchDoctorLinks();
       setLinks(data.links || data || []);
-      setLinksStatus("ready");
-    } catch(e) {
-      setLinksStatus("error");
+      setStatus("ready");
+    } catch {
+      setStatus("error");
     }
-  };
+  }, []);
+  useEffect(() => {
+    reload();
+  }, [reload]);
+  return { links, status, reload };
+}
+
+export default function DoctorLinksManager() {
+  const { t } = useTranslation();
+  const location = useLocation();
+  const { links, status: linksStatus, reload } = useDoctorLinks();
+  const [criteria, setCriteria] = useState({ short_id: "", crm: "", uf: "" });
+  const [searchResult, setSearchResult] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchTouched, setSearchTouched] = useState(false);
+  const [error, setError] = useState("");
+  const [revokeTarget, setRevokeTarget] = useState(null);
+  const [revoking, setRevoking] = useState(false);
+  const [revokeError, setRevokeError] = useState("");
 
   useEffect(() => {
-    loadLinks();
-  }, []);
+    if (linksStatus === "ready" && links.length === 0 && !searchTouched) setShowSearch(true);
+  }, [linksStatus, links.length, searchTouched]);
+
+  useEffect(() => {
+    if (linksStatus !== "ready" || !location.hash.startsWith("#doctor-link-")) return;
+    requestAnimationFrame(() => document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  }, [linksStatus, location.hash, links]);
+
+  const toggleSearch = () => {
+    setSearchTouched(true);
+    setShowSearch((current) => !current);
+    setError("");
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSearching(true);
     setSearchResult(null);
     setError("");
-    const shortId = searchParams.short_id.trim();
-    const crm = searchParams.crm.trim();
-    const uf = searchParams.uf.trim();
+    const shortId = criteria.short_id.trim();
+    const crm = criteria.crm.trim();
+    const uf = criteria.uf.trim();
     if (!shortId && (!crm || !uf)) {
       setError(t("dashboard.searchCriteriaRequired"));
-      setLoading(false);
+      setSearching(false);
       return;
     }
     try {
       const res = await searchDoctors(shortId ? { short_id: shortId } : { crm, uf });
       setSearchResult(res.doctor);
       if (!res.doctor) setError(t("dashboard.doctorNotFound"));
-    } catch(e) {
+    } catch {
       setError(t("dashboard.searchFailed"));
     }
-    setLoading(false);
+    setSearching(false);
   };
 
-  const handleRequestLink = async (short_id) => {
+  const handleRequestLink = async (shortId) => {
     try {
-      await requestDoctorLink(short_id);
-      loadLinks();
+      await requestDoctorLink(shortId);
+      await reload();
       setSearchResult(null);
       setError("");
-    } catch(e) { setError(t("dashboard.linkActionFailed")); }
+    } catch {
+      setError(t("dashboard.linkActionFailed"));
+    }
   };
 
-  const handleAction = async (action, id, version) => {
+  const handleCancel = async (link) => {
     try {
-      if (action === 'revoke') await revokeDoctorLink(id, { version });
-      if (action === 'cancel') await cancelDoctorLink(id, version);
-      if (action === 'confirm') await confirmDoctorLink(id, version);
-      if (action === 'reject') await rejectDoctorLink(id, version);
-      loadLinks();
+      await cancelDoctorLink(link.id, link.version);
+      await reload();
       setError("");
-    } catch(e) { setError(t("dashboard.linkActionFailed")); }
+    } catch {
+      setError(t("dashboard.linkActionFailed"));
+    }
   };
 
-  const isPatient = session?.account?.roles?.includes('patient');
-  const activeLinks = links.filter((link) => link.status === "active");
-  const listedLinks = isPatient ? links : links.filter((link) => link.status !== "active");
+  const handleRevoke = async () => {
+    if (!revokeTarget) return;
+    setRevoking(true);
+    setRevokeError("");
+    try {
+      await revokeDoctorLink(revokeTarget.id, { version: revokeTarget.version });
+      setRevokeTarget(null);
+      await reload();
+    } catch {
+      setRevokeError(t("dashboard.linkActionFailed"));
+    }
+    setRevoking(false);
+  };
+
+  const sortedLinks = [...links].sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
 
   return (
-    <div style={{ marginTop: '2rem' }}>
-      <h3>{isPatient ? t("dashboard.myDoctors") : t("dashboard.myLinks")}</h3>
+    <section id="doctor-links" className="react-panel" aria-labelledby="my-doctors-title">
+      <div className="react-panel__header">
+        <div className="react-panel__header-copy">
+          <p className="react-eyebrow">{t("dashboard.linksEyebrow")}</p>
+          <h2 id="my-doctors-title">{t("dashboard.myDoctors")}</h2>
+          <p>{t("dashboard.myDoctorsBody")}</p>
+        </div>
+        <button
+          type="button"
+          className={`react-button${showSearch ? " react-button--ghost" : ""}`}
+          aria-expanded={showSearch}
+          aria-controls="doctor-search"
+          onClick={toggleSearch}
+        >
+          {showSearch ? t("dashboard.closeSearch") : t("dashboard.addDoctor")}
+        </button>
+      </div>
 
-      {isPatient && (
-        <div style={{ background: '#f9f9f9', padding: '1rem', marginBottom: '1rem', borderRadius: '4px' }}>
-          <h4>{t("dashboard.searchDoctor")}</h4>
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '1rem', alignItems: 'end', flexWrap: 'wrap' }}>
-            <label className="react-select-field">
+      {showSearch && (
+        <div id="doctor-search" className="react-subpanel">
+          <div className="react-subpanel__copy">
+            <h3>{t("dashboard.searchDoctor")}</h3>
+            <p>{t("dashboard.searchDoctorHelp")}</p>
+          </div>
+          <form className="react-doctor-search" onSubmit={handleSearch}>
+            <label className="react-field react-doctor-search__code">
               <span>{t("dashboard.shortId")}</span>
-              <input type="text" value={searchParams.short_id} onChange={e => setSearchParams({...searchParams, short_id: e.target.value})} />
+              <input type="text" value={criteria.short_id} onChange={e => setCriteria({ ...criteria, short_id: e.target.value })} />
             </label>
-            <span style={{ paddingBottom: '10px' }}>{t("common.or")}</span>
-            <label className="react-select-field">
+            <span className="react-doctor-search__or">{t("common.or")}</span>
+            <label className="react-field react-doctor-search__crm">
               <span>{t("auth.crm")}</span>
-              <input type="text" value={searchParams.crm} onChange={e => setSearchParams({...searchParams, crm: e.target.value})} />
+              <input type="text" value={criteria.crm} onChange={e => setCriteria({ ...criteria, crm: e.target.value })} />
             </label>
-            <label className="react-select-field">
+            <label className="react-field react-doctor-search__uf">
               <span>{t("auth.uf")}</span>
-              <input type="text" value={searchParams.uf} onChange={e => setSearchParams({...searchParams, uf: e.target.value})} />
+              <input type="text" maxLength={2} value={criteria.uf} onChange={e => setCriteria({ ...criteria, uf: e.target.value })} />
             </label>
-            <button type="submit" disabled={loading} style={{ padding: '10px', background: '#005fcc', color: '#fff', border: 'none', borderRadius: '4px' }}>
+            <button type="submit" className="react-button react-doctor-search__submit" disabled={searching}>
               {t("dashboard.search")}
             </button>
           </form>
           {searchResult && (
-            <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}>
-              <p><strong>{searchResult.name}</strong> ({searchResult.short_id})</p>
-              {searchResult.crm && <p>{t("dashboard.crmUfValue", { crm: searchResult.crm, uf: searchResult.uf })}</p>}
-              <DoctorTrustBadges doctor={searchResult} />
-              {searchResult.link_status === "none" ? (
-                <button onClick={() => handleRequestLink(searchResult.short_id)} style={{ padding: '8px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '4px' }}>
-                  {t("dashboard.requestLink")}
-                </button>
-              ) : (
-                <p>{t("dashboard.statusLabel")}: {t(`dashboard.status.${searchResult.link_status}`, { defaultValue: searchResult.link_status })}</p>
-              )}
-            </div>
+            <article className="react-link-card react-link-card--result">
+              <DoctorIdentity doctor={searchResult} />
+              <div className="react-link-card__actions">
+                {searchResult.link_status === "none" ? (
+                  <button type="button" className="react-button react-button--compact" onClick={() => handleRequestLink(searchResult.short_id)}>
+                    {t("dashboard.requestLink")}
+                  </button>
+                ) : (
+                  <StatusChip status={searchResult.link_status} />
+                )}
+              </div>
+            </article>
           )}
         </div>
       )}
-      {error && <p role="alert">{error}</p>}
 
-      {!isPatient && (
-        <section className="react-my-patients" aria-labelledby="my-patients-title">
-          <h4 id="my-patients-title">{t("dashboard.myPatients")}</h4>
-          {linksStatus === "loading" ? (
-            <p role="status">{t("common.loading")}</p>
-          ) : activeLinks.length === 0 ? (
-            <p>{t("dashboard.noPatients")}</p>
-          ) : (
-            <ul className="react-my-patients__list">
-              {activeLinks.map((link) => (
-                <li key={link.id} className="react-my-patients__item">
-                  <span>
-                    <strong>{link.patient?.display_name}</strong>
-                    {link.patient?.short_id && <small> ({link.patient.short_id})</small>}
-                  </span>
-                  <Link to={`/patients/${link.patient_id}`} className="react-button">
-                    {t("dashboard.openPatientDetail")}
-                  </Link>
-                  <button type="button" onClick={() => handleAction('revoke', link.id, link.version)}>{t("dashboard.revokeLink")}</button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      {error && <p className="react-form-message is-error" role="alert">{error}</p>}
+
+      {linksStatus === "loading" ? (
+        <StateBlock title={t("dashboard.loadingLinks")} description={t("dashboard.loadingLinksDescription")} tone="info" />
+      ) : linksStatus === "error" ? (
+        <div role="alert">
+          <StateBlock title={t("dashboard.linksLoadFailed")} tone="danger" />
+        </div>
+      ) : sortedLinks.length === 0 ? (
+        <StateBlock title={t("dashboard.noDoctors.title")} description={t("dashboard.noDoctors.description")} />
+      ) : (
+        <ul className="react-link-list">
+          {sortedLinks.map((link) => (
+            <li key={link.id} id={`doctor-link-${link.id}`} className={`react-link-card${link.status === "active" || link.status === "pending" ? "" : " is-history"}`}>
+              <DoctorIdentity doctor={link.doctor} />
+              <div className="react-link-card__actions">
+                <StatusChip status={link.status} />
+                {link.status === "pending" && (
+                  <button type="button" className="react-button react-button--ghost react-button--compact" onClick={() => handleCancel(link)}>
+                    {t("dashboard.cancel")}
+                  </button>
+                )}
+                {link.status === "active" && (
+                  <button
+                    type="button"
+                    className="react-button react-button--danger react-button--compact"
+                    onClick={() => {
+                      setRevokeError("");
+                      setRevokeTarget(link);
+                    }}
+                  >
+                    {t("dashboard.revokeLink")}
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
-      {!isPatient && <h4>{t("dashboard.linkRequests")}</h4>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {linksStatus === "error" ? <p role="alert">{t("dashboard.linksLoadFailed")}</p> : listedLinks.length === 0 ? <p>{t("dashboard.noLinks")}</p> : listedLinks.map(link => (
-          <div key={link.id} style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '4px' }}>
-            <p><strong>{t("dashboard.statusLabel")}:</strong> {t(`dashboard.status.${link.status}`, { defaultValue: link.status })}</p>
-            {isPatient ? (
-               <>
-                 <p><strong>{t("dashboard.doctorLabel")}:</strong> {link.doctor?.name}</p>
-                 <DoctorTrustBadges doctor={link.doctor} />
-               </>
-            ) : (
-               <p><strong>{t("dashboard.patientLabel")}:</strong> {link.patient?.display_name}</p>
-            )}
-            <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-              {link.status === 'pending' && isPatient && (
-                <button onClick={() => handleAction('cancel', link.id, link.version)}>{t("dashboard.cancel")}</button>
-              )}
-              {link.status === 'pending' && !isPatient && (
-                <>
-                  <button onClick={() => handleAction('confirm', link.id, link.version)}>{t("dashboard.accept")}</button>
-                  <button onClick={() => handleAction('reject', link.id, link.version)}>{t("dashboard.reject")}</button>
-                </>
-              )}
-              {link.status === 'active' && (
-                <button onClick={() => handleAction('revoke', link.id, link.version)}>{t("dashboard.revokeLink")}</button>
-              )}
-            </div>
-          </div>
-        ))}
+      <ConfirmDialog
+        open={Boolean(revokeTarget)}
+        eyebrow={t("dashboard.revokeDialog.eyebrow")}
+        title={t("dashboard.revokeDialog.titlePatient", { name: revokeTarget?.doctor?.name || "" })}
+        description={t("dashboard.revokeDialog.bodyPatient", { name: revokeTarget?.doctor?.name || "" })}
+        confirmLabel={t("dashboard.revokeConfirm")}
+        cancelLabel={t("dashboard.keepLink")}
+        busy={revoking}
+        error={revokeError}
+        onConfirm={handleRevoke}
+        onCancel={() => setRevokeTarget(null)}
+      />
+    </section>
+  );
+}
+
+export function PendingLinksPanel({ onChange }) {
+  const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const { links, status, reload } = useDoctorLinks();
+  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState(null);
+  const pending = links.filter((link) => link.status === "pending");
+
+  useEffect(() => {
+    if (status !== "ready" || !location.hash.startsWith("#pending-link-")) return;
+    requestAnimationFrame(() => document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  }, [status, location.hash, pending]);
+
+  const decide = async (link, action) => {
+    setBusyId(link.id);
+    try {
+      if (action === "confirm") await confirmDoctorLink(link.id, link.version);
+      else await rejectDoctorLink(link.id, link.version);
+      setError("");
+      await reload();
+      onChange?.();
+    } catch {
+      setError(t("dashboard.linkActionFailed"));
+    }
+    setBusyId(null);
+  };
+
+  return (
+    <section id="pending-links" className="react-panel" aria-labelledby="pending-links-title">
+      <div className="react-panel__header">
+        <div className="react-panel__header-copy">
+          <p className="react-eyebrow">{t("doctorHome.pending.eyebrow")}</p>
+          <h2 id="pending-links-title">{t("doctorHome.pending.title")}</h2>
+          <p>{t("doctorHome.pending.body")}</p>
+        </div>
+        {pending.length > 0 ? (
+          <span className="react-badge react-badge--blue react-badge--compact">{t("doctorHome.pending.count", { count: pending.length })}</span>
+        ) : null}
       </div>
-    </div>
+
+      {error && <p className="react-form-message is-error" role="alert">{error}</p>}
+
+      {status === "loading" ? (
+        <StateBlock title={t("common.loading")} tone="info" />
+      ) : status === "error" ? (
+        <div role="alert">
+          <StateBlock title={t("dashboard.linksLoadFailed")} tone="danger" />
+        </div>
+      ) : pending.length === 0 ? (
+        <StateBlock title={t("doctorHome.pending.empty.title")} description={t("doctorHome.pending.empty.description")} />
+      ) : (
+        <ul className="react-link-list">
+          {pending.map((link) => (
+            <li key={link.id} id={`pending-link-${link.id}`} className="react-link-card">
+              <div className="react-link-card__identity">
+                <strong>{link.patient?.display_name}</strong>
+                <span className="react-link-card__meta">
+                  {link.patient?.short_id ? t("dashboard.doctorCode", { code: link.patient.short_id }) : null}
+                  {link.patient?.short_id && link.requested_at ? " · " : null}
+                  {link.requested_at ? t("doctorHome.pending.requestedAt", { date: formatDate(link.requested_at, i18n.language) }) : null}
+                </span>
+              </div>
+              <div className="react-link-card__actions">
+                <button
+                  type="button"
+                  className="react-button react-button--ghost react-button--compact"
+                  disabled={busyId === link.id}
+                  onClick={() => decide(link, "reject")}
+                >
+                  {t("dashboard.reject")}
+                </button>
+                <button
+                  type="button"
+                  className="react-button react-button--compact"
+                  disabled={busyId === link.id}
+                  onClick={() => decide(link, "confirm")}
+                >
+                  {t("dashboard.accept")}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

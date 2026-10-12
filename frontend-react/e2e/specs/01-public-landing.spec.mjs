@@ -80,7 +80,7 @@ test.describe("Group 1 - public landing and guardrails", () => {
     "CSCW-CA-35 - landing regression: stays informative with login/register and without public patients",
     async ({ page }) => {
       await page.goto(ROUTES.landing, { waitUntil: "networkidle" });
-      await expect(page.getByRole("heading", { name: t("overview.hero.title") })).toBeVisible();
+      await expect(page.getByRole("heading", { name: t("landing.hero.title") })).toBeVisible();
       await expect(page.getByRole("link", { name: tx("auth.login") }).first()).toBeVisible();
       await expect(page.getByRole("link", { name: tx("auth.register") }).first()).toBeVisible();
       // No clinical UI elements on landing: no patient table/list, no SHORTID/CRM labels.

@@ -18,8 +18,9 @@ test.describe("Group 4 - revocation", () => {
     const ui = await browserSession("patientA");
     await ui.authenticateWithApi();
     await ui.page.goto(ROUTES.dashboard);
-    const revoked = ui.page.waitForResponse((r) => r.url().includes(`/api/doctor-links/${link.id}/revoke`));
     await ui.page.getByRole("button", { name: tx("dashboard.revokeLink") }).click();
+    const revoked = ui.page.waitForResponse((r) => r.url().includes(`/api/doctor-links/${link.id}/revoke`));
+    await ui.page.getByRole("button", { name: tx("dashboard.revokeConfirm") }).click();
     expect((await revoked).status()).toBe(200);
     await expect(ui.page.getByText(t("dashboard.status.revoked")).first()).toBeVisible();
 
@@ -37,10 +38,11 @@ test.describe("Group 4 - revocation", () => {
 
     const ui = await browserSession("doctorA");
     await ui.authenticateWithApi();
-    await ui.page.goto(ROUTES.dashboard);
+    await ui.page.goto(ROUTES.patientDetail(patient.patientId));
     await expect(ui.page.getByText(patient.profile.display_name).first()).toBeVisible();
+    await ui.page.getByRole("button", { name: tx("dashboard.revokeLink") }).click();
     const revoked = ui.page.waitForResponse((r) => r.url().includes(`/api/doctor-links/${link.id}/revoke`));
-    await ui.page.getByRole("button", { name: tx("dashboard.revokeLink") }).first().click();
+    await ui.page.getByRole("button", { name: tx("dashboard.revokeConfirm") }).click();
     expect((await revoked).status()).toBe(200);
 
     const seenByPatient = (await api.listDoctorLinks(patient.request)).body.links[0];

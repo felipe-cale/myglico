@@ -1,25 +1,46 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useAuth } from "../contexts/AuthContext";
-import { logout } from "../api";
+import { fetchUnreadSummary, logout } from "../api";
 import NotificationCenter from "./NotificationCenter";
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
+const EMPTY_SUMMARY = { notifications_unread: 0, messages_unread: 0 };
 
 export default function AppShell({ children }) {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unread, setUnread] = useState(EMPTY_SUMMARY);
 
   const { session, refreshSession } = useAuth();
+  const authenticated = Boolean(session?.authenticated);
 
-  let navigation = [];
-  if (session?.authenticated) {
-    navigation.push({ to: "/dashboard", label: t("appShell.nav.overview") });
-  }
+  const loadUnread = useCallback(async () => {
+    try {
+      const data = await fetchUnreadSummary();
+      setUnread({ ...EMPTY_SUMMARY, ...data });
+    } catch {
+      // The next poll recovers the counters from the server.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authenticated) {
+      setUnread(EMPTY_SUMMARY);
+      return undefined;
+    }
+    loadUnread();
+    const interval = setInterval(loadUnread, 60000);
+    return () => clearInterval(interval);
+  }, [authenticated, loadUnread]);
+
+  useEffect(() => {
+    if (authenticated) loadUnread();
+  }, [authenticated, loadUnread, location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -47,6 +68,38 @@ export default function AppShell({ children }) {
     };
   }, [menuOpen]);
 
+  const messagesUnread = unread.messages_unread || 0;
+  const investigationsActive = location.pathname.startsWith("/investigations");
+  const patientInvestigations = Boolean(session?.patient?.id);
+  const investigationsLabel = t(patientInvestigations ? "cscw.myInvestigations" : "cscw.investigations");
+
+  const renderNavigation = (linkClass) => {
+    if (!authenticated) return null;
+    return (
+      <>
+        <NavLink
+          to="/dashboard"
+          end
+          className={({ isActive }) => `${linkClass}${isActive && !location.hash ? " is-active" : ""}`}
+        >
+          {t("appShell.nav.overview")}
+        </NavLink>
+        <Link
+          to="/dashboard#investigations"
+          className={`${linkClass}${investigationsActive || location.hash === "#investigations" ? " is-active" : ""}`}
+          aria-label={t("cscw.menuAria", { label: investigationsLabel, count: messagesUnread })}
+        >
+          <span>{investigationsLabel}</span>
+          {messagesUnread > 0 ? (
+            <span className="react-badge react-badge--count" aria-hidden="true">
+              {messagesUnread}
+            </span>
+          ) : null}
+        </Link>
+      </>
+    );
+  };
+
   return (
     <div className="react-shell">
       <div className="react-shell__backdrop" aria-hidden="true" />
@@ -71,21 +124,14 @@ export default function AppShell({ children }) {
           </button>
         </div>
         <nav className="react-drawer__nav" aria-label={t("appShell.mobileNavLabel")}>
-          {navigation.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/"}
-              className={({ isActive }) => `react-drawer__link${isActive ? " is-active" : ""}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {renderNavigation("react-drawer__link")}
         </nav>
-        <div className="react-drawer__actions" style={{display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem'}}>
-          {session?.authenticated && (
-             <button onClick={handleLogout} style={{ border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '1rem', padding: '0' }}>{t("auth.logout")}</button>
-          )}
+        <div className="react-drawer__actions">
+          {authenticated ? (
+            <button type="button" className="react-drawer__link react-drawer__link--button" onClick={handleLogout}>
+              {t("auth.logout")}
+            </button>
+          ) : null}
           <LanguageSwitcher />
         </div>
       </aside>
@@ -100,36 +146,32 @@ export default function AppShell({ children }) {
               <small>{t("appShell.brandTagline")}</small>
             </span>
           </Link>
-          <button
-            type="button"
-            className="react-topbar__menu-button"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(true)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
           <div className="react-topbar__content">
             <nav className="react-nav" aria-label={t("appShell.navLabel")}>
-              {navigation.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === "/"}
-                  className={({ isActive }) => `react-nav__link${isActive ? " is-active" : ""}`}
-                >
-                  {item.label}
-                </NavLink>
-              ))}
+              {renderNavigation("react-nav__link")}
             </nav>
-            <div className="react-topbar__actions" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-                  {session?.authenticated && <NotificationCenter />}
-              {session?.authenticated && (
-                 <button onClick={handleLogout} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '0' }}>{t("auth.logout")}</button>
-              )}
+          </div>
+          <div className="react-topbar__actions">
+            {authenticated ? <NotificationCenter unreadCount={unread.notifications_unread || 0} onChange={loadUnread} /> : null}
+            <div className="react-topbar__desktop-actions">
               <LanguageSwitcher />
+              {authenticated ? (
+                <button type="button" className="react-nav__link react-nav__link--button" onClick={handleLogout}>
+                  {t("auth.logout")}
+                </button>
+              ) : null}
             </div>
+            <button
+              type="button"
+              className="react-topbar__menu-button"
+              aria-expanded={menuOpen}
+              aria-label={t("appShell.openMenu")}
+              onClick={() => setMenuOpen(true)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
           </div>
         </header>
         <main className="react-main">{children}</main>

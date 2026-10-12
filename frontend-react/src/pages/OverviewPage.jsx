@@ -6,7 +6,7 @@ import MetricCard from "../components/MetricCard";
 import Pagination from "../components/Pagination";
 import StateBlock from "../components/StateBlock";
 import { useAuth } from "../contexts/AuthContext";
-import DoctorLinksManager from "../components/DoctorLinksManager";
+import DoctorLinksManager, { PendingLinksPanel } from "../components/DoctorLinksManager";
 import InvestigationsList from "../components/InvestigationsList";
 import ProactivePrompt from "../components/ProactivePrompt";
 
@@ -109,10 +109,8 @@ function FilterHelpDialog({ signal, open, onClose }) {
   );
 }
 
-export default function OverviewPage() {
+function DoctorHome() {
   const { t, i18n } = useTranslation();
-  const { session } = useAuth();
-  const isPatient = session?.account?.roles?.includes("patient") ?? false;
   const [searchParams, setSearchParams] = useSearchParams();
   const [summary, setSummary] = useState(null);
   const [patients, setPatients] = useState(null);
@@ -122,6 +120,7 @@ export default function OverviewPage() {
   const [patientsError, setPatientsError] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [copiedPatientId, setCopiedPatientId] = useState("");
+  const [reloadToken, setReloadToken] = useState(0);
 
   const currentPage = Number(searchParams.get("page") || "1");
   const currentQuery = searchParams.get("q") || "";
@@ -134,10 +133,6 @@ export default function OverviewPage() {
   }, [currentQuery]);
 
   useEffect(() => {
-    if (!isPatient) {
-      setLoadingSummary(false);
-      return undefined;
-    }
     let active = true;
     setLoadingSummary(true);
     setSummaryError(null);
@@ -160,7 +155,7 @@ export default function OverviewPage() {
     return () => {
       active = false;
     };
-  }, [isPatient]);
+  }, [reloadToken]);
 
   useEffect(() => {
     const nextQuery = deferredSearch.trim();
@@ -180,10 +175,6 @@ export default function OverviewPage() {
   }, [currentQuery, deferredSearch, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!isPatient) {
-      setLoadingPatients(false);
-      return undefined;
-    }
     let active = true;
     setLoadingPatients(true);
     setPatientsError(null);
@@ -206,7 +197,7 @@ export default function OverviewPage() {
     return () => {
       active = false;
     };
-  }, [currentPage, currentQuery, currentSignal, isPatient]);
+  }, [currentPage, currentQuery, currentSignal, reloadToken]);
 
   function handlePageChange(page) {
     const next = new URLSearchParams(searchParams);
@@ -260,13 +251,22 @@ export default function OverviewPage() {
 
   return (
     <div className="react-page">
-      <ProactivePrompt />
-      <DoctorLinksManager />
-      <InvestigationsList />
+      <section className="react-hero">
+        <div className="react-hero__content">
+          <h1>{t("overview.hero.title")}</h1>
+          <p>{t("overview.hero.body")}</p>
+          <div className="react-badges react-badges--overview">
+            <span className="react-badge react-badge--brand">{t("overview.hero.badgeDaily")}</span>
+            <span className="react-badge react-badge--green">{t("overview.hero.badgeClinical")}</span>
+            <span className="react-badge react-badge--blue">{t("overview.hero.badgeContinuous")}</span>
+          </div>
+        </div>
+        <div className="react-hero__visual">
+          <img src={assetUrl("img/myglico-logo.png")} alt={t("overview.hero.imageAlt")} />
+        </div>
+      </section>
 
-      {isPatient && (
-        <>
-          {loadingSummary ? (
+      {loadingSummary ? (
         <StateBlock title={t("overview.summaryLoading.title")} description={t("overview.summaryLoading.description")} tone="info" />
       ) : summaryError ? (
         <StateBlock title={t("overview.summaryError.title")} description={t("overview.summaryError.description")} tone="danger" />
@@ -278,6 +278,11 @@ export default function OverviewPage() {
           <MetricCard label={t("overview.metrics.issues.label")} value={summary.metrics.issue_count} helper={t("overview.metrics.issues.helper")} tone="yellow" />
         </section>
       )}
+
+      <div className="react-home-columns">
+        <PendingLinksPanel onChange={() => setReloadToken((current) => current + 1)} />
+        <InvestigationsList />
+      </div>
 
       <section className="react-panel">
         <div className="react-panel__header react-panel__header--patients">
@@ -387,8 +392,82 @@ export default function OverviewPage() {
         )}
       </section>
       <FilterHelpDialog signal={currentSignal} open={helpOpen} onClose={() => setHelpOpen(false)} />
-        </>
-      )}
     </div>
   );
+}
+
+function PatientHome({ patient }) {
+  const { t } = useTranslation();
+  const [summary, setSummary] = useState(null);
+  const [status, setStatus] = useState("loading");
+
+  useEffect(() => {
+    let active = true;
+    fetchDashboardSummary()
+      .then((data) => {
+        if (!active) return;
+        setSummary(data);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (active) setStatus("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <div className="react-page">
+      <section className="react-hero">
+        <div className="react-hero__content">
+          <p className="react-eyebrow">{t("patientHome.eyebrow")}</p>
+          <h1>{t("patientHome.greeting", { name: patient.display_name })}</h1>
+          <p>{t("patientHome.body")}</p>
+          <div className="react-actions react-hero__actions">
+            <Link to={`/patients/${patient.id}`} className="react-button">
+              {t("patientHome.openPanel")}
+            </Link>
+          </div>
+        </div>
+        <div className="react-hero__visual">
+          <img src={assetUrl("img/myglico-logo.png")} alt={t("overview.hero.imageAlt")} />
+        </div>
+      </section>
+
+      <ProactivePrompt />
+
+      <section className="react-panel" aria-labelledby="personal-summary-title">
+        <div className="react-panel__header">
+          <div className="react-panel__header-copy">
+            <p className="react-eyebrow">{t("patientHome.summary.eyebrow")}</p>
+            <h2 id="personal-summary-title">{t("patientHome.summary.title")}</h2>
+            <p>{t("patientHome.summary.body")}</p>
+          </div>
+        </div>
+        {status === "loading" ? (
+          <StateBlock title={t("overview.summaryLoading.title")} description={t("overview.summaryLoading.description")} tone="info" />
+        ) : status === "error" ? (
+          <StateBlock title={t("overview.summaryError.title")} description={t("overview.summaryError.description")} tone="danger" />
+        ) : (
+          <div className="react-grid react-grid--metrics react-grid--embedded">
+            <MetricCard label={t("patientHome.metrics.records.label")} value={summary.metrics.normalized_count} helper={t("patientHome.metrics.records.helper")} tone="cyan" />
+            <MetricCard label={t("patientHome.metrics.days.label")} value={summary.metrics.indicator_count} helper={t("patientHome.metrics.days.helper")} tone="green" />
+            <MetricCard label={t("patientHome.metrics.issues.label")} value={summary.metrics.issue_count} helper={t("patientHome.metrics.issues.helper")} tone="yellow" />
+          </div>
+        )}
+      </section>
+
+      <DoctorLinksManager />
+      <InvestigationsList />
+    </div>
+  );
+}
+
+export default function OverviewPage() {
+  const { session } = useAuth();
+  if (session?.patient?.id) {
+    return <PatientHome patient={session.patient} />;
+  }
+  return <DoctorHome />;
 }

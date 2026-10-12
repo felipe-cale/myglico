@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Bar,
@@ -17,9 +17,10 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { fetchPatientDetail, patientReportPdfUrl } from "../api";
+import { fetchDoctorLinks, fetchPatientDetail, patientReportPdfUrl, revokeDoctorLink } from "../api";
 import StateBlock from "../components/StateBlock";
 import AtypicalDaysPopup from "../components/AtypicalDaysPopup";
+import ConfirmDialog from "../components/ConfirmDialog";
 import ManualGlucoseEntryForm from "../components/ManualGlucoseEntryForm";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -158,8 +159,16 @@ function InfoTooltip({ content, label }) {
   );
 }
 
+function PendingAnalysisChip() {
+  const { t } = useTranslation();
+  return <span className="react-badge react-badge--pending react-badge--compact">{t("patientDetail.dailyIndicators.badgePending")}</span>;
+}
+
 function ClusterProfileValue({ indicator, compact = false, showGroup = true }) {
   const { t } = useTranslation();
+  if (indicator?.analysis_pending) {
+    return <PendingAnalysisChip />;
+  }
   const profileLabel = getClusterProfileLabel(indicator, t);
   const profileDescription = getClusterProfileDescription(indicator, t);
   const hasProfile = Boolean(indicator?.cluster_profile_code || indicator?.cluster_profile_label);
@@ -179,13 +188,22 @@ function ClusterProfileValue({ indicator, compact = false, showGroup = true }) {
   );
 }
 
-function PatientStatCard({ label, value, helper, tone = "blue" }) {
+function PatientStatCard({ label, value, helper, tone = "blue", onClick, actionHint, ariaLabel, buttonRef }) {
+  const Tag = onClick ? "button" : "article";
   return (
-    <article className={`react-stat-card react-stat-card--${tone}`}>
+    <Tag
+      className={`react-stat-card react-stat-card--${tone}${onClick ? " react-stat-card--interactive" : ""}`}
+      ref={buttonRef}
+      onClick={onClick}
+      type={onClick ? "button" : undefined}
+      aria-label={ariaLabel}
+      aria-haspopup={onClick ? "dialog" : undefined}
+    >
       <span>{label}</span>
       <strong>{value}</strong>
       {helper ? <small>{helper}</small> : null}
-    </article>
+      {actionHint ? <small className="react-stat-card__action-hint">{actionHint}</small> : null}
+    </Tag>
   );
 }
 
@@ -257,6 +275,12 @@ export default function PatientDetailPage() {
   const formatShortDate = (dateValue) => formatShortDateBase(dateValue, locale);
   const { patientId } = useParams();
   const { session } = useAuth();
+  const navigate = useNavigate();
+  const isDoctorView = Boolean(session?.doctor?.id);
+  const [doctorLink, setDoctorLink] = useState(null);
+  const [revokeOpen, setRevokeOpen] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+  const [revokeError, setRevokeError] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -282,6 +306,39 @@ export default function PatientDetailPage() {
     writePreservedRange(patientId, value);
   }
   const silentReloadRef = useRef(false);
+
+  useEffect(() => {
+    if (!isDoctorView) return undefined;
+    let active = true;
+    setDoctorLink(null);
+    fetchDoctorLinks()
+      .then((payload) => {
+        if (!active) return;
+        const links = payload.links || payload || [];
+        setDoctorLink(links.find((link) => link.patient_id === patientId && link.status === "active") || null);
+      })
+      .catch(() => {
+        if (active) setDoctorLink(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isDoctorView, patientId]);
+
+  async function handleRevokeLink() {
+    if (!doctorLink) return;
+    setRevoking(true);
+    setRevokeError("");
+    try {
+      await revokeDoctorLink(doctorLink.id, { version: doctorLink.version });
+      setRevokeOpen(false);
+      navigate("/dashboard", { replace: true });
+    } catch {
+      setRevokeError(t("dashboard.linkActionFailed"));
+      setRevoking(false);
+    }
+  }
+
   const isDayMode = viewMode === "day";
   const summary = data?.summary;
   const hourlyLows = data?.hourly_lows ?? [];
@@ -553,6 +610,8 @@ export default function PatientDetailPage() {
         label: t("patientDetail.stats.anomalyDays.label"),
         value: summary?.anomaly_days ?? "-",
         helper: t("patientDetail.stats.anomalyDays.helper"),
+        actionHint: t("patientDetail.stats.anomalyDays.action"),
+        action: "atypical-days",
         tone: "slate"
       }
     ];
@@ -615,6 +674,23 @@ export default function PatientDetailPage() {
       setViewMode("period");
       setSearchParams(next);
     }
+  }
+
+  function showFullHistory() {
+    const availableStart = data?.filters?.available_start_date;
+    const availableEnd = data?.filters?.available_end_date;
+    if (!availableStart || !availableEnd) {
+      return;
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete("dates");
+    next.set("start_date", availableStart);
+    next.set("end_date", availableEnd);
+    setPreservedRange(null);
+    lastResolvedRequestRef.current = "";
+    setSelectedDay("");
+    setViewMode("period");
+    setSearchParams(next);
   }
 
   function applyAtypicalDates(dates) {
@@ -755,38 +831,66 @@ export default function PatientDetailPage() {
     : 0;
 
   const isOwnPatientView = Boolean(session?.patient?.id && session.patient.id === patient.id);
+  const pendingAnalysisDays = summary?.pending_analysis_days ?? 0;
+  const isFullHistory = Boolean(
+    filters.available_start_date &&
+      filters.start_date === filters.available_start_date &&
+      filters.end_date === filters.available_end_date
+  );
   const reportUrl = patientReportPdfUrl(patient.id, {
     startDate: filters.start_date,
     endDate: filters.end_date,
     lang: locale
   });
 
+  const revokeDialog = (
+    <ConfirmDialog
+      open={revokeOpen && Boolean(doctorLink)}
+      eyebrow={t("dashboard.revokeDialog.eyebrow")}
+      title={t("dashboard.revokeDialog.titleDoctor", { name: patient.display_name })}
+      description={t("dashboard.revokeDialog.bodyDoctor", { name: patient.display_name })}
+      confirmLabel={t("dashboard.revokeConfirm")}
+      cancelLabel={t("dashboard.keepLink")}
+      busy={revoking}
+      error={revokeError}
+      onConfirm={handleRevokeLink}
+      onCancel={() => setRevokeOpen(false)}
+    />
+  );
+
   return (
     <div className="react-page react-page--patient-detail">
+      {revokeDialog}
       <section className="react-hero react-hero--compact">
         <div className="react-hero__content">
           <div className="react-badges">
-            <span className="react-badge react-badge--soft">{patient.source_file}</span>
+            {!isOwnPatientView && patient.source_file ? (
+              <span className="react-badge react-badge--soft">{patient.source_file}</span>
+            ) : null}
             <span className="react-badge react-badge--blue">{t("patientDetail.hero.measurementsBadge", { count: summary.glucose_measurements })}</span>
           </div>
-          <p className="react-eyebrow">{t("patientDetail.hero.eyebrow")}</p>
+          <p className="react-eyebrow">{isOwnPatientView ? t("patientDetail.hero.eyebrowSelf") : t("patientDetail.hero.eyebrow")}</p>
           <h1>{patient.display_name}</h1>
-          <p>{t("patientDetail.hero.body")}</p>
+          <p>{isOwnPatientView ? t("patientDetail.hero.bodySelf") : t("patientDetail.hero.body")}</p>
           <div className="react-actions">
-            <Link to="/" className="react-button react-button--ghost">
-              {t("patientDetail.hero.backToOverview")}
+            <Link to="/dashboard" className="react-button react-button--ghost">
+              {isOwnPatientView ? t("patientDetail.hero.backHome") : t("patientDetail.hero.backToOverview")}
             </Link>
             <a className="react-button" href={reportUrl || "#"} target="_blank" rel="noreferrer">
               {t("patientDetail.hero.downloadReport")}
             </a>
-            <AtypicalDaysPopup
-              patientId={patient.id}
-              appliedDates={requestedDates}
-              activeStart={requestedStart || filters.start_date || ""}
-              activeEnd={requestedEnd || filters.end_date || ""}
-              onApplyDates={applyAtypicalDates}
-              onClearDays={clearDaySelection}
-            />
+            {isDoctorView && doctorLink ? (
+              <button
+                type="button"
+                className="react-button react-button--danger"
+                onClick={() => {
+                  setRevokeError("");
+                  setRevokeOpen(true);
+                }}
+              >
+                {t("dashboard.revokeLink")}
+              </button>
+            ) : null}
           </div>
         </div>
         <div className="react-hero__side">
@@ -809,6 +913,26 @@ export default function PatientDetailPage() {
                   ? t("patientDetail.hero.defaultWindow")
                   : t("patientDetail.hero.customWindow", { count: periodDays })}
               </small>
+              {filters.available_start_date && filters.available_end_date ? (
+                <div className="react-summary-box__history">
+                  <small data-testid="available-period">
+                    {t("patientDetail.hero.availablePeriod", {
+                      start: formatDate(filters.available_start_date),
+                      end: formatDate(filters.available_end_date)
+                    })}
+                  </small>
+                  {isFullHistory ? null : (
+                    <button type="button" className="react-button react-button--ghost react-button--compact" onClick={showFullHistory}>
+                      {t("patientDetail.hero.viewAllHistory")}
+                    </button>
+                  )}
+                </div>
+              ) : null}
+              {pendingAnalysisDays > 0 ? (
+                <p className="react-pending-note" role="note">
+                  {t("patientDetail.hero.pendingAnalysisNote", { count: pendingAnalysisDays })}
+                </p>
+              ) : null}
             </div>
           )}
         </div>
@@ -1127,16 +1251,37 @@ export default function PatientDetailPage() {
               </div>
             </div>
             <div className="react-stat-grid">
-              {overviewStats.map((stat) => (
-                <PatientStatCard
+              {overviewStats.map((stat) => stat.action === "atypical-days" ? (
+                <AtypicalDaysPopup
                   key={stat.label}
-                  label={stat.label}
-                  value={stat.value}
-                  helper={stat.helper}
-                  tone={stat.tone}
+                  patientId={patient.id}
+                  appliedDates={requestedDates}
+                  activeStart={requestedStart || filters.start_date || ""}
+                  activeEnd={requestedEnd || filters.end_date || ""}
+                  onApplyDates={applyAtypicalDates}
+                  onClearDays={clearDaySelection}
+                  renderTrigger={(openPopup, triggerRef) => (
+                    <PatientStatCard
+                      label={stat.label}
+                      value={stat.value}
+                      helper={stat.helper}
+                      actionHint={stat.actionHint}
+                      tone={stat.tone}
+                      onClick={openPopup}
+                      ariaLabel={`${stat.label}: ${stat.value}. ${stat.actionHint}`}
+                      buttonRef={triggerRef}
+                    />
+                  )}
                 />
+              ) : (
+                <PatientStatCard key={stat.label} label={stat.label} value={stat.value} helper={stat.helper} tone={stat.tone} />
               ))}
             </div>
+            {!isDayMode && pendingAnalysisDays > 0 ? (
+              <p className="react-pending-note" role="note">
+                {t("patientDetail.hero.pendingAnalysisNote", { count: pendingAnalysisDays })}
+              </p>
+            ) : null}
           </article>
         </aside>
       </section>
@@ -1171,9 +1316,13 @@ export default function PatientDetailPage() {
                       <span className="react-mobile-card__eyebrow">{t("patientDetail.dailyIndicators.date")}</span>
                       <h3>{formatDate(indicator.date)}</h3>
                     </div>
-                    <span className={`react-mobile-card__badge${indicator.anomaly_flag ? " is-alert" : ""}`}>
-                      {indicator.anomaly_flag ? t("patientDetail.dailyIndicators.badgeAtypical") : t("patientDetail.dailyIndicators.badgeStable")}
-                    </span>
+                    {indicator.analysis_pending ? (
+                      <PendingAnalysisChip />
+                    ) : (
+                      <span className={`react-mobile-card__badge${indicator.anomaly_flag ? " is-alert" : ""}`}>
+                        {indicator.anomaly_flag ? t("patientDetail.dailyIndicators.badgeAtypical") : t("patientDetail.dailyIndicators.badgeStable")}
+                      </span>
+                    )}
                   </div>
                   <div className="react-mobile-card__grid">
                     <MobileDetailField
@@ -1216,7 +1365,7 @@ export default function PatientDetailPage() {
                       <td>{formatNumber(indicator.pct_hypo, "%")}</td>
                       <td>{formatNumber(indicator.pct_in_range, "%")}</td>
                       <td>{formatNumber(indicator.pct_hyper, "%")}</td>
-                      <td>{indicator.anomaly_flag ? t("common.yes") : t("common.no")}</td>
+                      <td>{indicator.analysis_pending ? t("common.dash") : indicator.anomaly_flag ? t("common.yes") : t("common.no")}</td>
                       <td>
                         <div className="react-table-meta">
                           <ClusterProfileValue indicator={indicator} />

@@ -297,8 +297,8 @@ class _Projector:
             else:
                 self.document.used(activity, link_general)
             self._domain_relation(general, "mygv:underAssociation", link_general)
-        indicator_id = meta.get("atypical_day_event_id")
-        if indicator_id:
+        indicator_ids = meta.get("atypical_day_event_ids") or [meta.get("atypical_day_event_id")]
+        for indicator_id in filter(None, indicator_ids):
             indicator = self._daily_indicator(indicator_id)
             self.document.used(activity, indicator)
             self._domain_relation(general, "mygv:investigatesAtypicalDay", indicator)

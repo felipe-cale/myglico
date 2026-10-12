@@ -17,9 +17,13 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.mysql import DATETIME as MySQLDateTime
 
 from app.core.crypto import decrypt_field, email_lookup, encrypt_field, generate_short_id
 from app.db.base import Base
+
+
+_DATETIME = DateTime().with_variant(MySQLDateTime(fsp=6), "mysql")
 
 
 def _uuid() -> str:
@@ -43,8 +47,8 @@ class Patient(Base):
     short_id: Mapped[str] = mapped_column(String(6), nullable=False, default=generate_short_id)
     user_account_id: Mapped[str | None] = mapped_column(ForeignKey("user_accounts.id"), nullable=True)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/Sao_Paulo")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, onupdate=_now, nullable=False)
 
     user_account: Mapped["UserAccount | None"] = relationship(back_populates="patient")
     glucose_records: Mapped[list["GlucoseRecord"]] = relationship(back_populates="patient")
@@ -96,11 +100,11 @@ class UserAccount(Base):
     email_lookup: Mapped[str] = mapped_column(String(64), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
     account_status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
-    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
+    email_verified_at: Mapped[datetime | None] = mapped_column(_DATETIME)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, onupdate=_now, nullable=False)
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    privacy_notice_accepted_at: Mapped[datetime | None] = mapped_column(DateTime)
+    privacy_notice_accepted_at: Mapped[datetime | None] = mapped_column(_DATETIME)
 
     patient: Mapped[Patient | None] = relationship(back_populates="user_account", uselist=False)
     doctor: Mapped["Doctor | None"] = relationship(back_populates="user_account", uselist=False)
@@ -137,8 +141,8 @@ class Doctor(Base):
     crm_uf_lookup: Mapped[str | None] = mapped_column(String(64))
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     declared_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, onupdate=_now, nullable=False)
 
     user_account: Mapped[UserAccount] = relationship(back_populates="doctor")
 
@@ -148,9 +152,9 @@ class UserSession(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_account_id: Mapped[str] = mapped_column(ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(_DATETIME, nullable=False, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(_DATETIME, index=True)
 
     user_account: Mapped[UserAccount] = relationship(back_populates="sessions")
 
@@ -166,9 +170,9 @@ class PatientDoctorLink(Base):
     patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), nullable=False, index=True)
     doctor_id: Mapped[str] = mapped_column(ForeignKey("doctors.id"), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING", index=True)
-    requested_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    decided_at: Mapped[datetime | None] = mapped_column(DateTime)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
+    requested_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    decided_at: Mapped[datetime | None] = mapped_column(_DATETIME)
+    revoked_at: Mapped[datetime | None] = mapped_column(_DATETIME)
     revoked_by_role: Mapped[str | None] = mapped_column(String(16))
     reason_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -189,8 +193,8 @@ class Notification(Base):
     causation_event_id: Mapped[str] = mapped_column(
         ForeignKey("provenance_events.id"), nullable=False, index=True
     )
-    read_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    read_at: Mapped[datetime | None] = mapped_column(_DATETIME, index=True)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
 
     # Declared so the unit of work inserts the causing event before the
     # notification within one flush; databases enforcing FKs reject the reverse.
@@ -205,10 +209,10 @@ class NotificationOutbox(Base):
     notification_id: Mapped[str] = mapped_column(ForeignKey("notifications.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING", index=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(_DATETIME, index=True)
     last_error: Mapped[str | None] = mapped_column(String(120))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    processed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    processed_at: Mapped[datetime | None] = mapped_column(_DATETIME)
 
     notification: Mapped[Notification] = relationship()
 
@@ -226,11 +230,23 @@ class Investigation(Base):
     awaiting_role: Mapped[str | None] = mapped_column(String(16))
     opened_by_role: Mapped[str] = mapped_column(String(16), nullable=False)
     opened_by_domain_id: Mapped[str] = mapped_column(String(36), nullable=False)
-    opened_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    closed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    opened_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    closed_at: Mapped[datetime | None] = mapped_column(_DATETIME)
     closed_by: Mapped[str | None] = mapped_column(String(80))
     closed_reason: Mapped[str | None] = mapped_column(String(80))
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    atypical_days: Mapped[list["InvestigationAtypicalDay"]] = relationship(
+        cascade="all, delete-orphan", order_by="InvestigationAtypicalDay.indicator_date",
+    )
+
+
+class InvestigationAtypicalDay(Base):
+    __tablename__ = "investigation_atypical_days"
+
+    investigation_id: Mapped[str] = mapped_column(ForeignKey("investigations.id", ondelete="CASCADE"), primary_key=True)
+    daily_indicator_id: Mapped[str] = mapped_column(ForeignKey("daily_indicators.id"), primary_key=True)
+    indicator_date: Mapped[date] = mapped_column(Date, nullable=False)
+    indicator: Mapped["DailyIndicator"] = relationship()
 
 
 class InvestigationMessage(Base):
@@ -246,7 +262,7 @@ class InvestigationMessage(Base):
     author_domain_id: Mapped[str] = mapped_column(String(36), nullable=False)
     content_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     sequence: Mapped[int] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
     idempotency_key: Mapped[str | None] = mapped_column(String(128))
 
     investigation: Mapped[Investigation] = relationship()
@@ -259,7 +275,7 @@ class InvestigationReadPosition(Base):
     participant_role: Mapped[str] = mapped_column(String(16), primary_key=True)
     participant_domain_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     last_read_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, onupdate=_now, nullable=False)
 
     investigation: Mapped[Investigation] = relationship()
 
@@ -275,7 +291,7 @@ class AtypicalDayPrompt(Base):
     daily_indicator_id: Mapped[str] = mapped_column(ForeignKey("daily_indicators.id"), nullable=False, index=True)
     indicator_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="CREATED", index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
 
 class DataSource(Base):
     __tablename__ = "data_sources"
@@ -285,7 +301,7 @@ class DataSource(Base):
     source_type: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     uri: Mapped[str | None] = mapped_column(String(500))
     version: Mapped[str | None] = mapped_column(String(120))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
 
     import_batches: Mapped[list["ImportBatch"]] = relationship(back_populates="data_source", cascade="all, delete-orphan")
     patient_links: Mapped[list["PatientSourceLink"]] = relationship(back_populates="data_source")
@@ -297,8 +313,8 @@ class ImportBatch(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     data_source_id: Mapped[str] = mapped_column(ForeignKey("data_sources.id"), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(40), default="running", nullable=False, index=True)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    started_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(_DATETIME)
     raw_record_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     normalized_record_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
@@ -320,7 +336,7 @@ class PatientSourceLink(Base):
     import_batch_id: Mapped[str | None] = mapped_column(ForeignKey("import_batches.id"), index=True)
     external_patient_code: Mapped[str] = mapped_column(String(120), nullable=False)
     source_file: Mapped[str | None] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
 
     patient: Mapped["Patient"] = relationship(back_populates="source_links")
     data_source: Mapped["DataSource"] = relationship(back_populates="patient_links")
@@ -341,7 +357,7 @@ class RawImportRecord(Base):
     raw_time: Mapped[str | None] = mapped_column(String(10))
     raw_code: Mapped[str | None] = mapped_column(String(40))
     raw_value: Mapped[str | None] = mapped_column(String(80))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
 
     import_batch: Mapped["ImportBatch"] = relationship(back_populates="raw_import_records")
     patient: Mapped["Patient"] = relationship()
@@ -354,12 +370,12 @@ class GlucoseRecord(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), nullable=False, index=True)
-    measured_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    measured_at: Mapped[datetime] = mapped_column(_DATETIME, nullable=False, index=True)
     glucose_mg_dl: Mapped[float] = mapped_column(Float, nullable=False)
     context_label: Mapped[str | None] = mapped_column(String(80), index=True)
     notes_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, onupdate=_now, nullable=False)
 
     patient: Mapped["Patient"] = relationship(back_populates="glucose_records")
     sources: Mapped[list["GlucoseRecordSource"]] = relationship(back_populates="glucose_record", cascade="all, delete-orphan")
@@ -390,7 +406,7 @@ class GlucoseRecordSource(Base):
     import_batch_id: Mapped[str | None] = mapped_column(ForeignKey("import_batches.id"), index=True)
     raw_import_record_id: Mapped[str | None] = mapped_column(ForeignKey("raw_import_records.id"), index=True)
     device_id: Mapped[str | None] = mapped_column(String(120), index=True)
-    entered_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    entered_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
     transformation_rule: Mapped[str | None] = mapped_column(String(160))
     metadata_json: Mapped[dict | None] = mapped_column(JSON)
 
@@ -413,7 +429,7 @@ class DataQualityIssue(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     rule_name: Mapped[str] = mapped_column(String(120), nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="open", nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
 
     import_batch: Mapped["ImportBatch"] = relationship(back_populates="quality_issues")
     raw_import_record: Mapped["RawImportRecord"] = relationship(back_populates="quality_issues")
@@ -431,7 +447,7 @@ class ProvenanceEvent(Base):
     actor_user_id: Mapped[str | None] = mapped_column(String(36), index=True)
     source_type: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
     source_id: Mapped[str | None] = mapped_column(String(36), index=True)
-    occurred_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
     prov_json: Mapped[dict | None] = mapped_column(JSON)
     metadata_json: Mapped[dict | None] = mapped_column(JSON)
     content_hash: Mapped[str | None] = mapped_column(String(128), index=True)
@@ -449,7 +465,7 @@ class ProvenanceArtifact(Base):
     content_hash: Mapped[str | None] = mapped_column(String(128), index=True)
     hash_algorithm: Mapped[str] = mapped_column(String(20), default="sha256", nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="completed", nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
 
 
 class DailyMetricsCurrent(Base):
@@ -470,7 +486,7 @@ class DailyMetricsCurrent(Base):
     high_events_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     freshness_status: Mapped[str] = mapped_column(String(40), default="fresh", nullable=False, index=True)
     input_fingerprint: Mapped[str | None] = mapped_column(String(128), index=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, onupdate=_now, nullable=False)
 
     patient: Mapped["Patient"] = relationship(back_populates="daily_metrics")
 
@@ -491,9 +507,9 @@ class AnalysisRun(Base):
     code_version: Mapped[str | None] = mapped_column(String(120))
     input_fingerprint: Mapped[str | None] = mapped_column(String(128), index=True)
     output_fingerprint: Mapped[str | None] = mapped_column(String(128), index=True)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(_DATETIME)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
 
     patient: Mapped["Patient"] = relationship(back_populates="analysis_runs")
     indicators: Mapped[list["DailyIndicator"]] = relationship(back_populates="analysis_run", cascade="all, delete-orphan")
@@ -540,5 +556,5 @@ class AnalysisOutbox(Base):
     trigger_type: Mapped[str] = mapped_column(String(60), nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="pending", nullable=False, index=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
-    processed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(_DATETIME, default=_now, nullable=False)
+    processed_at: Mapped[datetime | None] = mapped_column(_DATETIME)

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.crypto import decrypt_field, encrypt_field
 from app.core.security import SessionPrincipal
 from app.models.entities import (
-    AtypicalDayPrompt, DailyIndicator, Doctor, Investigation, InvestigationMessage,
+    AtypicalDayPrompt, DailyIndicator, Doctor, Investigation, InvestigationAtypicalDay, InvestigationMessage,
     InvestigationReadPosition, Notification, NotificationOutbox, Patient, PatientDoctorLink, ProvenanceEvent,
 )
 
@@ -114,7 +114,7 @@ def _participant(
 def open_investigation(
     db: Session, principal: SessionPrincipal, *, doctor_id: str | None,
     patient_id: str | None, atypical_day_event_id: str | None,
-    title: str, initial_message: str,
+    title: str, initial_message: str, atypical_day_event_ids: list[str] | None = None,
 ) -> Investigation:
     role, domain_id = _actor(principal)
     if role == "PATIENT":
@@ -144,19 +144,24 @@ def open_investigation(
     if lock_result.rowcount != 1:
         raise InvestigationConflict("The association is no longer active")
 
-    if atypical_day_event_id is not None:
-        indicator = db.get(DailyIndicator, atypical_day_event_id)
-        if indicator is None or indicator.patient_id != target_patient_id or not indicator.anomaly_flag:
-            raise InvestigationNotFound
+    requested_ids = list(dict.fromkeys([*(atypical_day_event_ids or []), *([atypical_day_event_id] if atypical_day_event_id else [])]))
+    indicators = [db.get(DailyIndicator, indicator_id) for indicator_id in requested_ids]
+    if any(indicator is None or indicator.patient_id != target_patient_id or not indicator.anomaly_flag for indicator in indicators):
+        raise InvestigationNotFound
+    indicators = sorted(indicators, key=lambda indicator: (indicator.indicator_date, indicator.id))
+    primary_indicator_id = indicators[0].id if indicators else None
 
     investigation_id = str(uuid4())
     investigation = Investigation(
         id=investigation_id, patient_id=target_patient_id, doctor_id=target_doctor_id,
-        association_id=association.id, atypical_day_event_id=atypical_day_event_id,
+        association_id=association.id, atypical_day_event_id=primary_indicator_id,
         title_encrypted=encrypt_field(title.strip(), table="investigations", column="title", record_id=investigation_id),
         status="OPEN", awaiting_role="DOCTOR" if role == "PATIENT" else "PATIENT",
         opened_by_role=role, opened_by_domain_id=domain_id, opened_at=_now(), version=1,
     )
+    investigation.atypical_days = [InvestigationAtypicalDay(
+        daily_indicator_id=indicator.id, indicator_date=indicator.indicator_date,
+    ) for indicator in indicators]
     message_id = str(uuid4())
     message = InvestigationMessage(
         id=message_id, investigation_id=investigation_id, author_role=role,
@@ -167,7 +172,8 @@ def open_investigation(
     db.add_all([investigation, message])
     opened_event = _activity_event("InvestigationOpened", investigation, principal, {
         "patient_id": target_patient_id, "doctor_id": target_doctor_id,
-        "association_id": association.id, "atypical_day_event_id": atypical_day_event_id,
+        "association_id": association.id, "atypical_day_event_id": primary_indicator_id,
+        "atypical_day_event_ids": [indicator.id for indicator in indicators],
         "opened_by_role": role, "version": 1,
     })
     message_event = _activity_event("InvestigationMessageAdded", investigation, principal, {

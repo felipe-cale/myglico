@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { fetchAtypicalDayPrompts, deferAtypicalDayPrompt } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -15,7 +15,9 @@ export default function ProactivePrompt() {
   const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [prompts, setPrompts] = useState([]);
+  const [expandedPrompt, setExpandedPrompt] = useState(null);
 
   useEffect(() => {
     if (session?.patient?.id) {
@@ -28,6 +30,19 @@ export default function ProactivePrompt() {
     }
   }, [session]);
 
+  useEffect(() => {
+    const match = location.hash.match(/^#atypical-day-(.+)$/);
+    if (!match) return;
+    const indicatorId = decodeURIComponent(match[1]);
+    const prompt = prompts.find((item) => item.indicator_ids?.includes(indicatorId) || item.indicator_id === indicatorId);
+    if (!prompt) return;
+    if (expandedPrompt !== prompt.batch_id) {
+      setExpandedPrompt(prompt.batch_id);
+      return;
+    }
+    requestAnimationFrame(() => document.getElementById(`atypical-day-${indicatorId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  }, [location.hash, prompts, expandedPrompt]);
+
   const handleDefer = async (prompt) => {
     try {
       const indicatorIds = prompt.indicator_ids?.length ? prompt.indicator_ids : [prompt.indicator_id];
@@ -36,42 +51,56 @@ export default function ProactivePrompt() {
     } catch(e) {}
   };
 
-  const handleViewDay = (prompt) => {
-    const dates = prompt.dates?.length ? prompt.dates : [prompt.date];
-    const params = new URLSearchParams({ dates: [...dates].sort().join(",") });
-    navigate(`/patients/${session.patient.id}?${params.toString()}`);
-  };
-
   const promptText = (prompt) => {
     const dates = prompt.dates?.length ? [...prompt.dates].sort() : [prompt.date];
     if (dates.length > 1) {
-      return t("cscw.proactivePromptBatch", {
+      return t("cscw.proactivePromptBatchPatient", {
         count: dates.length,
         first: formatPromptDate(dates[0], i18n.language),
         last: formatPromptDate(dates[dates.length - 1], i18n.language)
       });
     }
-    return t("cscw.proactivePromptDated", { date: formatPromptDate(dates[0], i18n.language) });
+    return t("cscw.proactivePromptDatedPatient", { date: formatPromptDate(dates[0], i18n.language) });
   };
 
   const handleOpenInvestigation = (indicatorId) => {
-    navigate(`/dashboard?atypical_day_event_id=${encodeURIComponent(indicatorId)}#investigations`);
+    const params = new URLSearchParams({ atypical_day_event_id: indicatorId });
+    navigate(`/dashboard?${params.toString()}#investigations`);
   };
 
   if (!session?.patient?.id || !prompts || prompts.length === 0) return null;
 
   return (
-    <div role="region" aria-label={t("cscw.promptRegion")} style={{ background: '#fff3cd', border: '1px solid #ffeeba', padding: '1rem', borderRadius: '4px', marginBottom: '1rem' }}>
-      {prompts.map(p => (
-        <div key={p.indicator_id} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <p>{promptText(p)}</p>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="react-button" style={{ background: '#ffc107', border: 'none' }} onClick={() => handleViewDay(p)}>{p.dates?.length > 1 ? t("cscw.viewDays") : t("cscw.viewDay")}</button>
-            <button className="react-button" style={{ background: '#005fcc', color: '#fff', border: 'none' }} onClick={() => handleOpenInvestigation(p.indicator_id)}>{t("cscw.open")}</button>
-            <button className="react-button" style={{ background: 'transparent', border: '1px solid #ccc' }} onClick={() => handleDefer(p)}>{t("cscw.defer")}</button>
-          </div>
+    <section id="atypical-days-prompts" role="region" aria-label={t("cscw.promptRegion")} className="react-panel react-prompt">
+      <div className="react-panel__header">
+        <div className="react-panel__header-copy">
+          <p className="react-eyebrow">{t("cscw.promptEyebrow")}</p>
+          <h2>{t("cscw.promptTitle")}</h2>
         </div>
-      ))}
-    </div>
+      </div>
+      <ul className="react-prompt__list">
+        {prompts.map(p => (
+          <li key={p.batch_id || p.indicator_id} className={`react-prompt__item${expandedPrompt === p.batch_id ? " is-expanded" : ""}`}>
+            <button type="button" className="react-prompt__toggle" aria-expanded={expandedPrompt === p.batch_id} onClick={() => setExpandedPrompt(expandedPrompt === p.batch_id ? null : p.batch_id)}>
+              <span>{promptText(p)}</span><span aria-hidden="true">{expandedPrompt === p.batch_id ? "−" : "+"}</span>
+            </button>
+            {expandedPrompt === p.batch_id && <>
+              <ul className="react-prompt__days">
+                {(p.dates || [p.date]).map((date, index) => (
+                  <li key={date} id={`atypical-day-${p.indicator_ids?.[index] || p.indicator_id}`}>
+                    <strong>{formatPromptDate(date, i18n.language)}</strong>
+                    <div className="react-actions">
+                      <button type="button" className="react-button react-button--ghost" onClick={() => navigate(`/patients/${session.patient.id}?dates=${encodeURIComponent(date)}`)}>{t("cscw.viewInDetail")}</button>
+                      <button type="button" className="react-button" onClick={() => handleOpenInvestigation(p.indicator_ids?.[index] || p.indicator_id)}>{t("cscw.openPatient")}</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className="react-button react-button--text" onClick={() => handleDefer(p)}>{t("cscw.defer")}</button>
+            </>}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

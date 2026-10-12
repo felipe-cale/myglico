@@ -229,6 +229,7 @@ def get_paginated_patients(
     query: str | None = None,
     signal: str | None = None,
     patient_id: str | None = None,
+    patient_ids: list[str] | None = None,
 ) -> dict[str, object]:
     safe_page = max(page, 1)
     safe_page_size = max(1, min(page_size, 50))
@@ -240,6 +241,8 @@ def get_paginated_patients(
     patient_query = select(Patient).order_by(Patient.id)
     if patient_id is not None:
         patient_query = patient_query.where(Patient.id == patient_id)
+    if patient_ids is not None:
+        patient_query = patient_query.where(Patient.id.in_(patient_ids))
     patients = db.scalars(patient_query).all()
 
     patient_rows: list[dict[str, object]] = []
@@ -395,6 +398,55 @@ def _build_cluster_profile_map(indicators: list[DailyIndicator]) -> dict[int, di
     return profile_map
 
 
+def _merge_daily_rows(
+    indicators: list[DailyIndicator],
+    metrics: list[DailyMetricsCurrent],
+) -> list[DailyIndicator | DailyMetricsCurrent]:
+    """Per-day rows for the summary: analysed indicators, except stale days.
+
+    A day marked stale (e.g. by a manual entry) changed after the latest
+    analysis run, so its basic values come from ``daily_metrics_current``
+    (recomputed in the API transaction) and its anomaly/cluster classification
+    is pending. Without any indicator, every metric day is used, as before.
+    """
+    if not indicators:
+        return list(metrics)
+    stale_by_date = {metric.metric_date: metric for metric in metrics if metric.freshness_status != "fresh"}
+    rows: dict[date, DailyIndicator | DailyMetricsCurrent] = {
+        indicator.indicator_date: indicator for indicator in indicators
+    }
+    rows.update(stale_by_date)
+    return [rows[day] for day in sorted(rows)]
+
+
+def _summarize_daily_rows(
+    rows: list[DailyIndicator | DailyMetricsCurrent],
+    glucose_measurements: int,
+) -> dict[str, object]:
+    avg_values = [row.avg_glucose for row in rows if row.avg_glucose is not None]
+    return {
+        "days_observed": len(rows),
+        "avg_glucose": round(mean(avg_values), 2) if avg_values else None,
+        "pct_hypo": round(mean([row.pct_hypo for row in rows]), 2) if rows else 0.0,
+        "pct_in_range": round(mean([row.pct_in_range for row in rows]), 2) if rows else 0.0,
+        "pct_hyper": round(mean([row.pct_hyper for row in rows]), 2) if rows else 0.0,
+        # Only analysed, up-to-date days can be atypical; pending days are counted apart.
+        "anomaly_days": sum(1 for row in rows if isinstance(row, DailyIndicator) and row.anomaly_flag),
+        "pending_analysis_days": sum(1 for row in rows if isinstance(row, DailyMetricsCurrent) and row.freshness_status != "fresh"),
+        "glucose_measurements": glucose_measurements,
+    }
+
+
+def _serialize_daily_rows(
+    rows: list[DailyIndicator | DailyMetricsCurrent],
+    cluster_profiles: dict[int, dict[str, str]],
+) -> list[dict[str, object]]:
+    return [
+        _serialize_indicator(row, cluster_profiles) if isinstance(row, DailyIndicator) else _serialize_metric(row)
+        for row in rows
+    ]
+
+
 def _serialize_indicator(
     indicator: DailyIndicator,
     cluster_profiles: dict[int, dict[str, str]] | None = None,
@@ -414,6 +466,7 @@ def _serialize_indicator(
         "cluster_profile_tone": cluster_profile["tone"] if cluster_profile else None,
         "low_events_count": indicator.low_events_count,
         "high_events_count": indicator.high_events_count,
+        "analysis_pending": False,
     }
 
 
@@ -432,6 +485,7 @@ def _serialize_metric(metric: DailyMetricsCurrent) -> dict[str, object]:
         "cluster_profile_tone": None,
         "low_events_count": metric.low_events_count,
         "high_events_count": metric.high_events_count,
+        "analysis_pending": metric.freshness_status != "fresh",
     }
 
 
@@ -573,17 +627,8 @@ def get_patient_detail_context(
         .limit(50)
     ).all()
 
-    summary_source = indicators if indicators else metrics
-    avg_values = [row.avg_glucose for row in summary_source if row.avg_glucose is not None]
-    summary = {
-        "days_observed": len(summary_source),
-        "avg_glucose": round(mean(avg_values), 2) if avg_values else None,
-        "pct_hypo": round(mean([row.pct_hypo for row in summary_source]), 2) if summary_source else 0.0,
-        "pct_in_range": round(mean([row.pct_in_range for row in summary_source]), 2) if summary_source else 0.0,
-        "pct_hyper": round(mean([row.pct_hyper for row in summary_source]), 2) if summary_source else 0.0,
-        "anomaly_days": sum(1 for row in indicators if row.anomaly_flag),
-        "glucose_measurements": len(glucose_records),
-    }
+    daily_rows = _merge_daily_rows(indicators, metrics)
+    summary = _summarize_daily_rows(daily_rows, len(glucose_records))
 
     hourly_lows = {hour: 0 for hour in range(24)}
     hourly_highs_250 = {hour: 0 for hour in range(24)}
@@ -595,11 +640,7 @@ def get_patient_detail_context(
             hourly_highs_250[local_hour] += 1
 
     cluster_profiles = _build_cluster_profile_map(indicators)
-    daily_indicators_json = (
-        [_serialize_indicator(indicator, cluster_profiles) for indicator in indicators]
-        if indicators
-        else [_serialize_metric(metric) for metric in metrics]
-    )
+    daily_indicators_json = _serialize_daily_rows(daily_rows, cluster_profiles)
     freshness_status = "fresh"
     if any(getattr(metric, "freshness_status", "fresh") != "fresh" for metric in metrics):
         freshness_status = "updating"
@@ -699,24 +740,11 @@ def get_patient_report_context(
         glucose_query = glucose_query.where(GlucoseRecord.measured_at >= start_dt, GlucoseRecord.measured_at < end_dt)
     glucose_records = db.scalars(glucose_query).all()
 
-    summary_source = indicators if indicators else metrics
-    avg_values = [row.avg_glucose for row in summary_source if row.avg_glucose is not None]
-    summary = {
-        "days_observed": len(summary_source),
-        "avg_glucose": round(mean(avg_values), 2) if avg_values else None,
-        "pct_hypo": round(mean([row.pct_hypo for row in summary_source]), 2) if summary_source else 0.0,
-        "pct_in_range": round(mean([row.pct_in_range for row in summary_source]), 2) if summary_source else 0.0,
-        "pct_hyper": round(mean([row.pct_hyper for row in summary_source]), 2) if summary_source else 0.0,
-        "anomaly_days": sum(1 for row in indicators if row.anomaly_flag),
-        "glucose_measurements": len(glucose_records),
-    }
+    daily_rows = _merge_daily_rows(indicators, metrics)
+    summary = _summarize_daily_rows(daily_rows, len(glucose_records))
 
     cluster_profiles = _build_cluster_profile_map(indicators)
-    daily_indicators_json = (
-        [_serialize_indicator(indicator, cluster_profiles) for indicator in indicators]
-        if indicators
-        else [_serialize_metric(metric) for metric in metrics]
-    )
+    daily_indicators_json = _serialize_daily_rows(daily_rows, cluster_profiles)
 
     return {
         "patient": patient,

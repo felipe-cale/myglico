@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.patient_time import local_range_utc_bounds, patient_local_date, patient_local_datetime
 from app.models.entities import AnalysisOutbox, AnalysisRun, DailyIndicator, DailyMetricsCurrent, GlucoseRecord, Patient, ProvenanceEvent
+from app.services.daily_metrics import in_range as _in_range, upper_bound_for_context as _upper_bound_for_context
 from app.services.investigations import create_prompts_for_indicators
 
 
@@ -63,24 +64,6 @@ def _analysis_parameters() -> dict[str, object]:
         "anomaly_detector": {"name": "IsolationForest", "random_state": 42},
         "clustering": {"name": "KMeans", "max_clusters": 3, "random_state": 42},
     }
-
-
-def _upper_bound_for_context(context: str | None) -> float:
-    if isinstance(context, str) and context.startswith("pre_"):
-        return settings.pre_meal_max
-    if isinstance(context, str) and context.startswith("post_"):
-        return settings.post_meal_max
-    return settings.generic_max
-
-
-def _in_range(glucose: float, context: str | None) -> bool:
-    if glucose < settings.default_hypo_threshold:
-        return False
-    if isinstance(context, str) and context.startswith("pre_"):
-        return settings.pre_meal_min <= glucose <= settings.pre_meal_max
-    if isinstance(context, str) and context.startswith("post_"):
-        return glucose < settings.post_meal_max
-    return settings.default_hypo_threshold <= glucose <= settings.generic_max
 
 
 def _date_bounds(start_date: date | None, end_date: date | None) -> tuple[datetime | None, datetime | None]:

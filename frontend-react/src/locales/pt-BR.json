@@ -7,7 +7,8 @@
     "dash": "-",
     "back": "Voltar",
     "explain": "Explicar {{label}}",
-    "loading": "Carregando..."
+    "loading": "Carregando...",
+    "closeDialog": "Fechar"
   },
   "languageSwitcher": {
     "label": "Idioma"
@@ -155,7 +156,6 @@
       "copy": "Copiar",
       "copied": "Copiado",
       "copyAriaLabel": "Copiar código {{code}}",
-      "daysObserved": "{{count}} dias com leituras disponíveis",
       "avgPeriod": "Média do período",
       "timeInLow": "Tempo em baixa",
       "timeInHigh": "Tempo em alta",
@@ -168,7 +168,9 @@
       "emptyAll": {
         "title": "Nenhum paciente encontrado",
         "description": "Tente buscar por outro nome ou identificador para continuar."
-      }
+      },
+      "daysObserved_one": "{{count}} dia com leituras disponíveis",
+      "daysObserved_other": "{{count}} dias com leituras disponíveis"
     },
     "profileHelp": {
       "eyebrow": "Ajuda do filtro",
@@ -270,7 +272,6 @@
     },
     "hero": {
       "eyebrow": "Detalhe do paciente",
-      "measurementsBadge": "{{count}} medições",
       "body": "Este painel consolida o período selecionado a partir do core clínico, com atualização dinâmica dos indicadores, registros e gráficos.",
       "backToOverview": "Voltar para a visão geral",
       "downloadReport": "Baixar Relatório Glicêmico",
@@ -278,7 +279,17 @@
       "defaultWindow": "Janela padrão de 30 dias a partir da data mais recente disponível.",
       "selectedDays": "Dias selecionados ({{count}})",
       "referencePeriod": "Somente estes dias são analisados. Período de referência: {{start}} a {{end}}.",
-      "customWindow": "Período personalizado de {{count}} dias escolhido no filtro."
+      "customWindow": "Período personalizado de {{count}} dias escolhido no filtro.",
+      "eyebrowSelf": "Meu painel",
+      "bodySelf": "Aqui estão suas leituras, indicadores e gráficos do período selecionado. Ajuste as datas para rever outros momentos.",
+      "backHome": "Voltar para o início",
+      "measurementsBadge_zero": "Nenhuma medição",
+      "measurementsBadge_one": "{{count}} medição",
+      "measurementsBadge_other": "{{count}} medições",
+      "availablePeriod": "Dados disponíveis de {{start}} a {{end}}.",
+      "viewAllHistory": "Ver todo o histórico",
+      "pendingAnalysisNote_one": "{{count}} dia com leituras recentes ainda aguarda a análise. Os indicadores desse dia aparecem depois do próximo processamento.",
+      "pendingAnalysisNote_other": "{{count}} dias com leituras recentes ainda aguardam a análise. Os indicadores desses dias aparecem depois do próximo processamento."
     },
     "filter": {
       "eyebrow": "Filtro temporal",
@@ -374,7 +385,8 @@
       },
       "anomalyDays": {
         "label": "Dias atípicos",
-        "helper": "sinalizados pela análise"
+        "helper": "sinalizados pela análise",
+        "action": "Clique para ver e selecionar os dias"
       }
     },
     "dailyIndicators": {
@@ -388,7 +400,8 @@
       "anomaly": "Atípico",
       "profile": "Perfil do dia",
       "badgeAtypical": "Atípico",
-      "badgeStable": "Estável"
+      "badgeStable": "Estável",
+      "badgePending": "Pendente de análise"
     },
     "recentEvents": {
       "eyebrow": "Eventos recentes",
@@ -424,11 +437,35 @@
     "crmUfRequired": "Informe CRM e UF para cadastrar um médico.",
     "privacyRequired": "Confirme a ciência do aviso de privacidade para continuar.",
     "privacyNotice": "Aviso de privacidade: o MyGlico é um protótipo acadêmico. Seus dados de identificação são armazenados cifrados e usados apenas para operar o sistema; leituras glicêmicas são compartilhadas somente com médicos que você associar e pode revogar a qualquer momento.",
-    "privacyAccept": "Li e estou ciente do aviso de privacidade."
+    "privacyAccept": "Li e estou ciente do aviso de privacidade.",
+    "loginEyebrow": "Acesso",
+    "loginBody": "Use o e-mail e a senha da sua conta MyGlico.",
+    "noAccount": "Ainda não tem conta?",
+    "registerEyebrow": "Cadastro",
+    "registerBody": "Diga se você é paciente ou médico e preencha seus dados para começar.",
+    "haveAccount": "Já tem conta?"
   },
   "landing": {
     "title": "Bem-vindo ao MyGlico",
-    "desc": "Acompanhamento glicêmico com visão clara e contínua."
+    "desc": "Acompanhamento glicêmico com visão clara e contínua.",
+    "hero": {
+      "eyebrow": "Para pacientes e médicos",
+      "title": "Sua glicemia, acompanhada de perto",
+      "body": "Crie sua conta de paciente para registrar suas leituras, entender os dias fora do padrão e conversar com o seu médico. Se você é médico, cadastre-se para acompanhar os pacientes que autorizarem o vínculo com você.",
+      "badgePatient": "Para pacientes",
+      "badgeDoctor": "Para médicos",
+      "badgeControl": "Você decide quem vê seus dados"
+    },
+    "patient": {
+      "eyebrow": "Sou paciente",
+      "title": "Acompanhe sua própria glicemia",
+      "body": "Veja seus indicadores, registre novas leituras e convide o seu médico para acompanhar com você. Você pode revogar esse acesso quando quiser."
+    },
+    "doctor": {
+      "eyebrow": "Sou médico",
+      "title": "Acompanhe quem confia em você",
+      "body": "Receba pedidos de vínculo, consulte apenas os painéis que os pacientes autorizaram e responda às dúvidas deles em um só lugar."
+    }
   },
   "dashboard": {
     "myDoctors": "Meus médicos",
@@ -442,8 +479,6 @@
     "cancel": "Cancelar",
     "statusPending": "Pendente",
     "statusActive": "Ativo",
-    "myLinks": "Meus vínculos",
-    "noLinks": "Nenhum vínculo encontrado.",
     "statusLabel": "Status",
     "doctorLabel": "Médico",
     "patientLabel": "Paciente",
@@ -461,16 +496,36 @@
     "demoDoctor": "Demonstração",
     "declaredUnverified": "Declarado (não verificado)",
     "crmUfValue": "CRM: {{crm}}/{{uf}}",
-    "myPatients": "Meus pacientes",
-    "noPatients": "Nenhum paciente com vínculo ativo.",
-    "openPatientDetail": "Ver detalhamento",
-    "linkRequests": "Solicitações e histórico de vínculos",
-    "linksLoadFailed": "Não foi possível carregar os vínculos."
+    "linksLoadFailed": "Não foi possível carregar os vínculos.",
+    "linksEyebrow": "Vínculos",
+    "myDoctorsBody": "Médicos que podem ver seus dados. Você pode revogar o acesso a qualquer momento.",
+    "addDoctor": "Adicionar médico",
+    "closeSearch": "Fechar busca",
+    "searchDoctorHelp": "Informe o código do médico ou, se preferir, o CRM com a UF.",
+    "doctorCode": "Código {{code}}",
+    "loadingLinks": "Carregando seus vínculos",
+    "loadingLinksDescription": "Estamos buscando os médicos associados à sua conta.",
+    "noDoctors": {
+      "title": "Nenhum médico vinculado",
+      "description": "Use “Adicionar médico” para encontrar o seu médico pelo código ou pelo CRM."
+    },
+    "revokeConfirm": "Sim, revogar",
+    "keepLink": "Manter vínculo",
+    "revokeDialog": {
+      "eyebrow": "Revogar associação",
+      "titlePatient": "Revogar a associação com {{name}}?",
+      "bodyPatient": "{{name}} deixa de ver seus dados imediatamente e os questionamentos abertos com esse médico são encerrados. O histórico das conversas continua disponível para você.",
+      "titleDoctor": "Revogar a associação com {{name}}?",
+      "bodyDoctor": "Você deixa de ver os dados de {{name}} imediatamente e os questionamentos abertos são encerrados. Um novo vínculo exigirá outra solicitação do paciente."
+    }
   },
   "cscw": {
     "investigations": "Questionamentos",
     "new": "Novo questionamento",
+    "newPatient": "Novo esclarecimento",
+    "newDoctor": "Novo questionamento",
     "open": "Abrir questionamento",
+    "openPatient": "Abrir esclarecimento",
     "close": "Encerrar",
     "send": "Enviar",
     "subject": "Assunto",
@@ -485,9 +540,12 @@
     "popupTitle": "Dias atípicos",
     "popupEmpty": "Nenhum dia atípico encontrado.",
     "popupAsk": "Questionar",
+    "popupAskPatient": "Abrir esclarecimento",
+    "popupAskDoctor": "Questionar",
     "popupApply": "Aplicar filtro",
     "popupClear": "Limpar seleção",
-    "openFailed": "Não foi possível abrir o questionamento.",
+    "openFailed": "Não foi possível abrir a conversa.",
+    "openFailedPatient": "Não foi possível abrir o esclarecimento.",
     "empty": "Nenhum questionamento encontrado.",
     "loading": "Carregando questionamento...",
     "statusLabel": "Status",
@@ -504,16 +562,16 @@
     "popupLoading": "Carregando dias atípicos...",
     "popupError": "Não foi possível carregar os dias atípicos.",
     "retry": "Tentar novamente",
-    "hasInvestigation": "Já possui questionamento",
+    "hasInvestigation": "Já existe uma conversa sobre este dia",
     "viewInDetail": "Ver no detalhamento",
     "popupClearDays": "Limpar seleção de dias",
     "proactivePromptDated": "Identificamos um dia atípico nas suas leituras em {{date}}. Você quer abrir um questionamento com um médico associado?",
     "fromAtypicalDay": "Questionamento a partir de um dia atípico",
-    "noActiveLinkPatient": "Você ainda não tem um médico com vínculo ativo. Use \"Buscar médico\" acima para solicitar uma associação.",
+    "noActiveLinkPatient": "Você ainda não tem um médico com vínculo ativo. Use “Adicionar médico” em Meus médicos para solicitar uma associação.",
     "noActiveLinkDoctor": "Você ainda não tem pacientes com vínculo ativo.",
     "listFailed": "Não foi possível carregar os questionamentos.",
+    "listFailedPatient": "Não foi possível carregar os esclarecimentos.",
     "unreadAria": "{{count}} mensagens não lidas",
-    "unreadCount": "{{count}} não lidas",
     "counterpartDoctor": "Médico",
     "counterpartPatient": "Paciente",
     "openedAt": "Aberto em {{date}}",
@@ -525,19 +583,21 @@
     "originAtypical": "Origem: dia atípico associado",
     "openConversation": "Abrir conversa",
     "sendFailed": "Não foi possível enviar a mensagem.",
-    "closeFailed": "Não foi possível encerrar o questionamento.",
-    "loadFailed": "Não foi possível carregar o questionamento.",
+    "closeFailed": "Não foi possível encerrar a conversa.",
+    "loadFailed": "Não foi possível carregar a conversa.",
     "closedReason": {
       "PARTICIPANT_CLOSED": "Encerrado por um participante",
       "ASSOCIATION_REVOKED": "Encerrado por revogação do vínculo",
       "default": "Encerrado"
     },
-    "messagesLabel": "Mensagens do questionamento",
+    "messagesLabel": "Mensagens da conversa",
     "newMessage": "Nova",
     "closingObservation": "Observação final (opcional)",
     "confirmClose": "Confirmar encerramento",
-    "menuAria": "Questionamentos, {{count}} mensagens não lidas",
-    "proactivePromptBatch": "Identificamos {{count}} dias atípicos nas suas leituras, entre {{first}} e {{last}}. Você quer abrir um questionamento com um médico associado?",
+    "menuAria": "{{label}}, {{count}} mensagens não lidas",
+    "proactivePromptBatch": "Identificamos {{count}} dias atípicos. Escolha quais deseja ver em detalhe ou relacionar a um esclarecimento.",
+    "proactivePromptBatchPatient": "Identificamos {{count}} dias atípicos. Escolha quais deseja ver em detalhe ou relacionar a um esclarecimento.",
+    "proactivePromptDatedPatient": "Identificamos um dia atípico nas suas leituras em {{date}}. Quer abrir um esclarecimento com um médico associado?",
     "viewDays": "Ver os dias",
     "promptRegion": "Convite sobre dias atípicos",
     "popupScopeAll": "{{count}} dias atípicos em todo o histórico do paciente.",
@@ -548,12 +608,53 @@
     "popupOutsideHint": "Dias fora do período exibido ampliam o período do detalhamento ao aplicar o filtro.",
     "previousClassification": "Classificação anterior",
     "originPreviousClassification": "Aberto a partir do dia {{date}}, que era atípico na análise da época. Na análise atual esse dia não é mais classificado como atípico; a conversa e a origem foram preservadas.",
-    "originAtypicalDated": "Origem: dia atípico de {{date}}"
+    "originAtypicalDated": "Origem: dia atípico de {{date}}",
+    "originPreviousShort": "Dia {{date}} (classificação anterior)",
+    "panelEyebrow": "Conversas",
+    "myInvestigations": "Meus esclarecimentos",
+    "panelBodyPatient": "Converse com seus médicos sobre suas leituras e seus dias atípicos.",
+    "panelBodyDoctor": "Dúvidas e conversas abertas com os seus pacientes.",
+    "emptyTitle": "Nenhum questionamento ainda",
+    "emptyTitlePatient": "Nenhum esclarecimento ainda",
+    "emptyTitleDoctor": "Nenhum questionamento ainda",
+    "emptyPatient": "Abra um esclarecimento para conversar com um médico vinculado.",
+    "emptyDoctor": "Quando você ou um paciente abrir um questionamento, ele aparece aqui.",
+    "loadingList": "Carregando questionamentos",
+    "loadingListPatient": "Carregando esclarecimentos",
+    "newTitle": "Novo questionamento",
+    "newTitlePatient": "Novo esclarecimento",
+    "newTitleDoctor": "Novo questionamento",
+    "newBody": "Escolha com quem conversar, dê um assunto e escreva a primeira mensagem.",
+    "associateDays": "Dias atípicos associados (opcional)",
+    "associateDaysHint": "Sem seleção, o esclarecimento fica sem dia atípico relacionado. Marque um ou mais dias para dar contexto à conversa.",
+    "notRelatedAtypical": "Não relacionado a dia atípico",
+    "relatedAtypicalCount_one": "{{count}} dia atípico relacionado",
+    "relatedAtypicalCount_other": "{{count}} dias atípicos relacionados",
+    "clearAtypicalSelection": "Limpar seleção",
+    "noAtypicalAvailable": "Não há dias atípicos disponíveis para associar.",
+    "selectedAtypicalCount_one": "{{count}} dia atípico associado",
+    "selectedAtypicalCount_other": "{{count}} dias atípicos associados",
+    "unreadCount_one": "{{count}} não lida",
+    "unreadCount_other": "{{count}} não lidas",
+    "conversationEyebrow": "Questionamento",
+    "conversationEyebrowPatient": "Esclarecimento",
+    "conversationEyebrowDoctor": "Questionamento",
+    "messagesEyebrow": "Conversa",
+    "messagesTitle": "Mensagens",
+    "messagePlaceholder": "Escreva sua mensagem",
+    "you": "Você",
+    "composerHint": "Ctrl + Enter também envia.",
+    "closeDialogTitle": "Encerrar esta conversa?",
+    "closeDialogBody": "Depois de encerrado, ninguém poderá enviar novas mensagens. O histórico continua disponível para os dois lados.",
+    "keepOpen": "Manter aberto",
+    "awaitingChip": "Aguardando: {{role}}",
+    "promptEyebrow": "Dia atípico",
+    "promptTitle": "Quer conversar sobre isso?",
+    "popupEmptyHint": "Ajuste o período ou veja todo o histórico."
   },
   "notifications": {
     "title": "Notificações",
-    "empty": "Nenhuma notificação",
-    "unread": "{{count}} não lidas",
+    "openItem": "Abrir item da notificação",
     "markRead": "Marcar como lida",
     "types": {
       "association_requested": "Nova solicitação de vínculo",
@@ -561,9 +662,58 @@
       "association_rejected": "Solicitação de vínculo recusada",
       "association_revoked": "Vínculo revogado",
       "investigation_opened": "Novo questionamento",
+      "investigation_opened_patient": "Novo esclarecimento",
       "investigation_message_added": "Nova mensagem no questionamento",
+      "investigation_message_added_patient": "Nova mensagem no esclarecimento",
       "investigation_closed": "Questionamento encerrado",
+      "investigation_closed_patient": "Esclarecimento encerrado",
       "atypical_day_prompt": "Convite para conversar sobre um dia atípico"
+    },
+    "eyebrow": "Atualizações",
+    "emptyTitle": "Tudo em dia",
+    "emptyDescription": "Você não tem notificações não lidas.",
+    "loading": "Carregando notificações",
+    "error": "Não foi possível carregar as notificações.",
+    "unread_one": "{{count}} não lida",
+    "unread_other": "{{count}} não lidas"
+  },
+  "patientHome": {
+    "eyebrow": "Minha conta",
+    "greeting": "Olá, {{name}}",
+    "body": "Aqui você acompanha o resumo das suas leituras, os médicos que podem ver seus dados e as conversas sobre a sua glicemia.",
+    "openPanel": "Abrir meu painel completo",
+    "summary": {
+      "eyebrow": "Resumo pessoal",
+      "title": "Seus números",
+      "body": "Visão consolidada das leituras registradas para você no MyGlico."
+    },
+    "metrics": {
+      "records": {
+        "label": "Minhas leituras",
+        "helper": "Leituras de glicemia disponíveis no seu painel."
+      },
+      "days": {
+        "label": "Dias analisados",
+        "helper": "Dias com indicadores calculados para você."
+      },
+      "issues": {
+        "label": "Alertas de qualidade",
+        "helper": "Leituras que merecem uma revisão."
+      }
+    }
+  },
+  "doctorHome": {
+    "pending": {
+      "eyebrow": "Vínculos",
+      "title": "Solicitações pendentes",
+      "body": "Pacientes que pediram para ser acompanhados por você. Ao aceitar, o painel deles passa a aparecer na sua lista.",
+      "empty": {
+        "title": "Nenhuma solicitação pendente",
+        "description": "Novos pedidos de vínculo aparecem aqui."
+      },
+      "requestedAt": "Solicitado em {{date}}",
+      "count_one": "{{count}} pendente",
+      "count_other": "{{count}} pendentes"
     }
   }
 }

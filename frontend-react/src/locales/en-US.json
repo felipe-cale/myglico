@@ -7,7 +7,8 @@
     "dash": "-",
     "back": "Back",
     "explain": "Explain {{label}}",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "closeDialog": "Close"
   },
   "languageSwitcher": {
     "label": "Language"
@@ -155,7 +156,6 @@
       "copy": "Copy",
       "copied": "Copied",
       "copyAriaLabel": "Copy code {{code}}",
-      "daysObserved": "{{count}} days with readings available",
       "avgPeriod": "Period average",
       "timeInLow": "Time in low",
       "timeInHigh": "Time in high",
@@ -168,7 +168,9 @@
       "emptyAll": {
         "title": "No patients found",
         "description": "Try searching by another name or identifier to continue."
-      }
+      },
+      "daysObserved_one": "{{count}} day with readings available",
+      "daysObserved_other": "{{count}} days with readings available"
     },
     "profileHelp": {
       "eyebrow": "Filter help",
@@ -270,7 +272,6 @@
     },
     "hero": {
       "eyebrow": "Patient detail",
-      "measurementsBadge": "{{count}} measurements",
       "body": "This dashboard consolidates the selected period from the clinical core, with dynamic updates to indicators, records, and charts.",
       "backToOverview": "Back to overview",
       "downloadReport": "Download Glucose Report",
@@ -278,7 +279,17 @@
       "defaultWindow": "Default 30-day window from the most recent available date.",
       "selectedDays": "Selected days ({{count}})",
       "referencePeriod": "Only these days are analyzed. Reference period: {{start}} to {{end}}.",
-      "customWindow": "Custom {{count}}-day period chosen in the filter."
+      "customWindow": "Custom {{count}}-day period chosen in the filter.",
+      "eyebrowSelf": "My dashboard",
+      "bodySelf": "Here are your readings, indicators and charts for the selected period. Adjust the dates to look back at other moments.",
+      "backHome": "Back to home",
+      "measurementsBadge_zero": "No measurements",
+      "measurementsBadge_one": "{{count}} measurement",
+      "measurementsBadge_other": "{{count}} measurements",
+      "availablePeriod": "Data available from {{start}} to {{end}}.",
+      "viewAllHistory": "See full history",
+      "pendingAnalysisNote_one": "{{count}} day with recent readings is still awaiting analysis. Its indicators show up after the next processing run.",
+      "pendingAnalysisNote_other": "{{count}} days with recent readings are still awaiting analysis. Their indicators show up after the next processing run."
     },
     "filter": {
       "eyebrow": "Time filter",
@@ -374,7 +385,8 @@
       },
       "anomalyDays": {
         "label": "Atypical days",
-        "helper": "flagged by the analysis"
+        "helper": "flagged by the analysis",
+        "action": "Click to review and select days"
       }
     },
     "dailyIndicators": {
@@ -388,7 +400,8 @@
       "anomaly": "Atypical",
       "profile": "Day profile",
       "badgeAtypical": "Atypical",
-      "badgeStable": "Stable"
+      "badgeStable": "Stable",
+      "badgePending": "Pending analysis"
     },
     "recentEvents": {
       "eyebrow": "Recent events",
@@ -424,11 +437,35 @@
     "crmUfRequired": "Enter CRM and state (UF) to register a doctor.",
     "privacyRequired": "Please acknowledge the privacy notice to continue.",
     "privacyNotice": "Privacy notice: MyGlico is an academic prototype. Your identification data is stored encrypted and used only to operate the system; glucose readings are shared only with doctors you associate with, and you can revoke that at any time.",
-    "privacyAccept": "I have read and acknowledge the privacy notice."
+    "privacyAccept": "I have read and acknowledge the privacy notice.",
+    "loginEyebrow": "Access",
+    "loginBody": "Use the email and password of your MyGlico account.",
+    "noAccount": "Don't have an account yet?",
+    "registerEyebrow": "Sign up",
+    "registerBody": "Tell us whether you are a patient or a doctor and fill in your details to get started.",
+    "haveAccount": "Already have an account?"
   },
   "landing": {
     "title": "Welcome to MyGlico",
-    "desc": "Glycemic tracking with clear and continuous insights."
+    "desc": "Glycemic tracking with clear and continuous insights.",
+    "hero": {
+      "eyebrow": "For patients and doctors",
+      "title": "Your glucose, closely followed",
+      "body": "Create a patient account to log your readings, understand the days that fall out of pattern and talk to your doctor. If you are a doctor, sign up to follow the patients who authorize a link with you.",
+      "badgePatient": "For patients",
+      "badgeDoctor": "For doctors",
+      "badgeControl": "You decide who sees your data"
+    },
+    "patient": {
+      "eyebrow": "I am a patient",
+      "title": "Follow your own glucose",
+      "body": "See your indicators, log new readings and invite your doctor to follow along. You can revoke that access whenever you want."
+    },
+    "doctor": {
+      "eyebrow": "I am a doctor",
+      "title": "Follow those who trust you",
+      "body": "Receive link requests, see only the dashboards patients authorized and answer their questions in one place."
+    }
   },
   "dashboard": {
     "myDoctors": "My Doctors",
@@ -442,8 +479,6 @@
     "cancel": "Cancel",
     "statusPending": "Pending",
     "statusActive": "Active",
-    "myLinks": "My associations",
-    "noLinks": "No associations found.",
     "statusLabel": "Status",
     "doctorLabel": "Doctor",
     "patientLabel": "Patient",
@@ -461,16 +496,36 @@
     "demoDoctor": "Demo",
     "declaredUnverified": "Declared (not verified)",
     "crmUfValue": "CRM: {{crm}}/{{uf}}",
-    "myPatients": "My patients",
-    "noPatients": "No patients with an active association.",
-    "openPatientDetail": "View details",
-    "linkRequests": "Association requests and history",
-    "linksLoadFailed": "Could not load the associations."
+    "linksLoadFailed": "Could not load the associations.",
+    "linksEyebrow": "Links",
+    "myDoctorsBody": "Doctors who can see your data. You can revoke access at any time.",
+    "addDoctor": "Add doctor",
+    "closeSearch": "Close search",
+    "searchDoctorHelp": "Enter the doctor's code or, if you prefer, the CRM with the state (UF).",
+    "doctorCode": "Code {{code}}",
+    "loadingLinks": "Loading your links",
+    "loadingLinksDescription": "We are fetching the doctors linked to your account.",
+    "noDoctors": {
+      "title": "No linked doctors",
+      "description": "Use “Add doctor” to find your doctor by code or by CRM."
+    },
+    "revokeConfirm": "Yes, revoke",
+    "keepLink": "Keep link",
+    "revokeDialog": {
+      "eyebrow": "Revoke association",
+      "titlePatient": "Revoke the association with {{name}}?",
+      "bodyPatient": "{{name}} stops seeing your data immediately and the open questions with this doctor are closed. The conversation history remains available to you.",
+      "titleDoctor": "Revoke the association with {{name}}?",
+      "bodyDoctor": "You stop seeing {{name}}'s data immediately and open questions are closed. A new link will require another request from the patient."
+    }
   },
   "cscw": {
     "investigations": "Investigations",
     "new": "New Investigation",
+    "newPatient": "New Clarification",
+    "newDoctor": "New Investigation",
     "open": "Open Investigation",
+    "openPatient": "Open clarification",
     "close": "Close",
     "send": "Send",
     "subject": "Subject",
@@ -485,9 +540,12 @@
     "popupTitle": "Atypical days",
     "popupEmpty": "No atypical days found.",
     "popupAsk": "Discuss",
+    "popupAskPatient": "Open clarification",
+    "popupAskDoctor": "Question this day",
     "popupApply": "Apply filter",
     "popupClear": "Clear selection",
-    "openFailed": "Could not open the investigation.",
+    "openFailed": "Could not open the conversation.",
+    "openFailedPatient": "Could not open the clarification.",
     "empty": "No investigations found.",
     "loading": "Loading investigation...",
     "statusLabel": "Status",
@@ -504,16 +562,16 @@
     "popupLoading": "Loading atypical days...",
     "popupError": "Could not load the atypical days.",
     "retry": "Try again",
-    "hasInvestigation": "Already has a question thread",
+    "hasInvestigation": "A conversation about this day already exists",
     "viewInDetail": "View in detail",
     "popupClearDays": "Clear day selection",
     "proactivePromptDated": "We identified an atypical day in your readings on {{date}}. Would you like to open a question thread with an associated doctor?",
     "fromAtypicalDay": "Question thread from an atypical day",
-    "noActiveLinkPatient": "You don't have a doctor with an active association yet. Use \"Search Doctor\" above to request one.",
+    "noActiveLinkPatient": "You don't have a doctor with an active link yet. Use “Add doctor” in My doctors to request an association.",
     "noActiveLinkDoctor": "You don't have patients with an active association yet.",
-    "listFailed": "Could not load the question threads.",
+    "listFailed": "Could not load the questions.",
+    "listFailedPatient": "Could not load the clarifications.",
     "unreadAria": "{{count}} unread messages",
-    "unreadCount": "{{count}} unread",
     "counterpartDoctor": "Doctor",
     "counterpartPatient": "Patient",
     "openedAt": "Opened on {{date}}",
@@ -525,19 +583,21 @@
     "originAtypical": "Origin: associated atypical day",
     "openConversation": "Open conversation",
     "sendFailed": "Could not send the message.",
-    "closeFailed": "Could not close the question thread.",
-    "loadFailed": "Could not load the question thread.",
+    "closeFailed": "Could not close the conversation.",
+    "loadFailed": "Could not load the conversation.",
     "closedReason": {
       "PARTICIPANT_CLOSED": "Closed by a participant",
       "ASSOCIATION_REVOKED": "Closed because the association was revoked",
       "default": "Closed"
     },
-    "messagesLabel": "Question thread messages",
+    "messagesLabel": "Conversation messages",
     "newMessage": "New",
     "closingObservation": "Final note (optional)",
     "confirmClose": "Confirm closing",
-    "menuAria": "Question threads, {{count}} unread messages",
-    "proactivePromptBatch": "We identified {{count}} atypical days in your readings, between {{first}} and {{last}}. Would you like to open a question thread with an associated doctor?",
+    "menuAria": "{{label}}, {{count}} unread messages",
+    "proactivePromptBatch": "We identified {{count}} atypical days. Choose which ones to review or link to a clarification.",
+    "proactivePromptBatchPatient": "We identified {{count}} atypical days. Choose which ones to review or link to a clarification.",
+    "proactivePromptDatedPatient": "We identified an atypical day in your readings on {{date}}. Would you like to open a clarification with a linked doctor?",
     "viewDays": "View the days",
     "promptRegion": "Atypical days invitation",
     "popupScopeAll": "{{count}} atypical days in the patient's full history.",
@@ -548,12 +608,53 @@
     "popupOutsideHint": "Days outside the period shown widen the detail period when the filter is applied.",
     "previousClassification": "Previous classification",
     "originPreviousClassification": "Opened from {{date}}, which was atypical in the analysis at the time. In the current analysis that day is no longer classified as atypical; the conversation and its origin were preserved.",
-    "originAtypicalDated": "Origin: atypical day on {{date}}"
+    "originAtypicalDated": "Origin: atypical day on {{date}}",
+    "originPreviousShort": "{{date}} (previous classification)",
+    "panelEyebrow": "Conversations",
+    "myInvestigations": "My clarifications",
+    "panelBodyPatient": "Talk to your doctors about your readings and your atypical days.",
+    "panelBodyDoctor": "Open questions and conversations with your patients.",
+    "emptyTitle": "No questions yet",
+    "emptyTitlePatient": "No clarifications yet",
+    "emptyTitleDoctor": "No investigations yet",
+    "emptyPatient": "Open a clarification to talk to a linked doctor.",
+    "emptyDoctor": "When you or a patient open a question, it shows up here.",
+    "loadingList": "Loading questions",
+    "loadingListPatient": "Loading clarifications",
+    "newTitle": "New question",
+    "newTitlePatient": "New clarification",
+    "newTitleDoctor": "New investigation",
+    "newBody": "Choose who to talk to, add a subject and write the first message.",
+    "associateDays": "Linked atypical days (optional)",
+    "associateDaysHint": "With no selection, the clarification has no atypical day linked. Select one or more days to give the conversation context.",
+    "notRelatedAtypical": "Not linked to an atypical day",
+    "relatedAtypicalCount_one": "{{count}} atypical day linked",
+    "relatedAtypicalCount_other": "{{count}} atypical days linked",
+    "clearAtypicalSelection": "Clear selection",
+    "noAtypicalAvailable": "There are no atypical days available to link.",
+    "selectedAtypicalCount_one": "{{count}} atypical day linked",
+    "selectedAtypicalCount_other": "{{count}} atypical days linked",
+    "unreadCount_one": "{{count}} unread",
+    "unreadCount_other": "{{count}} unread",
+    "conversationEyebrow": "Question",
+    "conversationEyebrowPatient": "Clarification",
+    "conversationEyebrowDoctor": "Investigation",
+    "messagesEyebrow": "Conversation",
+    "messagesTitle": "Messages",
+    "messagePlaceholder": "Write your message",
+    "you": "You",
+    "composerHint": "Ctrl + Enter also sends.",
+    "closeDialogTitle": "Close this conversation?",
+    "closeDialogBody": "Once closed, nobody can send new messages. The history remains available to both sides.",
+    "keepOpen": "Keep open",
+    "awaitingChip": "Awaiting: {{role}}",
+    "promptEyebrow": "Atypical day",
+    "promptTitle": "Want to talk about it?",
+    "popupEmptyHint": "Adjust the period or see the whole history."
   },
   "notifications": {
     "title": "Notifications",
-    "empty": "No notifications",
-    "unread": "{{count}} unread",
+    "openItem": "Open notification item",
     "markRead": "Mark as read",
     "types": {
       "association_requested": "New association request",
@@ -561,9 +662,58 @@
       "association_rejected": "Association request rejected",
       "association_revoked": "Association revoked",
       "investigation_opened": "New investigation",
+      "investigation_opened_patient": "New clarification",
       "investigation_message_added": "New investigation message",
+      "investigation_message_added_patient": "New clarification message",
       "investigation_closed": "Investigation closed",
+      "investigation_closed_patient": "Clarification closed",
       "atypical_day_prompt": "Invitation to discuss an atypical day"
+    },
+    "eyebrow": "Updates",
+    "emptyTitle": "All caught up",
+    "emptyDescription": "You have no unread notifications.",
+    "loading": "Loading notifications",
+    "error": "We could not load the notifications.",
+    "unread_one": "{{count}} unread",
+    "unread_other": "{{count}} unread"
+  },
+  "patientHome": {
+    "eyebrow": "My account",
+    "greeting": "Hello, {{name}}",
+    "body": "Here you follow a summary of your readings, the doctors who can see your data and the conversations about your glucose.",
+    "openPanel": "Open my full dashboard",
+    "summary": {
+      "eyebrow": "Personal summary",
+      "title": "Your numbers",
+      "body": "A consolidated view of the readings recorded for you in MyGlico."
+    },
+    "metrics": {
+      "records": {
+        "label": "My readings",
+        "helper": "Glucose readings available on your dashboard."
+      },
+      "days": {
+        "label": "Days analyzed",
+        "helper": "Days with indicators calculated for you."
+      },
+      "issues": {
+        "label": "Quality alerts",
+        "helper": "Readings worth reviewing."
+      }
+    }
+  },
+  "doctorHome": {
+    "pending": {
+      "eyebrow": "Links",
+      "title": "Pending requests",
+      "body": "Patients who asked to be followed by you. Once you accept, their dashboard shows up in your list.",
+      "empty": {
+        "title": "No pending requests",
+        "description": "New link requests show up here."
+      },
+      "requestedAt": "Requested on {{date}}",
+      "count_one": "{{count}} pending",
+      "count_other": "{{count}} pending"
     }
   }
 }

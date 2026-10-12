@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.patient_time import local_datetime_to_utc_naive, patient_local_date
 from app.models.entities import GlucoseRecord, GlucoseRecordSource, Patient, ProvenanceEvent
 from app.services.analysis_queue import mark_analysis_pending
+from app.services.daily_metrics import refresh_basic_daily_metrics
 
 
 def _content_hash(payload: object) -> str:
@@ -73,7 +74,11 @@ def create_manual_glucose_record(
                 content_hash=_content_hash(prov_payload),
             )
         )
-        mark_analysis_pending(db, patient.id, patient_local_date(measured_at_utc, patient.timezone), "manual_entry")
+        local_day = patient_local_date(measured_at_utc, patient.timezone)
+        mark_analysis_pending(db, patient.id, local_day, "manual_entry")
+        # The API cannot run the pandas/sklearn pipeline; keep the day's basic
+        # indicators correct now and leave anomaly/cluster to the offline run.
+        refresh_basic_daily_metrics(db, patient.id, patient.timezone, local_day)
         db.commit()
         db.refresh(glucose_record)
         return glucose_record

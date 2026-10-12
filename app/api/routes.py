@@ -134,6 +134,7 @@ class InvestigationOpenPayload(BaseModel):
     doctor_id: str | None = Field(default=None, min_length=36, max_length=36)
     patient_id: str | None = Field(default=None, min_length=36, max_length=36)
     atypical_day_event_id: str | None = Field(default=None, min_length=36, max_length=36)
+    atypical_day_event_ids: list[str] = Field(default_factory=list, max_length=100)
     title: str = Field(min_length=1, max_length=180)
     initial_message: str = Field(min_length=1, max_length=10000)
 
@@ -471,9 +472,12 @@ def _investigation_summary(db: Session, item, context_role: str) -> dict[str, ob
                        "short_id": patient.short_id if patient else None,
                        "display_name": patient.display_name if patient else None}
     title = decrypt_field(item.title_encrypted, table="investigations", column="title", record_id=item.id)
-    origin = None
-    if item.atypical_day_event_id:
-        historical_indicator = db.get(DailyIndicator, item.atypical_day_event_id)
+    origins = []
+    origin_ids = [row.daily_indicator_id for row in item.atypical_days]
+    if not origin_ids and item.atypical_day_event_id:
+        origin_ids = [item.atypical_day_event_id]
+    for origin_id in origin_ids:
+        historical_indicator = db.get(DailyIndicator, origin_id)
         if historical_indicator is not None and historical_indicator.patient_id == item.patient_id:
             latest_run = get_latest_patient_analytics_run(db, item.patient_id)
             current_flag = False
@@ -484,16 +488,17 @@ def _investigation_summary(db: Session, item, context_role: str) -> dict[str, ob
                     DailyIndicator.indicator_date == historical_indicator.indicator_date,
                     DailyIndicator.anomaly_flag.is_(True),
                 ).limit(1)) is not None
-            origin = {
+            origins.append({
                 "indicator_id": historical_indicator.id,
                 "date": historical_indicator.indicator_date.isoformat(),
                 "analysis_run_id": historical_indicator.analysis_run_id,
                 "is_current_classification": current_flag,
-            }
+            })
+    origin = origins[0] if origins else None
     return {
         "id": item.id, "patient_id": item.patient_id, "doctor_id": item.doctor_id,
         "association_id": item.association_id, "atypical_day_event_id": item.atypical_day_event_id,
-        "origin": origin,
+        "origin": origin, "origins": origins,
         "title": title, "status": item.status.lower(), "awaiting_role": item.awaiting_role.lower() if item.awaiting_role else None,
         "opened_by_role": item.opened_by_role.lower(), "opened_by_domain_id": item.opened_by_domain_id,
         "opened_at": item.opened_at.isoformat(), "closed_at": item.closed_at.isoformat() if item.closed_at else None,
@@ -511,6 +516,7 @@ def api_investigation_open(
         item = open_investigation(
             db, principal, doctor_id=payload.doctor_id, patient_id=payload.patient_id,
             atypical_day_event_id=payload.atypical_day_event_id,
+            atypical_day_event_ids=payload.atypical_day_event_ids,
             title=payload.title, initial_message=payload.initial_message,
         )
     except InvestigationNotFound as exc:
@@ -827,24 +833,34 @@ def api_dashboard(
     principal: SessionPrincipal = Depends(require_session),
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
-    if principal.patient is None:
-        raise HTTPException(status_code=403, detail="Patient access required.")
-    patient_id = principal.patient.id
+    patient_ids = _scoped_patient_ids(db, principal)
     return {
         "metrics": {
-            "patient_count": 1,
+            "patient_count": len(patient_ids),
             "normalized_count": db.scalar(
-                select(func.count(GlucoseRecord.id)).where(GlucoseRecord.patient_id == patient_id)
+                select(func.count(GlucoseRecord.id)).where(GlucoseRecord.patient_id.in_(patient_ids))
             ) or 0,
             "indicator_count": db.scalar(
-                select(func.count(DailyIndicator.id)).where(DailyIndicator.patient_id == patient_id)
+                select(func.count(DailyIndicator.id)).where(DailyIndicator.patient_id.in_(patient_ids))
             ) or 0,
             "issue_count": db.scalar(
-                select(func.count(DataQualityIssue.id)).where(DataQualityIssue.patient_id == patient_id)
+                select(func.count(DataQualityIssue.id)).where(DataQualityIssue.patient_id.in_(patient_ids))
             ) or 0,
         },
         "links": {"latest_batch": [], "latest_run": []},
     }
+
+
+def _scoped_patient_ids(db: Session, principal: SessionPrincipal) -> list[str]:
+    """Patients the principal may list: itself, or a doctor's ACTIVE links only."""
+    if principal.patient is not None:
+        return [principal.patient.id]
+    if principal.doctor is not None:
+        return list(db.scalars(select(PatientDoctorLink.patient_id).where(
+            PatientDoctorLink.doctor_id == principal.doctor.id,
+            PatientDoctorLink.status == "ACTIVE",
+        )))
+    raise HTTPException(status_code=403, detail="Patient or doctor access required.")
 
 
 def _require_patient_access(db: Session, patient_id: str, principal: SessionPrincipal) -> Patient:
@@ -870,15 +886,13 @@ def api_patients(
     principal: SessionPrincipal = Depends(require_session),
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
-    if principal.patient is None:
-        raise HTTPException(status_code=403, detail="Patient access required.")
     return get_paginated_patients(
         db,
         page=page,
         page_size=page_size,
         query=q,
         signal=signal,
-        patient_id=principal.patient.id,
+        patient_ids=_scoped_patient_ids(db, principal),
     )
 
 

@@ -79,7 +79,7 @@ os.environ["MYGLICO_NOTIFICATION_DISPATCHER"] = "off"
 if "app.core.config" in sys.modules:
     sys.modules["app.core.config"].get_settings.cache_clear()
 if "app.db.session" in sys.modules:
-    _bound = str(sys.modules["app.db.session"].engine.url)
+    _bound = sys.modules["app.db.session"].engine.url.render_as_string(hide_password=False)
     if _bound != INTEGRATION_DB_URL:
         raise pytest.UsageError(
             "app.db.session was imported before tests/integration/conftest.py with another "
@@ -119,7 +119,9 @@ def app(prepared_database: Path):
     from app.db.session import engine
     from app.main import app as fastapi_app
 
-    assert str(engine.url) == INTEGRATION_DB_URL, "engine is not bound to the integration database"
+    assert engine.url.render_as_string(hide_password=False) == INTEGRATION_DB_URL, (
+        "engine is not bound to the integration database"
+    )
     yield fastapi_app
     engine.dispose()
 
@@ -150,14 +152,57 @@ def raw_sqlite() -> sqlite3.Connection:
     return connection
 
 
+IS_SQLITE = INTEGRATION_DB_URL.startswith("sqlite")
+_raw_engine = None
+
+
 def raw_execute(sql: str, params: tuple = ()) -> list[tuple]:
-    conn = raw_sqlite()
+    """Run SQL outside the ORM. Queries use SQLite's ``?`` placeholders."""
+    if IS_SQLITE:
+        conn = raw_sqlite()
+        try:
+            rows = conn.execute(sql, params).fetchall()
+            conn.commit()
+            return rows
+        finally:
+            conn.close()
+    global _raw_engine
+    if _raw_engine is None:
+        from sqlalchemy import create_engine
+
+        _raw_engine = create_engine(INTEGRATION_DB_URL, future=True)
+    conn = _raw_engine.raw_connection()
     try:
-        rows = conn.execute(sql, params).fetchall()
+        cursor = conn.cursor()
+        cursor.execute(sql.replace("?", "%s"), params or None)
+        rows = list(cursor.fetchall()) if cursor.description else []
         conn.commit()
         return rows
     finally:
         conn.close()
+
+
+def table_columns(table: str) -> list[str]:
+    if IS_SQLITE:
+        return [row[1] for row in raw_execute(f"PRAGMA table_info({table})")]
+    return [row[0] for row in raw_execute(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema = DATABASE() AND table_name = ? ORDER BY ordinal_position",
+        (table,),
+    )]
+
+
+def _create_failing_trigger(name: str, event: str, table: str, when: str, message: str) -> None:
+    if IS_SQLITE:
+        raw_execute(
+            f"CREATE TRIGGER {name} BEFORE {event} ON {table} WHEN {when} "
+            f"BEGIN SELECT RAISE(ABORT, '{message}'); END"
+        )
+    else:
+        raw_execute(
+            f"CREATE TRIGGER {name} BEFORE {event} ON {table} FOR EACH ROW BEGIN "
+            f"IF {when} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '{message}'; END IF; END"
+        )
 
 
 @dataclass
@@ -374,12 +419,9 @@ class World:
     @staticmethod
     @contextmanager
     def failing_insert(table: str, when: str = "1", message: str = "forced integration failure") -> Iterator[None]:
-        """Install a SQLite trigger that aborts matching INSERTs for the duration of the block."""
+        """Install a trigger that aborts matching INSERTs for the duration of the block."""
         name = f"it_fail_{uuid.uuid4().hex[:10]}"
-        raw_execute(
-            f"CREATE TRIGGER {name} BEFORE INSERT ON {table} WHEN {when} "
-            f"BEGIN SELECT RAISE(ABORT, '{message}'); END"
-        )
+        _create_failing_trigger(name, "INSERT", table, when, message)
         try:
             yield
         finally:
@@ -389,10 +431,7 @@ class World:
     @contextmanager
     def failing_update(table: str, when: str = "1", message: str = "forced integration failure") -> Iterator[None]:
         name = f"it_failu_{uuid.uuid4().hex[:10]}"
-        raw_execute(
-            f"CREATE TRIGGER {name} BEFORE UPDATE ON {table} WHEN {when} "
-            f"BEGIN SELECT RAISE(ABORT, '{message}'); END"
-        )
+        _create_failing_trigger(name, "UPDATE", table, when, message)
         try:
             yield
         finally:

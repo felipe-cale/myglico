@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import InvestigationOrigin from "../components/InvestigationOrigin";
+import ConfirmDialog from "../components/ConfirmDialog";
+import StateBlock from "../components/StateBlock";
 import { fetchInvestigationDetail, sendInvestigationMessage, closeInvestigation, readInvestigation } from "../api";
 
 function formatDateTime(value, locale) {
@@ -88,8 +90,7 @@ export default function InvestigationPage() {
     }
   };
 
-  const handleClose = async (e) => {
-    e.preventDefault();
+  const handleClose = async () => {
     try {
       const payload = { version: inv?.version };
       if (observation.trim()) payload.observation = observation.trim();
@@ -104,70 +105,118 @@ export default function InvestigationPage() {
   };
 
   if (!inv) {
-    return loadError
-      ? <div className="react-page" role="alert">{t("cscw.loadFailed")}</div>
-      : <div className="react-page" role="status">{t("cscw.loading")}</div>;
+    return loadError ? (
+      <div className="react-page" role="alert">
+        <StateBlock title={t("cscw.loadFailed")} tone="danger" />
+      </div>
+    ) : (
+      <div className="react-page" role="status">
+        <StateBlock title={t("cscw.loading")} tone="info" />
+      </div>
+    );
   }
 
   const roleLabel = (role) => (role ? t(`cscw.roles.${role}`, { defaultValue: role }) : t("cscw.nobody"));
+  const isPatient = inv.counterpart?.role === "doctor";
   const counterpartName = inv.counterpart?.name || inv.counterpart?.display_name || inv.counterpart?.short_id;
+  const ownRole = inv.counterpart?.role === "doctor" ? "patient" : "doctor";
 
   return (
-    <div className="react-page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>{inv.title}</h2>
-        <Link to="/dashboard#investigations">{t("common.back")}</Link>
-      </div>
-      {counterpartName && (
-        <p>{t(inv.counterpart?.role === "doctor" ? "cscw.counterpartDoctor" : "cscw.counterpartPatient")}: {counterpartName}</p>
-      )}
-      <p>{t("cscw.statusLabel")}: {t(`cscw.status.${inv.status}`, { defaultValue: inv.status })} | {t("cscw.awaiting")}: {roleLabel(inv.awaiting_role)}</p>
-      <InvestigationOrigin investigation={inv} />
-      {inv.status === "closed" && (
-        <p className="react-investigation-closed" role="status">
-          {t(`cscw.closedReason.${inv.closed_reason}`, { defaultValue: t("cscw.closedReason.default") })}
-          {inv.closed_at ? ` · ${formatDateTime(inv.closed_at, i18n.language)}` : ""}
-        </p>
-      )}
-
-      <ol className="react-message-list" aria-label={t("cscw.messagesLabel")}>
-        {messages.map((m) => {
-          const isNew = newMessageIds.has(m.id);
-          return (
-            <li key={m.id} className={`react-message${isNew ? " is-new" : ""}`}>
-              <div className="react-message__meta">
-                <strong>{roleLabel(m.author_role)}</strong>
-                <small>{formatDateTime(m.created_at, i18n.language)}</small>
-                {isNew && <span className="react-unread-badge">{t("cscw.newMessage")}</span>}
-              </div>
-              <p>{m.content}</p>
-            </li>
-          );
-        })}
-      </ol>
-
-      {actionError && <p role="alert">{actionError}</p>}
-
-      {inv.status === 'open' && !closing && (
-        <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', marginTop: '1rem' }}>
-          <input type="text" value={newMsg} onChange={e => setNewMsg(e.target.value)} style={{ flex: 1, padding: '10px' }} aria-label={t("cscw.message")} />
-          <button type="submit" className="react-button" style={{ background: '#005fcc', color: '#fff', border: 'none' }}>{t("cscw.send")}</button>
-          <button type="button" onClick={() => setClosing(true)} className="react-button">{t("cscw.close")}</button>
-        </form>
-      )}
-
-      {inv.status === 'open' && closing && (
-        <form onSubmit={handleClose} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '1rem' }}>
-          <label className="react-select-field">
-            <span>{t("cscw.closingObservation")}</span>
-            <textarea value={observation} onChange={e => setObservation(e.target.value)} rows={3} maxLength={2000} />
-          </label>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button type="submit" className="react-button">{t("cscw.confirmClose")}</button>
-            <button type="button" className="react-button react-button--ghost" onClick={() => setClosing(false)}>{t("dashboard.cancel")}</button>
+    <div className="react-page react-conversation">
+      <section className="react-panel react-conversation__header">
+        <div className="react-panel__header">
+          <div className="react-panel__header-copy">
+            <p className="react-eyebrow">{t(isPatient ? "cscw.conversationEyebrowPatient" : "cscw.conversationEyebrowDoctor")}</p>
+            <h2>{inv.title}</h2>
+            {counterpartName && (
+              <p>{t(inv.counterpart?.role === "doctor" ? "cscw.counterpartDoctor" : "cscw.counterpartPatient")}: <strong>{counterpartName}</strong></p>
+            )}
           </div>
-        </form>
-      )}
+          <Link to="/dashboard#investigations" className="react-button react-button--ghost">{t("common.back")}</Link>
+        </div>
+        <div className="react-chip-row react-conversation__chips">
+          <span className={`react-status-chip react-status-chip--${inv.status}`}>{t(`cscw.status.${inv.status}`, { defaultValue: inv.status })}</span>
+          {inv.status === "open" ? (
+            <span className="react-badge react-badge--soft react-badge--compact">{t("cscw.awaitingChip", { role: roleLabel(inv.awaiting_role) })}</span>
+          ) : null}
+          <InvestigationOrigin investigation={inv} variant="chip" />
+        </div>
+        {inv.status === "closed" && (
+          <p className="react-investigation-closed" role="status">
+            {t(`cscw.closedReason.${inv.closed_reason}`, { defaultValue: t("cscw.closedReason.default") })}
+            {inv.closed_at ? ` · ${formatDateTime(inv.closed_at, i18n.language)}` : ""}
+          </p>
+        )}
+      </section>
+
+      <section className="react-panel react-conversation__body" aria-labelledby="conversation-messages-title">
+        <div className="react-panel__header">
+          <div className="react-panel__header-copy">
+            <p className="react-eyebrow">{t("cscw.messagesEyebrow")}</p>
+            <h2 id="conversation-messages-title">{t("cscw.messagesTitle")}</h2>
+          </div>
+        </div>
+        <ol className="react-message-list" aria-label={t("cscw.messagesLabel")}>
+          {messages.map((m) => {
+            const isNew = newMessageIds.has(m.id);
+            const isOwn = m.author_role === ownRole;
+            return (
+              <li key={m.id} className={`react-message${isOwn ? " is-own" : ""}${m.author_role === "system" ? " is-system" : ""}${isNew ? " is-new" : ""}`}>
+                <div className="react-message__meta">
+                  <strong>{isOwn ? t("cscw.you") : roleLabel(m.author_role)}</strong>
+                  <small>{formatDateTime(m.created_at, i18n.language)}</small>
+                  {isNew && <span className="react-badge react-badge--count">{t("cscw.newMessage")}</span>}
+                </div>
+                <p>{m.content}</p>
+              </li>
+            );
+          })}
+        </ol>
+
+        {actionError && !closing && <p className="react-form-message is-error" role="alert">{actionError}</p>}
+
+        {inv.status === "open" && (
+          <form onSubmit={handleSend} className="react-composer">
+            <label className="react-field react-composer__field">
+              <span>{t("cscw.message")}</span>
+              <textarea
+                value={newMsg}
+                onChange={e => setNewMsg(e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    event.currentTarget.form?.requestSubmit();
+                  }
+                }}
+                rows={3}
+                placeholder={t("cscw.messagePlaceholder")}
+              />
+            </label>
+            <div className="react-composer__actions">
+              <small>{t("cscw.composerHint")}</small>
+              <button type="button" onClick={() => { setActionError(""); setClosing(true); }} className="react-button react-button--danger">{t("cscw.close")}</button>
+              <button type="submit" className="react-button">{t("cscw.send")}</button>
+            </div>
+          </form>
+        )}
+      </section>
+
+      <ConfirmDialog
+        open={inv.status === "open" && closing}
+        eyebrow={t(isPatient ? "cscw.conversationEyebrowPatient" : "cscw.conversationEyebrowDoctor")}
+        title={t("cscw.closeDialogTitle")}
+        description={t("cscw.closeDialogBody")}
+        confirmLabel={t("cscw.confirmClose")}
+        cancelLabel={t("cscw.keepOpen")}
+        error={actionError}
+        onConfirm={handleClose}
+        onCancel={() => setClosing(false)}
+      >
+        <label className="react-field">
+          <span>{t("cscw.closingObservation")}</span>
+          <textarea value={observation} onChange={e => setObservation(e.target.value)} rows={3} maxLength={2000} />
+        </label>
+      </ConfirmDialog>
     </div>
   );
 }

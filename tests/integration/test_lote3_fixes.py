@@ -86,6 +86,9 @@ def test_aut_ca_21_anomaly_classification_is_stable_across_crypto_protection(wor
     expected = {day for day, anomalous in baseline if anomalous}
     assert expected == {date(2026, 6, 10)}
 
+    # Created before the session opens: under MySQL REPEATABLE READ a transaction
+    # does not see rows another connection commits after its snapshot starts.
+    doctor = world.doctor()
     with SessionLocal() as db:
         account = db.scalar(select(UserAccount).where(UserAccount.id == world.account_id(patient)))
         domain = db.get(Patient, patient.id)
@@ -104,7 +107,6 @@ def test_aut_ca_21_anomaly_classification_is_stable_across_crypto_protection(wor
                 domain.email, table="patients", column="email", record_id=domain.id,
             )
 
-        doctor = world.doctor()
         doctor_row = db.scalar(select(Doctor).where(Doctor.id == doctor.id))
         assert doctor_row is not None
         doctor_name = decrypt_field(doctor_row.name_encrypted, table="doctors", column="name", record_id=doctor_row.id)

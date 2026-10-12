@@ -45,7 +45,7 @@ test.describe("Group 10 - three languages and the clinical PDF", () => {
 
       await page.goto(ROUTES.landing);
       await switchLanguage(page, lang);
-      await expect(page.getByRole("heading", { name: t("overview.hero.title", lang) })).toBeVisible();
+      await expect(page.getByRole("heading", { name: t("landing.hero.title", lang) })).toBeVisible();
       await page.getByRole("link", { name: tx("auth.register", lang) }).first().click();
       await expect(page.getByRole("button", { name: tx("auth.submitRegister", lang) })).toBeVisible();
       expect(await page.locator("body").innerText()).not.toMatch(RAW_KEY);
@@ -57,7 +57,7 @@ test.describe("Group 10 - three languages and the clinical PDF", () => {
       await page.getByRole("button", { name: tx("auth.submitLogin", lang) }).click();
       await expect(page).toHaveURL(/\/dashboard$/);
       await expect(page.getByText(t("dashboard.myDoctors", lang)).first()).toBeVisible();
-      await expect(page.getByText(t("cscw.investigations", lang)).first()).toBeVisible();
+      await expect(page.locator(".react-nav").getByText(t("cscw.investigations", lang))).toBeVisible();
       await expect(page.getByText(t("dashboard.status.active", lang)).first()).toBeVisible();
       const body = await page.locator("body").innerText();
       expect(body).not.toMatch(RAW_KEY);
@@ -126,13 +126,13 @@ test.describe("Group 10 - three languages and the clinical PDF", () => {
     await page.goto(ROUTES.landing);
     for (const lang of LANGS) {
       await switchLanguage(page, lang);
-      await expect(page.getByRole("heading", { name: t("overview.hero.title", lang) })).toBeVisible();
-      await expect(page.getByText(t("overview.hero.body", lang))).toBeVisible();
+      await expect(page.getByRole("heading", { name: t("landing.hero.title", lang) })).toBeVisible();
+      await expect(page.getByText(t("landing.hero.body", lang))).toBeVisible();
       await expect(page.getByRole("link", { name: tx("auth.login", lang) }).first()).toBeVisible();
       await expect(page.getByRole("link", { name: tx("auth.register", lang) }).first()).toBeVisible();
       expect(await page.locator("body").innerText()).not.toMatch(RAW_KEY);
     }
-    expect(t("overview.hero.title", "pt-BR")).not.toBe(t("overview.hero.title", "en-US"));
+    expect(t("landing.hero.title", "pt-BR")).not.toBe(t("landing.hero.title", "en-US"));
     expect(clinical).toEqual([]);
   });
 

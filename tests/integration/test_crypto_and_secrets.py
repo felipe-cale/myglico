@@ -12,13 +12,13 @@ import os
 
 import pytest
 
-from conftest import World, raw_execute
+from conftest import World, raw_execute, table_columns
 
 SENSITIVE_VALUES = ("e2e.myglico.invalid", "Paciente A", "9000001")  # e-mail domain, display name, CRM
 
 
 def _all_cells(table: str) -> list[tuple[str, object]]:
-    columns = [row[1] for row in raw_execute(f"PRAGMA table_info({table})")]
+    columns = table_columns(table)
     cells = []
     for row in raw_execute(f"SELECT * FROM {table}"):
         cells.extend(zip(columns, row))

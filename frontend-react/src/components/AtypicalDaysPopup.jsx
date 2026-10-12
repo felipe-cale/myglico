@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { fetchAtypicalDays } from "../api";
+import { useAuth } from "../contexts/AuthContext";
+import StateBlock from "./StateBlock";
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
@@ -12,9 +14,11 @@ function formatDay(value, locale) {
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(parsed);
 }
 
-export default function AtypicalDaysPopup({ patientId, appliedDates = [], activeStart = "", activeEnd = "", onApplyDates, onClearDays }) {
+export default function AtypicalDaysPopup({ patientId, appliedDates = [], activeStart = "", activeEnd = "", onApplyDates, onClearDays, renderTrigger }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const isPatient = Boolean(session?.patient?.id);
   const [open, setOpen] = useState(false);
   const [days, setDays] = useState([]);
   const [status, setStatus] = useState("idle");
@@ -125,9 +129,11 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
 
   return (
     <>
-      <button type="button" ref={triggerRef} onClick={openPopup} className="react-button react-button--ghost" aria-haspopup="dialog">
-        {t("cscw.popupButton")}
-      </button>
+      {renderTrigger ? renderTrigger(openPopup, triggerRef) : (
+        <button type="button" ref={triggerRef} onClick={openPopup} className="react-button react-button--ghost" aria-haspopup="dialog">
+          {t("cscw.popupButton")}
+        </button>
+      )}
 
       {open && (
         <div
@@ -145,7 +151,10 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
             ref={dialogRef}
           >
             <div className="react-dialog__header">
-              <h3 id="atypical-days-title" ref={headingRef} tabIndex={-1}>{t("cscw.popupTitle")}</h3>
+              <div>
+                <p className="react-eyebrow">{t("cscw.promptEyebrow")}</p>
+                <h3 id="atypical-days-title" ref={headingRef} tabIndex={-1}>{t("cscw.popupTitle")}</h3>
+              </div>
               <button type="button" className="react-dialog__close" onClick={close} aria-label={t("cscw.popupCloseAria")}>
                 ×
               </button>
@@ -159,15 +168,15 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
                   loadData();
                 }}
               >
-                <label>
+                <label className="react-field">
                   <span>{t("patientDetail.filter.startDate")}</span>
                   <input type="date" value={rangeStart} onChange={(event) => setRangeStart(event.target.value)} />
                 </label>
-                <label>
+                <label className="react-field">
                   <span>{t("patientDetail.filter.endDate")}</span>
                   <input type="date" value={rangeEnd} onChange={(event) => setRangeEnd(event.target.value)} />
                 </label>
-                {invalidRange && <small role="alert">{t("patientDetail.filter.invalidRange")}</small>}
+                {invalidRange && <small className="react-form-message is-error" role="alert">{t("patientDetail.filter.invalidRange")}</small>}
               </form>
 
               <div className="react-atypical-scope">
@@ -203,16 +212,23 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
                 </div>
               )}
 
-              {status === "loading" && <p role="status">{t("cscw.popupLoading")}</p>}
-              {status === "error" && (
-                <div role="alert" className="react-atypical-error">
-                  <p>{t("cscw.popupError")}</p>
-                  <button type="button" className="react-button react-button--ghost" onClick={loadData}>
-                    {t("cscw.retry")}
-                  </button>
+              {status === "loading" && (
+                <div role="status">
+                  <StateBlock title={t("cscw.popupLoading")} tone="info" />
                 </div>
               )}
-              {status === "ready" && days.length === 0 && <p>{t("cscw.popupEmpty")}</p>}
+              {status === "error" && (
+                <div role="alert" className="react-atypical-error">
+                  <StateBlock title={t("cscw.popupError")} tone="danger">
+                    <button type="button" className="react-button react-button--ghost react-button--compact" onClick={loadData}>
+                      {t("cscw.retry")}
+                    </button>
+                  </StateBlock>
+                </div>
+              )}
+              {status === "ready" && days.length === 0 && (
+                <StateBlock title={t("cscw.popupEmpty")} description={t("cscw.popupEmptyHint")} />
+              )}
               {status === "ready" && days.length > 0 && (
                 <ul className="react-atypical-list">
                   {days.map((d) => (
@@ -230,7 +246,7 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
                           {t("cscw.viewInDetail")}
                         </button>
                         <button type="button" className="react-button" onClick={() => handleOpenInv(d.indicator_id)}>
-                          {t("cscw.popupAsk")}
+                          {t(isPatient ? "cscw.popupAskPatient" : "cscw.popupAskDoctor")}
                         </button>
                       </div>
                     </li>
@@ -238,7 +254,7 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
                 </ul>
               )}
 
-              <div className="react-actions">
+              <div className="react-actions react-dialog__actions">
                 <button type="button" onClick={handleApply} disabled={selectedDates.size === 0} className="react-button">
                   {t("cscw.popupApply")}
                 </button>
