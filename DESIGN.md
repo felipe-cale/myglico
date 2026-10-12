@@ -325,8 +325,8 @@ restates the heading ("Período" over "Escolher o período").
 
 Content sits in a centered container (max 1240 px, 20 px padding, 16 px
 below 900 px). Pages stack panels with a 24 px gap (16 px below 640 px).
-Heroes split into a 1.15fr copy column and a 0.85fr visual or summary column
-(landing and patient detail only).
+Heroes split into a 1.15fr copy column and a 0.85fr visual column (landing
+only).
 
 **Page header.** App pages open with a page header on the background, outside
 any panel: the `h1` in the headline role plus at most one body line (60ch), no
@@ -346,6 +346,36 @@ origin line is hidden below 1280 px. The patient list is a `react-table`
 right-aligned with `is-num`, an "Abrir painel" row link) and becomes divider
 rows below 900 px.
 
+**Patient detail** follows one reading path, patient at 390 px first and
+doctor at 1440 px:
+1. Page header: "Back" text link above the name `h1`, a meta line
+   ("data-07 · 97 medições"; the source file is doctor-only) and the actions.
+   Patient: "Registrar leitura" (primary, opens and focuses the entry form) +
+   "Baixar relatório" (ghost); doctor: "Baixar relatório" (primary).
+2. Period bar (`.react-period-bar`): one panel with the range in data-md
+   ("Período: 01/04/1989 – 30/04/1989"), meta lines for the window kind and
+   the available history, and ghost actions "Alterar período" (disclosure with
+   the date form, open by default when the window is custom or days are
+   selected) and "Ver todo o histórico". The adjusted-period notice, the
+   selected-day chips and the single pending-analysis note live inside it.
+3. Period summary (`.react-period-summary`): key figures (average, days
+   observed or day measurements, and the atypical-days action tile that opens
+   the multi-select) next to the time-in-range block (donut + legend rows; the
+   only place the three percentages appear; in day mode the legend adds the
+   reading counts as meta). Two columns at ≥900 px, three figures in a row at
+   ≥1080 px. In day mode the `h2` carries the date.
+4. Trend, full width, with the period / day segmented control in its header
+   and the day strip below; then the extremes-by-hour chart (200 px tall).
+5. Data panels (daily indicators, recent records): tables on desktop; below
+   640 px each collapses into a closed disclosure ("Evolução diária (30
+   dias)") with divider rows.
+6. Patient: the manual entry panel, collapsed to its header row. Doctor: the
+   "Acesso a este paciente" section with the danger text "Revogar associação".
+When the window has no analysed day (only pending days or none), one state
+block ("Ainda não há dias analisados neste período", primary "Ver todo o
+histórico", plus the atypical-days button) replaces the summary and charts;
+the period bar and data panels stay.
+
 Detail grids use two equal columns.
 
 ### Spacing scale
@@ -357,9 +387,9 @@ Detail grids use two equal columns.
 - Chip and button clusters: 8 px.
 - Interactive targets stay at least 44 px tall.
 
-Breakpoints: 1080 px (heroes and insights collapse), 900 px (two-column
-grids stack, navigation moves to the drawer), 640 px (phone layout: cards
-replace tables, full-width buttons), 360 px (single-column mobile cards).
+Breakpoints: 1080 px (heroes collapse, rails stack), 900 px (two-column
+grids stack, navigation moves to the drawer), 640 px (phone layout: divider
+rows and closed disclosures replace tables, full-width header buttons).
 The patient side must work at 390 px without horizontal scroll.
 
 ## Elevation & Depth
@@ -409,9 +439,14 @@ Pills with bold 14 px labels, gentle lift on hover.
   `aria-label` (copy code). Icons are inline SVG with a 2 px stroke.
 
 ### Chips and Badges
-- **Chips:** ghost pills used as filters and segmented toggles; the active
+- **Chips:** ghost pills used as filters and removable selections; the active
   chip takes the blue selection tint (`state-selected-bg`, blue border, deep
   blue text).
+- **Segmented control** (`.react-segmented`): an exclusive view toggle
+  (period / selected day). `role="group"` with `aria-pressed` buttons inside
+  one white hairline pill (4 px inset); the pressed button takes the selection
+  tint. Right-aligned in the panel header on desktop, full width under the
+  heading below 900 px. Never the gradient.
 - **Badges:** small pills (1.75 rem) in tinted variants (brand, green, blue,
   soft, pending, atypical); counters use a compact round badge (caption).
 
@@ -447,6 +482,16 @@ line stating that MyGlico does not diagnose.
   the visible label right-aligned on desktop and rings the whole row on
   keyboard focus. Ended items (revoked, rejected, cancelled links) collapse
   behind a `<details>` disclosure ("Vínculos anteriores (n)").
+- **Disclosures** (`.react-disclosure`, `.react-disclosure-toggle`): secondary
+  content opens on demand behind a `<details>` summary or an
+  `aria-expanded` button with a chevron that turns 180°. Uses: the period date
+  form, the manual entry form (opened by `#new-reading` or the header CTA),
+  its optional fields ("Mais detalhes (opcional)"), and phone data panels,
+  whose summary carries the `h2` with a count.
+- **Key figures** (`.react-figure`): label (label role), value (data-xl,
+  unit in meta), helper (meta); no card. An interactive figure (atypical
+  days) is a white hairline tile (18 px) that rings on focus, with its action
+  in deep blue; its accessible name is "{label}: {value}. {action}".
 - **Inline forms are flat:** a sub-panel opened inside a panel (new
   conversation, doctor search) is bracketed by hairlines with 16 px padding;
   only true overlays (the atypical-day multi-select) keep a surface.
@@ -468,8 +513,11 @@ line stating that MyGlico does not diagnose.
 
 ### Charts
 Recharts with 12 px axis ticks, 14 px legends and tooltips. Trend charts start
-the Y axis at 0 and extend to at least 260 mg/dL so the 250 reference line is
-always visible. Reference lines use the glycemic range colors; the selected
+the Y axis at 0 and end on a round top of at least 300 mg/dL (next multiple
+of 50 above the data); the ticks are exactly 0, 70, 180, 250 and that top, so
+the reference values read as labels and 250 never collides with the top.
+The time-in-range legend uses divider rows, with dot colors from the
+`--glyco-*` tokens. Reference lines use the glycemic range colors; the selected
 point is a solid trust-blue dot.
 
 ### State Blocks

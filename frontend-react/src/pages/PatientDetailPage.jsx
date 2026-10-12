@@ -23,9 +23,14 @@ import AtypicalDaysPopup from "../components/AtypicalDaysPopup";
 import Pagination from "../components/Pagination";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ManualGlucoseEntryForm from "../components/ManualGlucoseEntryForm";
+import { ArrowLeftIcon, ChevronDownIcon } from "../components/Icons";
 import { useAuth } from "../contexts/AuthContext";
+import useMediaQuery from "../hooks/useMediaQuery";
 
+// Recharts paints SVG attributes, so the glycemic tokens (--glyco-*) are mirrored here.
 const PIE_COLORS = ["#e35d73", "#1eab69", "#f4a93d"];
+const RANGE_TONES = ["low", "in-range", "high"];
+const TREND_REFERENCE_TICKS = [0, 70, 180, 250];
 const HOURLY_TICKS = Array.from({ length: 24 }, (_, index) => index);
 const TREND_COLOR = "#167cd9";
 const HYPO_COLOR = "#e35d73";
@@ -189,31 +194,49 @@ function ClusterProfileValue({ indicator, compact = false, showGroup = true }) {
   );
 }
 
-function PatientStatCard({ label, value, helper, tone = "blue", onClick, actionHint, ariaLabel, buttonRef }) {
-  const Tag = onClick ? "button" : "article";
+function KeyFigure({ label, value, unit, helper }) {
   return (
-    <Tag
-      className={`react-stat-card react-stat-card--${tone}${onClick ? " react-stat-card--interactive" : ""}`}
-      ref={buttonRef}
-      onClick={onClick}
-      type={onClick ? "button" : undefined}
-      aria-label={ariaLabel}
-      aria-haspopup={onClick ? "dialog" : undefined}
-    >
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {helper ? <small>{helper}</small> : null}
-      {actionHint ? <small className="react-stat-card__action-hint">{actionHint}</small> : null}
-    </Tag>
+    <div className="react-figure">
+      <span className="react-figure__label">{label}</span>
+      <strong className="react-figure__value">
+        {value}
+        {unit ? <small>{unit}</small> : null}
+      </strong>
+      {helper ? <span className="react-figure__helper">{helper}</span> : null}
+    </div>
   );
 }
 
-function MobileDetailField({ label, value, children, className = "" }) {
+// The accessible name keeps the "{label}: {value}. {action}" pattern the atypical-days E2E locator relies on.
+function AtypicalDaysTrigger({ label, value, helper, actionHint, onClick, buttonRef, compact = false }) {
+  if (compact) {
+    return (
+      <button
+        type="button"
+        className="react-button react-button--ghost"
+        ref={buttonRef}
+        onClick={onClick}
+        aria-haspopup="dialog"
+        aria-label={`${label}: ${value}. ${actionHint}`}
+      >
+        {`${label}: ${value}`}
+      </button>
+    );
+  }
   return (
-    <div className={`react-mobile-card__field${className ? ` ${className}` : ""}`}>
-      <span>{label}</span>
-      {children ?? <strong>{value}</strong>}
-    </div>
+    <button
+      type="button"
+      className="react-figure react-figure--action"
+      ref={buttonRef}
+      onClick={onClick}
+      aria-haspopup="dialog"
+      aria-label={`${label}: ${value}. ${actionHint}`}
+    >
+      <span className="react-figure__label">{label}</span>
+      <strong className="react-figure__value">{value}</strong>
+      {helper ? <span className="react-figure__helper">{helper}</span> : null}
+      <span className="react-figure__action">{actionHint}</span>
+    </button>
   );
 }
 
@@ -291,9 +314,13 @@ export default function PatientDetailPage() {
   const [draftEndDate, setDraftEndDate] = useState("");
   const [viewMode, setViewMode] = useState("period");
   const [selectedDay, setSelectedDay] = useState("");
-  const [isCompactMobile, setIsCompactMobile] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia("(max-width: 640px)").matches : false
-  );
+  const isCompactMobile = useMediaQuery("(max-width: 640px)");
+  const [periodFormOverride, setPeriodFormOverride] = useState(null);
+  const [manualOpen, setManualOpen] = useState(() => location.hash === "#new-reading");
+  const [entryFocusRequest, setEntryFocusRequest] = useState(0);
+  // The period sync below rewrites the URL (replace) and drops the hash, so the "#new-reading" intent is kept here.
+  const pendingNewReadingRef = useRef(location.hash === "#new-reading");
+  const handledFocusRef = useRef(0);
   const [reloadToken, setReloadToken] = useState(0);
   const [indicatorPage, setIndicatorPage] = useState(1);
   const [indicatorPageSize, setIndicatorPageSize] = useState(10);
@@ -351,25 +378,8 @@ export default function PatientDetailPage() {
   const hourlyHighs250 = data?.hourly_highs_250 ?? [];
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia("(max-width: 640px)");
-    const updateViewportMode = (event) => {
-      setIsCompactMobile(event.matches);
-    };
-
-    setIsCompactMobile(mediaQuery.matches);
-
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", updateViewportMode);
-      return () => mediaQuery.removeEventListener("change", updateViewportMode);
-    }
-
-    mediaQuery.addListener(updateViewportMode);
-    return () => mediaQuery.removeListener(updateViewportMode);
-  }, []);
+    setPeriodFormOverride(null);
+  }, [patientId]);
 
   const requestedStart = searchParams.get("start_date") || undefined;
   const requestedEnd = searchParams.get("end_date") || undefined;
@@ -541,89 +551,16 @@ export default function PatientDetailPage() {
     }
 
     return [
-      { name: t("patientDetail.distribution.hypo"), range: t("patientDetail.distribution.hypoRange"), value: selectedDaySummary.pctHypo },
-      { name: t("patientDetail.distribution.inRange"), range: t("patientDetail.distribution.inRangeRange"), value: selectedDaySummary.pctInRange },
-      { name: t("patientDetail.distribution.hyper"), range: t("patientDetail.distribution.hyperRange"), value: selectedDaySummary.pctHyper }
+      { name: t("patientDetail.distribution.hypo"), range: t("patientDetail.distribution.hypoRange"), value: selectedDaySummary.pctHypo, count: selectedDaySummary.lowEventsCount },
+      {
+        name: t("patientDetail.distribution.inRange"),
+        range: t("patientDetail.distribution.inRangeRange"),
+        value: selectedDaySummary.pctInRange,
+        count: selectedDaySummary.measurementCount - selectedDaySummary.lowEventsCount - selectedDaySummary.highEventsCount
+      },
+      { name: t("patientDetail.distribution.hyper"), range: t("patientDetail.distribution.hyperRange"), value: selectedDaySummary.pctHyper, count: selectedDaySummary.highEventsCount }
     ];
   }, [selectedDaySummary, t]);
-
-  const overviewStats = useMemo(() => {
-    if (isDayMode && selectedDaySummary) {
-      return [
-        {
-          label: t("patientDetail.stats.measurements.label"),
-          value: selectedDaySummary.measurementCount,
-          helper: t("patientDetail.stats.measurements.helper"),
-          tone: "blue"
-        },
-        {
-          label: t("patientDetail.stats.avgDay.label"),
-          value: `${formatNumber(selectedDaySummary.avgGlucose)} mg/dL`,
-          helper: formatShortDate(selectedDaySummary.date),
-          tone: "cyan"
-        },
-        {
-          label: t("patientDetail.stats.pctHypoDay.label"),
-          value: formatNumber(selectedDaySummary.pctHypo, "%"),
-          helper: t("patientDetail.stats.pctHypoDay.helper", { count: selectedDaySummary.lowEventsCount }),
-          tone: "rose"
-        },
-        {
-          label: t("patientDetail.stats.pctInRangeDay.label"),
-          value: formatNumber(selectedDaySummary.pctInRange, "%"),
-          helper: t("patientDetail.stats.pctInRangeDay.helper"),
-          tone: "green"
-        },
-        {
-          label: t("patientDetail.stats.pctHyperDay.label"),
-          value: formatNumber(selectedDaySummary.pctHyper, "%"),
-          helper: t("patientDetail.stats.pctHyperDay.helper", { count: selectedDaySummary.highEventsCount }),
-          tone: "yellow"
-        }
-      ];
-    }
-
-    return [
-      {
-        label: t("patientDetail.stats.daysObserved.label"),
-        value: summary?.days_observed ?? "-",
-        helper: t("patientDetail.stats.daysObserved.helper"),
-        tone: "blue"
-      },
-      {
-        label: t("patientDetail.stats.avgGlucose.label"),
-        value: `${formatNumber(summary?.avg_glucose)} mg/dL`,
-        helper: t("patientDetail.stats.avgGlucose.helper"),
-        tone: "cyan"
-      },
-      {
-        label: t("patientDetail.stats.pctHypoPeriod.label"),
-        value: formatNumber(summary?.pct_hypo, "%"),
-        helper: t("patientDetail.stats.pctHypoPeriod.helper"),
-        tone: "rose"
-      },
-      {
-        label: t("patientDetail.stats.pctInRangePeriod.label"),
-        value: formatNumber(summary?.pct_in_range, "%"),
-        helper: t("patientDetail.stats.pctInRangePeriod.helper"),
-        tone: "green"
-      },
-      {
-        label: t("patientDetail.stats.pctHyperPeriod.label"),
-        value: formatNumber(summary?.pct_hyper, "%"),
-        helper: t("patientDetail.stats.pctHyperPeriod.helper"),
-        tone: "yellow"
-      },
-      {
-        label: t("patientDetail.stats.anomalyDays.label"),
-        value: summary?.anomaly_days ?? "-",
-        helper: t("patientDetail.stats.anomalyDays.helper"),
-        actionHint: t("patientDetail.stats.anomalyDays.action"),
-        action: "atypical-days",
-        tone: "slate"
-      }
-    ];
-  }, [isDayMode, selectedDaySummary, summary, t, locale]);
 
   const hourlyExtremes = useMemo(
     () =>
@@ -635,13 +572,26 @@ export default function PatientDetailPage() {
     [hourlyHighs250, hourlyLows]
   );
 
+  // A "#new-reading" link opens the entry form once per navigation, then scrolls to it and focuses its first field.
   useEffect(() => {
-    if (!data || location.hash !== "#new-reading") return;
+    if (location.hash === "#new-reading") pendingNewReadingRef.current = true;
+  }, [location.hash, location.key]);
+
+  useEffect(() => {
+    if (!data || !pendingNewReadingRef.current) return;
+    pendingNewReadingRef.current = false;
+    setManualOpen(true);
+    setEntryFocusRequest((current) => current + 1);
+  }, [data, location.hash, location.key]);
+
+  useEffect(() => {
+    if (!entryFocusRequest || !manualOpen || loading || handledFocusRef.current === entryFocusRequest) return;
     const target = document.getElementById("new-reading");
     if (!target) return;
+    handledFocusRef.current = entryFocusRequest;
     target.scrollIntoView({ block: "start" });
     target.querySelector("input")?.focus({ preventScroll: true });
-  }, [data, location.hash]);
+  }, [entryFocusRequest, manualOpen, loading]);
 
   useEffect(() => {
     if (!availableDayDates.length) {
@@ -785,23 +735,26 @@ export default function PatientDetailPage() {
   const { patient, filters, recent_events: recentEvents } = data;
   const dailyIndicatorsPage = data.daily_indicators_page || data.daily_indicators;
   const activeDistributionData = isDayMode && selectedDaySummary ? selectedDayDistribution : distributionData;
-  const distributionChartHeight = isCompactMobile ? 182 : 206;
-  const insightChartHeight = isCompactMobile ? 168 : 182;
-  const dropHoursChartHeight = isCompactMobile ? 180 : 228;
+  const distributionChartHeight = isCompactMobile ? 148 : 168;
+  const dropHoursChartHeight = isCompactMobile ? 180 : 200;
   const trendChartHeight = isCompactMobile ? 260 : 340;
   const trendChartMargin = isCompactMobile
     ? { top: 8, right: 4, left: 0, bottom: 0 }
     : { top: 8, right: 12, left: 0, bottom: 0 };
-  const dayChartMargin = isCompactMobile
-    ? { top: 8, right: 4, left: 0, bottom: 0 }
-    : { top: 8, right: 12, left: 0, bottom: 0 };
-  const pieInnerRadius = isCompactMobile ? 56 : 64;
-  const pieOuterRadius = isCompactMobile ? 72 : 80;
+  const pieInnerRadius = isCompactMobile ? 50 : 58;
+  const pieOuterRadius = isCompactMobile ? 68 : 78;
   const axisTickStyle = { fontSize: 12 };
   const hourlyAxisTickStyle = { fontSize: 12 };
   const tooltipContentStyle = { fontSize: 14, borderRadius: 18, borderColor: "rgba(22, 124, 217, 0.14)" };
   const tooltipLabelStyle = { fontSize: 14, fontWeight: 700 };
-  const trendYAxisDomain = [0, (dataMax) => Math.max(260, Math.ceil(dataMax / 20) * 20)];
+  const trendValues = isDayMode
+    ? selectedDayEvents.map((event) => event.glucose_mg_dl)
+    : chartData.map((indicator) => indicator.avg_glucose);
+  const trendMax = Math.max(0, ...trendValues.filter((value) => value !== null && value !== undefined));
+  // Round top of the scale, far enough above 250 that both tick labels stay readable.
+  const trendTop = Math.max(300, Math.ceil(trendMax / 50) * 50);
+  const trendYAxisDomain = [0, trendTop];
+  const trendYAxisTicks = [...TREND_REFERENCE_TICKS, trendTop];
   const hourlyAxisTicks = isCompactMobile
     ? HOURLY_TICKS.filter((hour) => hour % 3 === 0)
     : HOURLY_TICKS;
@@ -834,7 +787,11 @@ export default function PatientDetailPage() {
 
   function handleShowPeriod() {
     setViewMode("period");
-    setSelectedDay("");
+  }
+
+  function openManualEntry() {
+    setManualOpen(true);
+    setEntryFocusRequest((current) => current + 1);
   }
 
   const preservedRange = preservedRangeRef.current;
@@ -844,19 +801,57 @@ export default function PatientDetailPage() {
   const periodDays = filters.start_date && filters.end_date
     ? Math.round((Date.parse(`${filters.end_date}T00:00:00Z`) - Date.parse(`${filters.start_date}T00:00:00Z`)) / 86400000) + 1
     : 0;
+  const periodFormOpen = periodFormOverride ?? (requestedDates.length > 0 || !isDefaultWindow);
 
   const isOwnPatientView = Boolean(session?.patient?.id && session.patient.id === patient.id);
   const pendingAnalysisDays = summary?.pending_analysis_days ?? 0;
+  const analysedDays = (summary?.days_observed ?? 0) - pendingAnalysisDays;
+  const hasAnalysedDays = analysedDays > 0 && chartData.some((indicator) => indicator.avg_glucose !== null && indicator.avg_glucose !== undefined);
+  const showEmptyWindow = !isDayMode && !hasAnalysedDays;
   const isFullHistory = Boolean(
     filters.available_start_date &&
       filters.start_date === filters.available_start_date &&
       filters.end_date === filters.available_end_date
   );
+  const canShowFullHistory = Boolean(filters.available_start_date && filters.available_end_date && (!isFullHistory || requestedDates.length > 0));
   const reportUrl = patientReportPdfUrl(patient.id, {
     startDate: filters.start_date,
     endDate: filters.end_date,
     lang: locale
   });
+  const metaParts = [
+    !isOwnPatientView && patient.source_file ? patient.source_file : null,
+    t("patientDetail.hero.measurementsBadge", { count: summary.glucose_measurements })
+  ].filter(Boolean);
+  const atypicalLabel = t("patientDetail.stats.anomalyDays.label");
+  const atypicalValue = summary?.anomaly_days ?? "-";
+  const atypicalHint = t("patientDetail.stats.anomalyDays.action");
+  const dailyTotal = data.daily_indicators_pagination?.total ?? dailyIndicatorsPage.length;
+  const eventsTotal = data.recent_events_pagination?.total ?? recentEvents.length;
+
+  function renderAtypicalTrigger(compact) {
+    return (
+      <AtypicalDaysPopup
+        patientId={patient.id}
+        appliedDates={requestedDates}
+        activeStart={requestedStart || filters.start_date || ""}
+        activeEnd={requestedEnd || filters.end_date || ""}
+        onApplyDates={applyAtypicalDates}
+        onClearDays={clearDaySelection}
+        renderTrigger={(openPopup, triggerRef) => (
+          <AtypicalDaysTrigger
+            label={atypicalLabel}
+            value={atypicalValue}
+            helper={t("patientDetail.stats.anomalyDays.helper")}
+            actionHint={atypicalHint}
+            onClick={openPopup}
+            buttonRef={triggerRef}
+            compact={compact}
+          />
+        )}
+      />
+    );
+  }
 
   const revokeDialog = (
     <ConfirmDialog
@@ -873,631 +868,649 @@ export default function PatientDetailPage() {
     />
   );
 
+  const renderPagination = (meta, pageSize, setPage, setPageSize) =>
+    meta?.total > 0 ? (
+      <div className="react-panel__footer">
+        <Pagination
+          page={meta.page}
+          pages={meta.pages}
+          count={meta.total}
+          pageSize={pageSize}
+          onPageChange={(nextPage) => { silentReloadRef.current = true; setPage(nextPage); }}
+          onPageSizeChange={(size) => { silentReloadRef.current = true; setPageSize(size); setPage(1); }}
+        />
+      </div>
+    ) : null;
+
+  const dailyIndicatorsPagination = renderPagination(data.daily_indicators_pagination, indicatorPageSize, setIndicatorPage, setIndicatorPageSize);
+  const recentEventsPagination = renderPagination(data.recent_events_pagination, eventPageSize, setEventPage, setEventPageSize);
+
+  const formatEventValue = (event) =>
+    event.glucose_mg_dl != null
+      ? `${formatNumber(event.glucose_mg_dl)} mg/dL`
+      : event.numeric_value != null
+        ? formatNumber(event.numeric_value)
+        : "-";
+
+  const dailyIndicatorRows = (
+    <ul className="react-detail-rows" aria-label={t("patientDetail.dailyIndicators.title")}>
+      {dailyIndicatorsPage.map((indicator) => {
+        const isSelected = indicator.date === selectedDay;
+        return (
+          <li key={indicator.date} className={`react-detail-row react-detail-row--selectable${isSelected ? " is-selected" : ""}`}>
+            <div className="react-detail-row__head">
+              <button
+                type="button"
+                className="react-detail-row__select"
+                aria-pressed={isSelected}
+                onClick={() => handleSelectDay(indicator.date)}
+              >
+                {formatDate(indicator.date)}
+              </button>
+              {indicator.analysis_pending ? (
+                <PendingAnalysisChip />
+              ) : indicator.anomaly_flag ? (
+                <span className="react-badge react-badge--atypical react-badge--compact">{t("patientDetail.dailyIndicators.badgeAtypical")}</span>
+              ) : null}
+            </div>
+            {indicator.analysis_pending ? null : (
+              <>
+                <p className="react-detail-row__numbers">
+                  <span>{t("patientDetail.dailyIndicators.avg")} <strong>{indicator.avg_glucose != null ? `${formatNumber(indicator.avg_glucose)} mg/dL` : "-"}</strong></span>
+                  <span>{t("patientDetail.dailyIndicators.pctHypo")} <strong>{formatNumber(indicator.pct_hypo, "%")}</strong></span>
+                  <span>{t("patientDetail.dailyIndicators.pctInRange")} <strong>{formatNumber(indicator.pct_in_range, "%")}</strong></span>
+                  <span>{t("patientDetail.dailyIndicators.pctHyper")} <strong>{formatNumber(indicator.pct_hyper, "%")}</strong></span>
+                </p>
+                <div className="react-detail-row__profile">
+                  <span>{t("patientDetail.dailyIndicators.profile")}</span>
+                  <ClusterProfileValue indicator={indicator} compact showGroup={false} />
+                </div>
+              </>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  const recentEventRows = (
+    <ul className="react-detail-rows" aria-label={t("patientDetail.recentEvents.title")}>
+      {recentEvents.map((event) => {
+        const eventTypeLabel = enumLabel("eventType", event.event_type, event.event_type_label, t);
+        const eventSubtypeLabel = enumLabel("eventSubtype", event.event_subtype, event.event_subtype_label, t);
+        const contextLabel = enumLabel("context", event.context_label, event.context_label_display, t);
+        return (
+          <li key={`${event.occurred_at}-${event.event_type}`} className="react-detail-row">
+            <div className="react-detail-row__head">
+              <span className="react-detail-row__title">{formatPatientEventDateTime(event)}</span>
+              <strong className="react-detail-row__value">{formatEventValue(event)}</strong>
+            </div>
+            <p className="react-detail-row__meta">
+              {[eventTypeLabel, eventSubtypeLabel, contextLabel].filter((value) => value && value !== "-").join(" · ")}
+            </p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     <div className="react-page react-page--patient-detail">
       {revokeDialog}
-      <section className="react-hero react-hero--compact">
-        <div className="react-hero__content">
-          <div className="react-badges">
-            {!isOwnPatientView && patient.source_file ? (
-              <span className="react-badge react-badge--soft">{patient.source_file}</span>
-            ) : null}
-            <span className="react-badge react-badge--blue">{t("patientDetail.hero.measurementsBadge", { count: summary.glucose_measurements })}</span>
+      <header className="react-page-header react-detail-header">
+        <Link to="/dashboard" className="react-back-link">
+          <ArrowLeftIcon />
+          {isOwnPatientView ? t("patientDetail.hero.backHome") : t("patientDetail.hero.backToOverview")}
+        </Link>
+        <div className="react-detail-header__row">
+          <div className="react-detail-header__copy">
+            <h1>{patient.display_name}</h1>
+            <p className="react-detail-header__meta">{metaParts.join(" · ")}</p>
           </div>
-          <h1>{patient.display_name}</h1>
-          <p>{isOwnPatientView ? t("patientDetail.hero.bodySelf") : t("patientDetail.hero.body")}</p>
-          <div className="react-actions">
-            <Link to="/dashboard" className="react-button react-button--ghost">
-              {isOwnPatientView ? t("patientDetail.hero.backHome") : t("patientDetail.hero.backToOverview")}
-            </Link>
-            <a className="react-button" href={reportUrl || "#"} target="_blank" rel="noreferrer">
-              {t("patientDetail.hero.downloadReport")}
-            </a>
-            {isDoctorView && doctorLink ? (
-              <button
-                type="button"
-                className="react-button react-button--danger"
-                onClick={() => {
-                  setRevokeError("");
-                  setRevokeOpen(true);
-                }}
-              >
-                {t("dashboard.revokeLink")}
+          <div className="react-actions react-detail-header__actions">
+            {isOwnPatientView ? (
+              <button type="button" className="react-button" onClick={openManualEntry}>
+                {t("patientDetail.hero.newReading")}
               </button>
             ) : null}
+            <a
+              className={`react-button${isOwnPatientView ? " react-button--ghost" : ""}`}
+              href={reportUrl || "#"}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("patientDetail.hero.downloadReport")}
+            </a>
           </div>
         </div>
-        <div className="react-hero__side">
-          {requestedDates.length > 0 ? (
-            <div className="react-summary-box" data-testid="period-summary">
-              <span>{t("patientDetail.hero.selectedDays", { count: requestedDates.length })}</span>
-              <strong>{requestedDates.map((value) => formatDate(value)).join(", ")}</strong>
-              {requestedStart && requestedEnd ? (
-                <small>{t("patientDetail.hero.referencePeriod", { start: formatDate(requestedStart), end: formatDate(requestedEnd) })}</small>
-              ) : null}
-            </div>
-          ) : (
-            <div className="react-summary-box" data-testid="period-summary">
-              <span>{t("patientDetail.hero.periodAnalyzed")}</span>
-              <strong>
-                {formatDate(filters.start_date)} - {formatDate(filters.end_date)}
-              </strong>
-              <small>
-                {isDefaultWindow
-                  ? t("patientDetail.hero.defaultWindow")
-                  : t("patientDetail.hero.customWindow", { count: periodDays })}
-              </small>
-              {filters.available_start_date && filters.available_end_date ? (
-                <div className="react-summary-box__history">
-                  <small data-testid="available-period">
-                    {t("patientDetail.hero.availablePeriod", {
-                      start: formatDate(filters.available_start_date),
-                      end: formatDate(filters.available_end_date)
-                    })}
-                  </small>
-                  {isFullHistory ? null : (
-                    <button type="button" className="react-button react-button--ghost react-button--compact" onClick={showFullHistory}>
-                      {t("patientDetail.hero.viewAllHistory")}
-                    </button>
-                  )}
-                </div>
-              ) : null}
-              {pendingAnalysisDays > 0 ? (
-                <p className="react-pending-note" role="note">
-                  {t("patientDetail.hero.pendingAnalysisNote", { count: pendingAnalysisDays })}
-                </p>
-              ) : null}
-            </div>
-          )}
-        </div>
-      </section>
+      </header>
 
-      <section className="react-panel react-panel--filter">
-        <div className="react-filter-layout">
-          <div className="react-filter-copy">
-            <h2>{t("patientDetail.filter.title")}</h2>
-            <p>{t("patientDetail.filter.body")}</p>
-          </div>
-          <div className="react-filter-controls">
-            <form className="react-filter-form" onSubmit={applyRange}>
-              <label>
-                <span>{t("patientDetail.filter.startDate")}</span>
-                <input
-                  type="date"
-                  value={draftStartDate}
-                  min={filters.available_start_date}
-                  max={filters.available_end_date}
-                  onChange={(event) => setDraftStartDate(event.target.value)}
-                />
-              </label>
-              <label>
-                <span>{t("patientDetail.filter.endDate")}</span>
-                <input
-                  type="date"
-                  value={draftEndDate}
-                  min={filters.available_start_date}
-                  max={filters.available_end_date}
-                  onChange={(event) => setDraftEndDate(event.target.value)}
-                />
-              </label>
-              <div className="react-filter-actions">
-                <button
-                  type="submit"
-                  className="react-button"
-                  disabled={loading || !hasPendingFilterChange || hasInvalidRange}
-                >
-                  {t("patientDetail.filter.apply")}
-                </button>
-                {hasInvalidRange ? <small>{t("patientDetail.filter.invalidRange")}</small> : null}
-              </div>
-            </form>
-            {periodAdjustment ? (
-              <p className="react-period-notice" role="status" data-testid="period-adjusted">
-                {t("patientDetail.filter.periodAdjusted", {
-                  dates: periodAdjustment.outside.map((value) => formatDate(value)).join(", "),
-                  originalStart: formatDate(periodAdjustment.originalStart),
-                  originalEnd: formatDate(periodAdjustment.originalEnd),
-                  start: formatDate(periodAdjustment.start),
-                  end: formatDate(periodAdjustment.end)
+      <section className="react-panel react-period-bar" aria-label={t("patientDetail.hero.periodAnalyzed")}>
+        <div className="react-period-bar__main">
+          <div className="react-period-bar__summary" data-testid="period-summary">
+            {requestedDates.length > 0 ? (
+              <>
+                <h2 className="react-period-bar__range">{t("patientDetail.hero.selectedDays", { count: requestedDates.length })}</h2>
+                {requestedStart && requestedEnd ? (
+                  <p>{t("patientDetail.hero.referencePeriod", { start: formatDate(requestedStart), end: formatDate(requestedEnd) })}</p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <h2 className="react-period-bar__range">
+                  {t("patientDetail.periodBar.range", { start: formatDate(filters.start_date), end: formatDate(filters.end_date) })}
+                </h2>
+                <p>
+                  {isDefaultWindow
+                    ? t("patientDetail.hero.defaultWindow")
+                    : t("patientDetail.hero.customWindow", { count: periodDays })}
+                </p>
+              </>
+            )}
+            {filters.available_start_date && filters.available_end_date ? (
+              <p data-testid="available-period">
+                {t("patientDetail.hero.availablePeriod", {
+                  start: formatDate(filters.available_start_date),
+                  end: formatDate(filters.available_end_date)
                 })}
               </p>
             ) : null}
-            {requestedDates.length > 0 ? (
-              <div className="react-selected-days" role="group" aria-label={t("cscw.selectedDaysLabel")}>
-                <span>{t("cscw.selectedDaysLabel")}</span>
-                <div className="react-chip-row">
-                  {requestedDates.map((date) => (
-                    <button
-                      type="button"
-                      key={date}
-                      className="react-chip is-active react-chip--removable"
-                      onClick={() => removeSelectedDay(date)}
-                      aria-label={t("cscw.removeDayAria", { date: formatDate(date) })}
-                    >
-                      {formatDate(date)} ×
-                    </button>
-                  ))}
-                  <button type="button" className="react-chip" onClick={clearDaySelection}>
-                    {t("cscw.popupClearDays")}
-                  </button>
-                </div>
-              </div>
+          </div>
+          <div className="react-actions react-period-bar__actions">
+            <button
+              type="button"
+              className="react-button react-button--ghost react-disclosure-toggle"
+              aria-expanded={periodFormOpen}
+              aria-controls="period-form"
+              onClick={() => setPeriodFormOverride(!periodFormOpen)}
+            >
+              <span>{t("patientDetail.filter.toggle")}</span>
+              <ChevronDownIcon />
+            </button>
+            {canShowFullHistory && !showEmptyWindow ? (
+              <button type="button" className="react-button react-button--ghost" onClick={showFullHistory}>
+                {t("patientDetail.hero.viewAllHistory")}
+              </button>
             ) : null}
           </div>
         </div>
-      </section>
-
-      {isOwnPatientView ? (
-        <ManualGlucoseEntryForm patientId={patient.id} onCreated={handleManualRecordCreated} />
-      ) : null}
-
-      <section className="react-patient-insights">
-        <article className="react-panel react-panel--summary">
-          <div className="react-panel__header">
-            <div>
-              <h2>{isDayMode && selectedDaySummary ? t("patientDetail.distribution.titleDay", { date: formatShortDate(selectedDaySummary.date) }) : t("patientDetail.distribution.titlePeriod")}</h2>
-            </div>
-          </div>
-            <div className="react-insight-body react-insight-body--distribution">
-              <div className="react-distribution-visual" aria-hidden="true">
-                <div className="react-chart react-chart--insight react-chart--distribution">
-                  <ResponsiveContainer width="100%" height={distributionChartHeight}>
-                  <PieChart>
-                    <Pie
-                      data={activeDistributionData}
-                      dataKey="value"
-                      innerRadius={pieInnerRadius}
-                      outerRadius={pieOuterRadius}
-                      paddingAngle={3}
-                    >
-                      {activeDistributionData.map((entry, index) => (
-                        <Cell key={entry.name} fill={PIE_COLORS[index]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => `${formatNumber(value)}%`} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              </div>
-              <ul className="react-distribution-legend">
-                {activeDistributionData.map((item, index) => (
-                  <li key={item.name} className="react-distribution-legend__item">
-                    <span
-                      className="react-distribution-legend__dot"
-                      style={{ backgroundColor: PIE_COLORS[index] }}
-                      aria-hidden="true"
-                    />
-                    <span className="react-distribution-legend__label">
-                      {item.name}
-                      <small>{item.range}</small>
-                    </span>
-                    <strong className="react-distribution-legend__value">{formatNumber(item.value, "%")}</strong>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </article>
-
-        <article className="react-panel react-panel--summary react-panel--drop-hours">
-          <div className="react-panel__header">
-            <div>
-              <h2>{t("patientDetail.extremeEvents.title")}</h2>
-            </div>
-          </div>
-          <div className="react-chart react-chart--insight react-chart--drop-hours">
-            <ResponsiveContainer width="100%" height={dropHoursChartHeight}>
-              <BarChart data={hourlyExtremes} margin={trendChartMargin} barGap={isCompactMobile ? 2 : 4} barCategoryGap={isCompactMobile ? "10%" : "18%"}>
-                <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
-                <XAxis
-                  dataKey="hour"
-                  ticks={hourlyAxisTicks}
-                  interval={0}
-                  tickFormatter={(value) => (isCompactMobile ? `${value}` : `${value}h`)}
-                  tick={hourlyAxisTickStyle}
-                  minTickGap={0}
-                  height={32}
-                />
-                <YAxis allowDecimals={false} tick={axisTickStyle} width={isCompactMobile ? 24 : 32} />
-                <Tooltip formatter={(value) => t("patientDetail.extremeEvents.tooltipEvents", { count: value })} labelFormatter={(label) => `${String(label).padStart(2, "0")}h`} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
-                <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: "14px" }} />
-                <Bar dataKey="lowCount" name="< 70 mg/dL" fill={HYPO_COLOR} radius={[8, 8, 0, 0]} />
-                <Bar dataKey="highCount" name="> 250 mg/dL" fill={HIGH_RISK_COLOR} radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-      </section>
-
-      <section className="react-patient-layout">
-        <article className="react-panel react-patient-main">
-          <div className="react-panel__header">
-            <div>
-              <h2>{isDayMode ? t("patientDetail.trend.titleDay") : t("patientDetail.trend.titlePeriod")}</h2>
-              <p>
-                {isDayMode && selectedDay
-                  ? t("patientDetail.trend.bodyDay", { date: formatDate(selectedDay) })
-                  : t("patientDetail.trend.bodyPeriod")}
-              </p>
-            </div>
-            <div className="react-chip-row">
+        {periodFormOpen ? (
+          <form id="period-form" className="react-filter-form react-period-bar__form" onSubmit={applyRange}>
+            <label>
+              <span>{t("patientDetail.filter.startDate")}</span>
+              <input
+                type="date"
+                value={draftStartDate}
+                min={filters.available_start_date}
+                max={filters.available_end_date}
+                onChange={(event) => setDraftStartDate(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>{t("patientDetail.filter.endDate")}</span>
+              <input
+                type="date"
+                value={draftEndDate}
+                min={filters.available_start_date}
+                max={filters.available_end_date}
+                onChange={(event) => setDraftEndDate(event.target.value)}
+              />
+            </label>
+            <div className="react-filter-actions">
               <button
-                type="button"
-                className={`react-chip${!isDayMode ? " is-active" : ""}`}
-                onClick={handleShowPeriod}
+                type="submit"
+                className="react-button"
+                disabled={loading || !hasPendingFilterChange || hasInvalidRange}
               >
-                {t("patientDetail.trend.chipPeriod")}
+                {t("patientDetail.filter.apply")}
               </button>
-              {selectedDay ? (
+              {hasInvalidRange ? <small>{t("patientDetail.filter.invalidRange")}</small> : null}
+            </div>
+          </form>
+        ) : null}
+        {periodAdjustment ? (
+          <p className="react-period-notice" role="status" data-testid="period-adjusted">
+            {t("patientDetail.filter.periodAdjusted", {
+              dates: periodAdjustment.outside.map((value) => formatDate(value)).join(", "),
+              originalStart: formatDate(periodAdjustment.originalStart),
+              originalEnd: formatDate(periodAdjustment.originalEnd),
+              start: formatDate(periodAdjustment.start),
+              end: formatDate(periodAdjustment.end)
+            })}
+          </p>
+        ) : null}
+        {requestedDates.length > 0 ? (
+          <div className="react-selected-days" role="group" aria-label={t("cscw.selectedDaysLabel")}>
+            <span>{t("cscw.selectedDaysLabel")}</span>
+            <div className="react-chip-row">
+              {requestedDates.map((date) => (
                 <button
                   type="button"
-                  className={`react-chip${isDayMode ? " is-active" : ""}`}
-                  onClick={() => setViewMode("day")}
+                  key={date}
+                  className="react-chip is-active react-chip--removable"
+                  onClick={() => removeSelectedDay(date)}
+                  aria-label={t("cscw.removeDayAria", { date: formatDate(date) })}
                 >
-                  {t("patientDetail.trend.chipSelectedDay")}
+                  {formatDate(date)} ×
                 </button>
-              ) : null}
+              ))}
+              <button type="button" className="react-chip" onClick={clearDaySelection}>
+                {t("cscw.popupClearDays")}
+              </button>
             </div>
           </div>
-          <div className="react-chart">
-            {!isDayMode ? (
-              <ResponsiveContainer width="100%" height={trendChartHeight}>
-                <LineChart
-                  data={chartData}
-                  margin={trendChartMargin}
-                  onClick={(state) => {
-                    const clickedDate = state?.activePayload?.[0]?.payload?.date;
-                    if (clickedDate) {
-                      handleSelectDay(clickedDate);
-                    }
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
-                  <XAxis dataKey="label" tick={axisTickStyle} minTickGap={isCompactMobile ? 18 : 10} />
-                  <YAxis tickFormatter={(value) => `${value}`} tick={axisTickStyle} width={isCompactMobile ? 28 : 40} domain={trendYAxisDomain} />
-                  <Tooltip formatter={(value) => `${formatNumber(value)} mg/dL`} labelFormatter={(_, payload) => (payload?.[0]?.payload?.date ? formatDate(payload[0].payload.date) : "")} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
-                  <ReferenceLine y={70} stroke={HYPO_COLOR} strokeDasharray="5 5" />
-                  <ReferenceLine y={180} stroke={HYPER_COLOR} strokeDasharray="5 5" />
-                  <ReferenceLine y={250} stroke={HIGH_RISK_COLOR} strokeDasharray="5 5" />
-                  <Line
-                    type="monotone"
-                    dataKey="avg_glucose"
-                    name={t("patientDetail.trend.seriesAverage")}
-                    stroke={TREND_COLOR}
-                    strokeWidth={3}
-                    activeDot={{ r: 7, onClick: (_, __, event) => event?.stopPropagation?.() }}
-                    dot={(props) => {
-                      const { cx, cy, payload, index } = props;
-                      if (cx == null || cy == null || !payload?.date) {
-                        return null;
-                      }
+        ) : null}
+        {pendingAnalysisDays > 0 ? (
+          <p className="react-pending-note" role="note">
+            {t("patientDetail.hero.pendingAnalysisNote", { count: pendingAnalysisDays })}
+          </p>
+        ) : null}
+      </section>
 
-                      const isActive = payload.date === selectedDay;
+      {showEmptyWindow ? (
+        <section className="react-empty-window">
+          <StateBlock title={t("patientDetail.emptyWindow.title")} description={t("patientDetail.emptyWindow.description")}>
+            <div className="react-actions react-empty-window__actions">
+              {canShowFullHistory ? (
+                <button type="button" className="react-button" onClick={showFullHistory}>
+                  {t("patientDetail.hero.viewAllHistory")}
+                </button>
+              ) : null}
+              {renderAtypicalTrigger(true)}
+            </div>
+          </StateBlock>
+        </section>
+      ) : (
+        <>
+          <section className="react-panel react-period-summary" aria-labelledby="period-summary-title">
+            <div className="react-panel__header">
+              <div>
+                <h2 id="period-summary-title">
+                  {isDayMode && selectedDaySummary
+                    ? t("patientDetail.summary.titleDay", { date: formatDate(selectedDaySummary.date) })
+                    : t("patientDetail.summary.titlePeriod")}
+                </h2>
+                <p>{isDayMode && selectedDaySummary ? t("patientDetail.sidebar.bodyDay") : t("patientDetail.sidebar.bodyPeriod")}</p>
+              </div>
+            </div>
+            <div className="react-period-summary__body">
+              <div className="react-period-summary__figures">
+                {isDayMode && selectedDaySummary ? (
+                  <>
+                    <KeyFigure
+                      label={t("patientDetail.stats.avgDay.label")}
+                      value={formatNumber(selectedDaySummary.avgGlucose)}
+                      unit="mg/dL"
+                    />
+                    <KeyFigure
+                      label={t("patientDetail.stats.measurements.label")}
+                      value={selectedDaySummary.measurementCount}
+                      helper={t("patientDetail.stats.measurements.helper")}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <KeyFigure
+                      label={t("patientDetail.stats.avgGlucose.label")}
+                      value={formatNumber(summary?.avg_glucose)}
+                      unit="mg/dL"
+                      helper={t("patientDetail.stats.avgGlucose.helper")}
+                    />
+                    <KeyFigure
+                      label={t("patientDetail.stats.daysObserved.label")}
+                      value={summary?.days_observed ?? "-"}
+                      helper={t("patientDetail.stats.daysObserved.helper")}
+                    />
+                  </>
+                )}
+                {renderAtypicalTrigger(false)}
+              </div>
+              <div className="react-period-summary__range">
+                <h3>{t("patientDetail.summary.timeInRange")}</h3>
+                <div className="react-period-summary__range-body">
+                  <div className="react-distribution-visual" aria-hidden="true">
+                    <ResponsiveContainer width="100%" height={distributionChartHeight}>
+                      <PieChart>
+                        <Pie
+                          data={activeDistributionData}
+                          dataKey="value"
+                          innerRadius={pieInnerRadius}
+                          outerRadius={pieOuterRadius}
+                          paddingAngle={3}
+                          isAnimationActive={false}
+                        >
+                          {activeDistributionData.map((entry, index) => (
+                            <Cell key={entry.name} fill={PIE_COLORS[index]} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <ul className="react-distribution-legend">
+                    {activeDistributionData.map((item, index) => (
+                      <li key={item.name} className="react-distribution-legend__item">
+                        <span className={`react-distribution-legend__dot is-${RANGE_TONES[index]}`} aria-hidden="true" />
+                        <span className="react-distribution-legend__label">
+                          {item.name}
+                          <small>
+                            {item.range}
+                            {item.count !== undefined ? ` · ${t("patientDetail.distribution.readingsCount", { count: item.count })}` : ""}
+                          </small>
+                        </span>
+                        <strong className="react-distribution-legend__value">{formatNumber(item.value, "%")}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="react-panel react-trend" aria-labelledby="trend-title">
+            <div className="react-panel__header">
+              <div>
+                <h2 id="trend-title">{isDayMode ? t("patientDetail.trend.titleDay") : t("patientDetail.trend.titlePeriod")}</h2>
+                <p>
+                  {isDayMode && selectedDay
+                    ? t("patientDetail.trend.bodyDay", { date: formatDate(selectedDay) })
+                    : t("patientDetail.trend.bodyPeriod")}
+                </p>
+              </div>
+              {selectedDay ? (
+                <div className="react-segmented" role="group" aria-label={t("patientDetail.trend.viewModeLabel")}>
+                  <button type="button" aria-pressed={!isDayMode} onClick={handleShowPeriod}>
+                    {t("patientDetail.trend.chipPeriod")}
+                  </button>
+                  <button type="button" aria-pressed={isDayMode} onClick={() => setViewMode("day")}>
+                    {t("patientDetail.trend.chipSelectedDay")}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+            <div className="react-chart">
+              {!isDayMode ? (
+                <ResponsiveContainer width="100%" height={trendChartHeight}>
+                  <LineChart
+                    data={chartData}
+                    margin={trendChartMargin}
+                    onClick={(state) => {
+                      const clickedDate = state?.activePayload?.[0]?.payload?.date;
+                      if (clickedDate) {
+                        handleSelectDay(clickedDate);
+                      }
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
+                    <XAxis dataKey="label" tick={axisTickStyle} minTickGap={isCompactMobile ? 18 : 10} />
+                    <YAxis tick={axisTickStyle} width={isCompactMobile ? 32 : 40} domain={trendYAxisDomain} ticks={trendYAxisTicks} interval={0} />
+                    <Tooltip formatter={(value) => `${formatNumber(value)} mg/dL`} labelFormatter={(_, payload) => (payload?.[0]?.payload?.date ? formatDate(payload[0].payload.date) : "")} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
+                    <ReferenceLine y={70} stroke={HYPO_COLOR} strokeDasharray="5 5" />
+                    <ReferenceLine y={180} stroke={HYPER_COLOR} strokeDasharray="5 5" />
+                    <ReferenceLine y={250} stroke={HIGH_RISK_COLOR} strokeDasharray="5 5" />
+                    <Line
+                      type="monotone"
+                      dataKey="avg_glucose"
+                      name={t("patientDetail.trend.seriesAverage")}
+                      stroke={TREND_COLOR}
+                      strokeWidth={3}
+                      activeDot={{ r: 7, onClick: (_, __, event) => event?.stopPropagation?.() }}
+                      dot={(props) => {
+                        const { cx, cy, payload, index } = props;
+                        if (cx == null || cy == null || !payload?.date) {
+                          return null;
+                        }
+
+                        const isActive = payload.date === selectedDay;
                         return (
                           <circle
                             key={`trend-dot-${payload.date}-${index ?? "item"}`}
                             cx={cx}
                             cy={cy}
                             r={isActive ? 6 : 4}
-                            fill={isActive ? "#167cd9" : "#ffffff"}
+                            fill={isActive ? TREND_COLOR : "#ffffff"}
                             stroke={TREND_COLOR}
                             strokeWidth={isActive ? 3 : 2}
                             style={{ cursor: "pointer" }}
                             onClick={() => handleSelectDay(payload.date)}
                           />
-                      );
-                    }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : selectedDayEvents.length ? (
-              <ResponsiveContainer width="100%" height={trendChartHeight}>
-                <LineChart data={selectedDayEvents} margin={dayChartMargin}>
-                  <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
-                  <XAxis dataKey="event_time" tick={axisTickStyle} minTickGap={isCompactMobile ? 16 : 10} />
-                  <YAxis tickFormatter={(value) => `${value}`} tick={axisTickStyle} width={isCompactMobile ? 28 : 40} domain={trendYAxisDomain} />
-                  <Tooltip
-                    formatter={(value) => `${formatNumber(value)} mg/dL`}
-                    labelFormatter={(_, payload) =>
-                      payload?.[0]?.payload
-                        ? `${formatDate(payload[0].payload.event_date)} - ${payload[0].payload.event_time}`
-                        : ""
-                    }
-                    contentStyle={tooltipContentStyle}
-                    labelStyle={tooltipLabelStyle}
-                  />
-                  <ReferenceLine y={70} stroke={HYPO_COLOR} strokeDasharray="5 5" />
-                  <ReferenceLine y={180} stroke={HYPER_COLOR} strokeDasharray="5 5" />
-                  <ReferenceLine y={250} stroke={HIGH_RISK_COLOR} strokeDasharray="5 5" />
-                  <Line type="monotone" dataKey="glucose_mg_dl" name={t("patientDetail.trend.seriesGlucose")} stroke={TREND_COLOR} strokeWidth={3} dot={{ r: 4 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <StateBlock
-                title={t("patientDetail.trend.insufficientData.title")}
-                description={t("patientDetail.trend.insufficientData.description")}
-              />
-            )}
-          </div>
-          <div className="react-chart-legend" aria-label={t("patientDetail.trend.chartLegendAriaLabel")}>
-            {trendLegendItems.map((item) => (
-              <div key={item.label} className="react-chart-legend__item">
-                <span
-                  className={`react-chart-legend__line${item.dashed ? " is-dashed" : ""}`}
-                  style={{ "--legend-color": item.color }}
-                  aria-hidden="true"
+                        );
+                      }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : selectedDayEvents.length ? (
+                <ResponsiveContainer width="100%" height={trendChartHeight}>
+                  <LineChart data={selectedDayEvents} margin={trendChartMargin}>
+                    <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
+                    <XAxis dataKey="event_time" tick={axisTickStyle} minTickGap={isCompactMobile ? 16 : 10} />
+                    <YAxis tick={axisTickStyle} width={isCompactMobile ? 32 : 40} domain={trendYAxisDomain} ticks={trendYAxisTicks} interval={0} />
+                    <Tooltip
+                      formatter={(value) => `${formatNumber(value)} mg/dL`}
+                      labelFormatter={(_, payload) =>
+                        payload?.[0]?.payload
+                          ? `${formatDate(payload[0].payload.event_date)} - ${payload[0].payload.event_time}`
+                          : ""
+                      }
+                      contentStyle={tooltipContentStyle}
+                      labelStyle={tooltipLabelStyle}
+                    />
+                    <ReferenceLine y={70} stroke={HYPO_COLOR} strokeDasharray="5 5" />
+                    <ReferenceLine y={180} stroke={HYPER_COLOR} strokeDasharray="5 5" />
+                    <ReferenceLine y={250} stroke={HIGH_RISK_COLOR} strokeDasharray="5 5" />
+                    <Line type="monotone" dataKey="glucose_mg_dl" name={t("patientDetail.trend.seriesGlucose")} stroke={TREND_COLOR} strokeWidth={3} dot={{ r: 4 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <StateBlock
+                  title={t("patientDetail.trend.insufficientData.title")}
+                  description={t("patientDetail.trend.insufficientData.description")}
                 />
-                <small>{item.label}</small>
-              </div>
-            ))}
-          </div>
-          <div className="react-day-strip" role="list" aria-label={t("patientDetail.trend.dayStripAriaLabel")}>
-            {availableDayDates.map((dateValue) => (
-              <button
-                key={dateValue}
-                type="button"
-                className={`react-day-pill${dateValue === selectedDay ? " is-active" : ""}`}
-                onClick={() => handleSelectDay(dateValue)}
-              >
-                <strong>{formatShortDate(dateValue)}</strong>
-                <small>{formatNumber(data.daily_indicators.find((indicator) => indicator.date === dateValue)?.avg_glucose)}</small>
-              </button>
-            ))}
-          </div>
-        </article>
+              )}
+            </div>
+            <div className="react-chart-legend" aria-label={t("patientDetail.trend.chartLegendAriaLabel")}>
+              {trendLegendItems.map((item) => (
+                <div key={item.label} className="react-chart-legend__item">
+                  <span
+                    className={`react-chart-legend__line${item.dashed ? " is-dashed" : ""}`}
+                    style={{ "--legend-color": item.color }}
+                    aria-hidden="true"
+                  />
+                  <small>{item.label}</small>
+                </div>
+              ))}
+            </div>
+            <div className="react-day-strip" role="group" aria-label={t("patientDetail.trend.dayStripAriaLabel")}>
+              {availableDayDates.map((dateValue) => (
+                <button
+                  key={dateValue}
+                  type="button"
+                  className={`react-day-pill${dateValue === selectedDay ? " is-active" : ""}`}
+                  aria-pressed={dateValue === selectedDay}
+                  onClick={() => handleSelectDay(dateValue)}
+                >
+                  <strong>{formatShortDate(dateValue)}</strong>
+                  <small>{formatNumber(data.daily_indicators.find((indicator) => indicator.date === dateValue)?.avg_glucose)}</small>
+                </button>
+              ))}
+            </div>
+          </section>
 
-        <aside className="react-patient-sidebar">
-          <article className="react-panel react-panel--summary">
+          <section className="react-panel react-extremes" aria-labelledby="extremes-title">
             <div className="react-panel__header">
               <div>
-                {isDayMode && selectedDaySummary ? <p className="react-eyebrow">{t("patientDetail.sidebar.eyebrowDay")}</p> : null}
-                <h2>{isDayMode && selectedDaySummary ? formatDate(selectedDaySummary.date) : t("patientDetail.sidebar.titlePeriod")}</h2>
-                <p>
-                  {isDayMode && selectedDaySummary
-                    ? t("patientDetail.sidebar.bodyDay")
-                    : t("patientDetail.sidebar.bodyPeriod")}
-                </p>
+                <h2 id="extremes-title">{t("patientDetail.extremeEvents.title")}</h2>
               </div>
             </div>
-            <div className="react-stat-grid">
-              {overviewStats.map((stat) => stat.action === "atypical-days" ? (
-                <AtypicalDaysPopup
-                  key={stat.label}
-                  patientId={patient.id}
-                  appliedDates={requestedDates}
-                  activeStart={requestedStart || filters.start_date || ""}
-                  activeEnd={requestedEnd || filters.end_date || ""}
-                  onApplyDates={applyAtypicalDates}
-                  onClearDays={clearDaySelection}
-                  renderTrigger={(openPopup, triggerRef) => (
-                    <PatientStatCard
-                      label={stat.label}
-                      value={stat.value}
-                      helper={stat.helper}
-                      actionHint={stat.actionHint}
-                      tone={stat.tone}
-                      onClick={openPopup}
-                      ariaLabel={`${stat.label}: ${stat.value}. ${stat.actionHint}`}
-                      buttonRef={triggerRef}
-                    />
-                  )}
-                />
-              ) : (
-                <PatientStatCard key={stat.label} label={stat.label} value={stat.value} helper={stat.helper} tone={stat.tone} />
-              ))}
+            <div className="react-chart react-chart--extremes">
+              <ResponsiveContainer width="100%" height={dropHoursChartHeight}>
+                <BarChart data={hourlyExtremes} margin={trendChartMargin} barGap={isCompactMobile ? 2 : 4} barCategoryGap={isCompactMobile ? "10%" : "18%"}>
+                  <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
+                  <XAxis
+                    dataKey="hour"
+                    ticks={hourlyAxisTicks}
+                    interval={0}
+                    tickFormatter={(value) => (isCompactMobile ? `${value}` : `${value}h`)}
+                    tick={hourlyAxisTickStyle}
+                    minTickGap={0}
+                    height={32}
+                  />
+                  <YAxis allowDecimals={false} tick={axisTickStyle} width={isCompactMobile ? 24 : 32} />
+                  <Tooltip formatter={(value) => t("patientDetail.extremeEvents.tooltipEvents", { count: value })} labelFormatter={(label) => `${String(label).padStart(2, "0")}h`} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
+                  <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: "14px" }} />
+                  <Bar dataKey="lowCount" name="< 70 mg/dL" fill={HYPO_COLOR} radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="highCount" name="> 250 mg/dL" fill={HIGH_RISK_COLOR} radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            {!isDayMode && pendingAnalysisDays > 0 ? (
-              <p className="react-pending-note" role="note">
-                {t("patientDetail.hero.pendingAnalysisNote", { count: pendingAnalysisDays })}
-              </p>
-            ) : null}
-          </article>
-        </aside>
-      </section>
+          </section>
+        </>
+      )}
 
       <section className="react-grid react-grid--detail-data">
-
-        <article className="react-panel react-panel--wide">
-          <div className="react-panel__header">
-            <div>
-              <h2>{t("patientDetail.dailyIndicators.title")}</h2>
-            </div>
-          </div>
+        <article className="react-panel react-panel--wide react-data-panel">
           {isCompactMobile ? (
-            <div className="react-mobile-list" aria-label={t("patientDetail.dailyIndicators.eyebrow")}>
-              {dailyIndicatorsPage.map((indicator) => (
-                <article
-                  key={indicator.date}
-                  className={`react-mobile-card react-mobile-card--interactive${indicator.date === selectedDay ? " is-selected" : ""}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleSelectDay(indicator.date)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      handleSelectDay(indicator.date);
-                    }
-                  }}
-                >
-                  <div className="react-mobile-card__header">
-                    <div>
-                      <span className="react-mobile-card__eyebrow">{t("patientDetail.dailyIndicators.date")}</span>
-                      <h3>{formatDate(indicator.date)}</h3>
-                    </div>
-                    {indicator.analysis_pending ? (
-                      <PendingAnalysisChip />
-                    ) : (
-                      <span className={`react-mobile-card__badge${indicator.anomaly_flag ? " is-alert" : ""}`}>
-                        {indicator.anomaly_flag ? t("patientDetail.dailyIndicators.badgeAtypical") : t("patientDetail.dailyIndicators.badgeStable")}
-                      </span>
-                    )}
-                  </div>
-                  <div className="react-mobile-card__grid">
-                    <MobileDetailField
-                      label={t("patientDetail.dailyIndicators.avg")}
-                      value={indicator.avg_glucose != null ? `${formatNumber(indicator.avg_glucose)} mg/dL` : "-"}
-                    />
-                    <MobileDetailField label={t("patientDetail.dailyIndicators.pctHypo")} value={formatNumber(indicator.pct_hypo, "%")} />
-                    <MobileDetailField label={t("patientDetail.dailyIndicators.pctInRange")} value={formatNumber(indicator.pct_in_range, "%")} />
-                    <MobileDetailField label={t("patientDetail.dailyIndicators.pctHyper")} value={formatNumber(indicator.pct_hyper, "%")} />
-                    <MobileDetailField label={t("patientDetail.dailyIndicators.profile")} className="react-mobile-card__field--profile">
-                      <ClusterProfileValue indicator={indicator} compact showGroup={false} />
-                    </MobileDetailField>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <details className="react-disclosure react-disclosure--panel">
+              <summary>
+                <h2>{t("patientDetail.dailyIndicators.toggle", { count: dailyTotal })}</h2>
+                <ChevronDownIcon />
+              </summary>
+              {dailyIndicatorRows}
+              {dailyIndicatorsPagination}
+            </details>
           ) : (
-            <div className="react-table-shell react-table-shell--daily-indicators">
-              <table className="react-table react-table--daily-indicators">
-                <thead>
-                  <tr>
-                    <th>{t("patientDetail.dailyIndicators.date")}</th>
-                    <th className="is-num">{t("patientDetail.dailyIndicators.avg")}</th>
-                    <th className="is-num">{t("patientDetail.dailyIndicators.pctHypo")}</th>
-                    <th className="is-num">{t("patientDetail.dailyIndicators.pctInRange")}</th>
-                    <th className="is-num">{t("patientDetail.dailyIndicators.pctHyper")}</th>
-                    <th>{t("patientDetail.dailyIndicators.anomaly")}</th>
-                    <th>{t("patientDetail.dailyIndicators.profile")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dailyIndicatorsPage.map((indicator) => (
-                    <tr
-                      key={indicator.date}
-                      className={indicator.date === selectedDay ? "is-selected" : ""}
-                      onClick={() => handleSelectDay(indicator.date)}
-                    >
-                      <td>{formatDate(indicator.date)}</td>
-                      <td className="is-num">{indicator.avg_glucose != null ? `${formatNumber(indicator.avg_glucose)} mg/dL` : "-"}</td>
-                      <td className="is-num">{formatNumber(indicator.pct_hypo, "%")}</td>
-                      <td className="is-num">{formatNumber(indicator.pct_in_range, "%")}</td>
-                      <td className="is-num">{formatNumber(indicator.pct_hyper, "%")}</td>
-                      <td>
-                        {!indicator.analysis_pending && indicator.anomaly_flag ? (
-                          <span className="react-badge react-badge--atypical react-badge--compact">{t("patientDetail.dailyIndicators.badgeAtypical")}</span>
-                        ) : (
-                          t("common.dash")
-                        )}
-                      </td>
-                      <td>
-                        <div className="react-table-meta">
-                          <ClusterProfileValue indicator={indicator} showGroup={!isOwnPatientView} />
-                        </div>
-                      </td>
+            <>
+              <div className="react-panel__header">
+                <div>
+                  <h2>{t("patientDetail.dailyIndicators.title")}</h2>
+                </div>
+              </div>
+              <div className="react-table-shell react-table-shell--daily-indicators">
+                <table className="react-table react-table--daily-indicators">
+                  <thead>
+                    <tr>
+                      <th>{t("patientDetail.dailyIndicators.date")}</th>
+                      <th className="is-num">{t("patientDetail.dailyIndicators.avg")}</th>
+                      <th className="is-num">{t("patientDetail.dailyIndicators.pctHypo")}</th>
+                      <th className="is-num">{t("patientDetail.dailyIndicators.pctInRange")}</th>
+                      <th className="is-num">{t("patientDetail.dailyIndicators.pctHyper")}</th>
+                      <th>{t("patientDetail.dailyIndicators.anomaly")}</th>
+                      <th>{t("patientDetail.dailyIndicators.profile")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {data.daily_indicators_pagination?.total > 0 && (
-            <div className="react-panel__footer">
-              <Pagination
-                page={data.daily_indicators_pagination.page}
-                pages={data.daily_indicators_pagination.pages}
-                count={data.daily_indicators_pagination.total}
-                pageSize={indicatorPageSize}
-                onPageChange={(nextPage) => { silentReloadRef.current = true; setIndicatorPage(nextPage); }}
-                onPageSizeChange={(size) => { silentReloadRef.current = true; setIndicatorPageSize(size); setIndicatorPage(1); }}
-              />
-            </div>
+                  </thead>
+                  <tbody>
+                    {dailyIndicatorsPage.map((indicator) => (
+                      <tr
+                        key={indicator.date}
+                        className={indicator.date === selectedDay ? "is-selected" : ""}
+                        onClick={() => handleSelectDay(indicator.date)}
+                      >
+                        <td>{formatDate(indicator.date)}</td>
+                        <td className="is-num">{indicator.avg_glucose != null ? `${formatNumber(indicator.avg_glucose)} mg/dL` : "-"}</td>
+                        <td className="is-num">{formatNumber(indicator.pct_hypo, "%")}</td>
+                        <td className="is-num">{formatNumber(indicator.pct_in_range, "%")}</td>
+                        <td className="is-num">{formatNumber(indicator.pct_hyper, "%")}</td>
+                        <td>
+                          {!indicator.analysis_pending && indicator.anomaly_flag ? (
+                            <span className="react-badge react-badge--atypical react-badge--compact">{t("patientDetail.dailyIndicators.badgeAtypical")}</span>
+                          ) : (
+                            t("common.dash")
+                          )}
+                        </td>
+                        <td>
+                          <div className="react-table-meta">
+                            <ClusterProfileValue indicator={indicator} showGroup={!isOwnPatientView} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {dailyIndicatorsPagination}
+            </>
           )}
         </article>
 
-        <article className="react-panel react-panel--wide">
-          <div className="react-panel__header">
-            <div>
-              <h2>{t("patientDetail.recentEvents.title")}</h2>
-            </div>
-          </div>
+        <article className="react-panel react-panel--wide react-data-panel">
           {isCompactMobile ? (
-            <div className="react-mobile-list" aria-label={t("patientDetail.recentEvents.eyebrow")}>
-              {recentEvents.map((event) => {
-                const eventTypeLabel = enumLabel("eventType", event.event_type, event.event_type_label, t);
-                const eventSubtypeLabel = enumLabel("eventSubtype", event.event_subtype, event.event_subtype_label, t);
-                const contextLabel = enumLabel("context", event.context_label, event.context_label_display, t);
-
-                return (
-                  <article key={`${event.occurred_at}-${event.event_type}`} className="react-mobile-card">
-                    <div className="react-mobile-card__header">
-                      <div>
-                        <span className="react-mobile-card__eyebrow">{t("patientDetail.recentEvents.when")}</span>
-                        <h3>{formatPatientEventDateTime(event)}</h3>
-                      </div>
-                      <span className="react-mobile-card__badge" title={event.event_type || ""}>
-                        {eventTypeLabel}
-                      </span>
-                    </div>
-                    <div className="react-mobile-card__grid">
-                      <MobileDetailField label={t("patientDetail.recentEvents.subtype")} value={eventSubtypeLabel} />
-                      <MobileDetailField
-                        label={t("patientDetail.recentEvents.value")}
-                        value={
-                          event.glucose_mg_dl != null
-                            ? `${formatNumber(event.glucose_mg_dl)} mg/dL`
-                            : event.numeric_value != null
-                              ? formatNumber(event.numeric_value)
-                              : "-"
-                        }
-                      />
-                      <MobileDetailField label={t("patientDetail.recentEvents.context")} value={contextLabel} />
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+            <details className="react-disclosure react-disclosure--panel">
+              <summary>
+                <h2>{t("patientDetail.recentEvents.toggle", { count: eventsTotal })}</h2>
+                <ChevronDownIcon />
+              </summary>
+              {recentEventRows}
+              {recentEventsPagination}
+            </details>
           ) : (
-            <div className="react-table-shell">
-              <table className="react-table">
-                <thead>
-                  <tr>
-                    <th>{t("patientDetail.recentEvents.when")}</th>
-                    <th>{t("patientDetail.recentEvents.type")}</th>
-                    <th>{t("patientDetail.recentEvents.subtype")}</th>
-                    <th className="is-num">{t("patientDetail.recentEvents.value")}</th>
-                    <th>{t("patientDetail.recentEvents.context")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentEvents.map((event) => {
-                    const eventTypeLabel = enumLabel("eventType", event.event_type, event.event_type_label, t);
-                    const eventSubtypeLabel = enumLabel("eventSubtype", event.event_subtype, event.event_subtype_label, t);
-                    const contextLabel = enumLabel("context", event.context_label, event.context_label_display, t);
+            <>
+              <div className="react-panel__header">
+                <div>
+                  <h2>{t("patientDetail.recentEvents.title")}</h2>
+                </div>
+              </div>
+              <div className="react-table-shell">
+                <table className="react-table">
+                  <thead>
+                    <tr>
+                      <th>{t("patientDetail.recentEvents.when")}</th>
+                      <th>{t("patientDetail.recentEvents.type")}</th>
+                      <th>{t("patientDetail.recentEvents.subtype")}</th>
+                      <th className="is-num">{t("patientDetail.recentEvents.value")}</th>
+                      <th>{t("patientDetail.recentEvents.context")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentEvents.map((event) => {
+                      const eventTypeLabel = enumLabel("eventType", event.event_type, event.event_type_label, t);
+                      const eventSubtypeLabel = enumLabel("eventSubtype", event.event_subtype, event.event_subtype_label, t);
+                      const contextLabel = enumLabel("context", event.context_label, event.context_label_display, t);
 
-                    return (
-                      <tr key={`${event.occurred_at}-${event.event_type}`}>
-                        <td>{formatPatientEventDateTime(event)}</td>
-                        <td title={event.event_type || ""}>{eventTypeLabel}</td>
-                        <td title={event.event_subtype || ""}>{eventSubtypeLabel}</td>
-                        <td className="is-num">
-                          {event.glucose_mg_dl != null
-                            ? `${formatNumber(event.glucose_mg_dl)} mg/dL`
-                            : event.numeric_value != null
-                              ? formatNumber(event.numeric_value)
-                              : "-"}
-                        </td>
-                        <td title={event.context_label || ""}>{contextLabel}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {data.recent_events_pagination?.total > 0 && (
-            <div className="react-panel__footer">
-              <Pagination
-                page={data.recent_events_pagination.page}
-                pages={data.recent_events_pagination.pages}
-                count={data.recent_events_pagination.total}
-                pageSize={eventPageSize}
-                onPageChange={(nextPage) => { silentReloadRef.current = true; setEventPage(nextPage); }}
-                onPageSizeChange={(size) => { silentReloadRef.current = true; setEventPageSize(size); setEventPage(1); }}
-              />
-            </div>
+                      return (
+                        <tr key={`${event.occurred_at}-${event.event_type}`}>
+                          <td>{formatPatientEventDateTime(event)}</td>
+                          <td title={event.event_type || ""}>{eventTypeLabel}</td>
+                          <td title={event.event_subtype || ""}>{eventSubtypeLabel}</td>
+                          <td className="is-num">{formatEventValue(event)}</td>
+                          <td title={event.context_label || ""}>{contextLabel}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {recentEventsPagination}
+            </>
           )}
         </article>
       </section>
+
+      {isOwnPatientView ? (
+        <ManualGlucoseEntryForm
+          patientId={patient.id}
+          onCreated={handleManualRecordCreated}
+          open={manualOpen}
+          onToggle={() => setManualOpen((current) => !current)}
+        />
+      ) : null}
+
+      {isDoctorView && doctorLink ? (
+        <section id="patient-access" className="react-panel react-patient-access" aria-labelledby="patient-access-title">
+          <div className="react-patient-access__copy">
+            <h2 id="patient-access-title">{t("patientDetail.access.title")}</h2>
+            <p>{t("patientDetail.access.body")}</p>
+          </div>
+          <button
+            type="button"
+            className="react-button react-button--text react-button--danger-text"
+            onClick={() => {
+              setRevokeError("");
+              setRevokeOpen(true);
+            }}
+          >
+            {t("dashboard.revokeLink")}
+          </button>
+        </section>
+      ) : null}
     </div>
   );
 }

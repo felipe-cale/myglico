@@ -10,6 +10,10 @@ export function ArrowRightIcon({ size = 18 }) {
   return <Svg size={size}><path d="M5 12h14M13 6l6 6-6 6" /></Svg>;
 }
 
+export function ArrowLeftIcon({ size = 16 }) {
+  return <Svg size={size}><path d="M15 5l-7 7 7 7" /></Svg>;
+}
+
 export function ChevronDownIcon({ size = 18 }) {
   return <Svg size={size}><path d="M6 9l6 6 6-6" /></Svg>;
 }

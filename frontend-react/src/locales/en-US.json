@@ -284,7 +284,10 @@
       "glucoseRange": "Enter a glucose value greater than 0 and up to 1000 mg/dL.",
       "customContextRequired": "Describe the context or choose another option.",
       "saveFailed": "Could not log the reading. Please try again."
-    }
+    },
+    "toggle": "Open form",
+    "toggleClose": "Close form",
+    "more": "More details (optional)"
   },
   "patientDetail": {
     "loading": {
@@ -314,7 +317,8 @@
       "availablePeriod": "Data available from {{start}} to {{end}}.",
       "viewAllHistory": "See full history",
       "pendingAnalysisNote_one": "{{count}} day with recent readings is still awaiting analysis. Its indicators show up after the next processing run.",
-      "pendingAnalysisNote_other": "{{count}} days with recent readings are still awaiting analysis. Their indicators show up after the next processing run."
+      "pendingAnalysisNote_other": "{{count}} days with recent readings are still awaiting analysis. Their indicators show up after the next processing run.",
+      "newReading": "Log a reading"
     },
     "filter": {
       "eyebrow": "Period",
@@ -324,7 +328,8 @@
       "endDate": "End date",
       "apply": "Filter",
       "invalidRange": "The start date cannot be later than the end date.",
-      "periodAdjusted": "Period adjusted to include the selected day(s) {{dates}}: from {{originalStart}} – {{originalEnd}} to {{start}} – {{end}}. Clearing the day selection restores the original period."
+      "periodAdjusted": "Period adjusted to include the selected day(s) {{dates}}: from {{originalStart}} – {{originalEnd}} to {{start}} – {{end}}. Clearing the day selection restores the original period.",
+      "toggle": "Change period"
     },
     "distribution": {
       "eyebrow": "Distribution",
@@ -335,7 +340,9 @@
       "hyper": "High",
       "hypoRange": "below 70 mg/dL",
       "inRangeRange": "70 to 180 mg/dL",
-      "hyperRange": "above 180 mg/dL"
+      "hyperRange": "above 180 mg/dL",
+      "readingsCount_one": "{{count}} reading",
+      "readingsCount_other": "{{count}} readings"
     },
     "extremeEvents": {
       "eyebrow": "Out of range",
@@ -362,7 +369,8 @@
         "description": "There aren't enough glucose measurements to build the hourly view for this day."
       },
       "dayStripAriaLabel": "Available days in the period",
-      "chartLegendAriaLabel": "Glucose chart legend"
+      "chartLegendAriaLabel": "Glucose chart legend",
+      "viewModeLabel": "Chart view"
     },
     "sidebar": {
       "eyebrowDay": "Daily focus",
@@ -429,7 +437,9 @@
       "profile": "Day profile",
       "badgeAtypical": "Atypical",
       "badgeStable": "Stable",
-      "badgePending": "Pending analysis"
+      "badgePending": "Pending analysis",
+      "toggle_one": "Daily trend ({{count}} day)",
+      "toggle_other": "Daily trend ({{count}} days)"
     },
     "recentEvents": {
       "eyebrow": "Recent events",
@@ -438,7 +448,24 @@
       "type": "Type",
       "subtype": "Subtype",
       "value": "Value",
-      "context": "Context"
+      "context": "Context",
+      "toggle": "Latest records ({{count}})"
+    },
+    "periodBar": {
+      "range": "Period: {{start}} – {{end}}"
+    },
+    "emptyWindow": {
+      "title": "No analysed days in this period yet",
+      "description": "The summary and charts appear once a day has been analysed. Recent readings may still be awaiting analysis; see the full history to review the days already analysed."
+    },
+    "summary": {
+      "titlePeriod": "Period summary",
+      "titleDay": "Summary for {{date}}",
+      "timeInRange": "Glucose range"
+    },
+    "access": {
+      "title": "Access to this patient",
+      "body": "You see this data because the patient authorised the link. Revoking ends access immediately and closes any open conversations."
     }
   },
   "auth": {

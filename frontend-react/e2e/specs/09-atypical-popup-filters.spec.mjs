@@ -42,6 +42,21 @@ async function openDetail(browserSession, key, patientId, search = "") {
   return ui;
 }
 
+// The period date form sits behind the "Alterar período" disclosure of the period bar.
+async function expandPeriodForm(page) {
+  const toggle = page.getByRole("button", { name: tx("patientDetail.filter.toggle") });
+  await expect(toggle).toBeVisible();
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+
+// The manual entry form is collapsed to its header row until it is opened.
+async function openManualEntry(page) {
+  const toggle = page.locator("#new-reading").getByRole("button", { name: tx("manualEntry.toggle") });
+  await toggle.click();
+  await expect(page.locator("#new-reading").getByRole("button", { name: tx("manualEntry.toggleClose") })).toHaveAttribute("aria-expanded", "true");
+}
+
 async function openPopup(page) {
   await popupTrigger(page).click();
   const dialog = page.getByRole("dialog", { name: t("cscw.popupTitle") });
@@ -130,6 +145,7 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
     await expect(ui.page).not.toHaveURL(/dates=/);
     await expect.poll(() => new URL(ui.page.url()).searchParams.get("start_date")).toBe(activeStart);
     await expect.poll(() => new URL(ui.page.url()).searchParams.get("end_date")).toBe(activeEnd);
+    await expandPeriodForm(ui.page);
     await expect(ui.page.locator('input[type="date"]').first()).toHaveValue(activeStart);
   });
 
@@ -236,6 +252,7 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
   test("CSCW-CA-26 - the real manual form preserves both sides of local midnight", async ({ actor, browserSession }) => {
     const patient = await actor("patientA");
     const ui = await openDetail(browserSession, "patientA", patient.patientId);
+    await openManualEntry(ui.page);
     const form = ui.page.locator(".react-manual-entry-form");
     const dateInput = form.locator('input[type="datetime-local"]');
     const glucoseInput = form.locator('input[type="number"]');

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { createManualGlucoseRecord } from "../api";
+import { ChevronDownIcon } from "./Icons";
 
 const CONTEXT_OPTIONS = [
   "pre_breakfast",
@@ -23,12 +24,13 @@ function emptyForm() {
   return { measuredAt: currentLocalDateTime(), glucose: "", context: "", customContext: "", notes: "" };
 }
 
-export default function ManualGlucoseEntryForm({ patientId, onCreated }) {
+export default function ManualGlucoseEntryForm({ patientId, onCreated, open = false, onToggle }) {
   const { t } = useTranslation();
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
+  const hasOptionalDetails = Boolean(form.context || form.customContext || form.notes);
   const updateField = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
 
   async function handleSubmit(event) {
@@ -69,66 +71,86 @@ export default function ManualGlucoseEntryForm({ patientId, onCreated }) {
   }
 
   return (
-    <section id="new-reading" className="react-panel react-panel--filter react-panel--manual-entry">
-      <div className="react-filter-layout">
-        <div className="react-filter-copy">
-          <h2>{t("manualEntry.title")}</h2>
-          <p>{t("manualEntry.body")}</p>
-        </div>
-        <div className="react-filter-controls">
-          <form className="react-filter-form react-manual-entry-form" onSubmit={handleSubmit} noValidate>
-            <label>
-              <span>{t("manualEntry.measuredAt")}</span>
-              <input type="datetime-local" value={form.measuredAt} onChange={updateField("measuredAt")} required />
-            </label>
-            <label>
-              <span>{t("manualEntry.glucose")}</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="1"
-                max="1000"
-                step="any"
-                placeholder={t("manualEntry.glucosePlaceholder")}
-                value={form.glucose}
-                onChange={updateField("glucose")}
-                required
-              />
-            </label>
-            <label className="react-select-field">
-              <span>{t("manualEntry.context")}</span>
-              <select value={form.context} onChange={updateField("context")}>
-                <option value="">{t("manualEntry.contextNone")}</option>
-                {CONTEXT_OPTIONS.map((code) => (
-                  <option key={code} value={code}>
-                    {t(`enums.context.${code}`)}
-                  </option>
-                ))}
-                <option value={CUSTOM_CONTEXT}>{t("manualEntry.contextCustom")}</option>
-              </select>
-            </label>
-            {form.context === CUSTOM_CONTEXT ? (
-              <label>
-                <span>{t("manualEntry.customContext")}</span>
+    <section id="new-reading" className="react-panel react-manual-entry" aria-labelledby="new-reading-title">
+      <div className="react-manual-entry__header">
+        <h2 id="new-reading-title">{t("manualEntry.title")}</h2>
+        <button
+          type="button"
+          className="react-button react-button--ghost react-button--compact react-disclosure-toggle"
+          aria-expanded={open}
+          aria-controls="new-reading-body"
+          onClick={onToggle}
+        >
+          <span>{open ? t("manualEntry.toggleClose") : t("manualEntry.toggle")}</span>
+          <ChevronDownIcon />
+        </button>
+      </div>
+      {open ? (
+        <div id="new-reading-body" className="react-manual-entry__body">
+          <p className="react-manual-entry__intro">{t("manualEntry.body")}</p>
+          <form className="react-manual-entry-form" onSubmit={handleSubmit} noValidate>
+            <div className="react-manual-entry-form__row">
+              <label className="react-field">
+                <span>{t("manualEntry.measuredAt")}</span>
+                <input type="datetime-local" value={form.measuredAt} onChange={updateField("measuredAt")} required />
+              </label>
+              <label className="react-field">
+                <span>{t("manualEntry.glucose")}</span>
                 <input
-                  type="text"
-                  maxLength={80}
-                  placeholder={t("manualEntry.customContextPlaceholder")}
-                  value={form.customContext}
-                  onChange={updateField("customContext")}
+                  type="number"
+                  inputMode="decimal"
+                  min="1"
+                  max="1000"
+                  step="any"
+                  placeholder={t("manualEntry.glucosePlaceholder")}
+                  value={form.glucose}
+                  onChange={updateField("glucose")}
+                  required
                 />
               </label>
-            ) : null}
-            <label className="react-manual-entry-form__notes">
-              <span>{t("manualEntry.notes")}</span>
-              <textarea
-                rows={2}
-                placeholder={t("manualEntry.notesPlaceholder")}
-                value={form.notes}
-                onChange={updateField("notes")}
-              />
-            </label>
-            <div className="react-filter-actions react-manual-entry-form__actions">
+            </div>
+            <details className="react-disclosure react-manual-entry-form__more" open={hasOptionalDetails || undefined}>
+              <summary>
+                <span>{t("manualEntry.more")}</span>
+                <ChevronDownIcon />
+              </summary>
+              <div className="react-manual-entry-form__optional">
+                <label className="react-select-field">
+                  <span>{t("manualEntry.context")}</span>
+                  <select value={form.context} onChange={updateField("context")}>
+                    <option value="">{t("manualEntry.contextNone")}</option>
+                    {CONTEXT_OPTIONS.map((code) => (
+                      <option key={code} value={code}>
+                        {t(`enums.context.${code}`)}
+                      </option>
+                    ))}
+                    <option value={CUSTOM_CONTEXT}>{t("manualEntry.contextCustom")}</option>
+                  </select>
+                </label>
+                {form.context === CUSTOM_CONTEXT ? (
+                  <label className="react-field">
+                    <span>{t("manualEntry.customContext")}</span>
+                    <input
+                      type="text"
+                      maxLength={80}
+                      placeholder={t("manualEntry.customContextPlaceholder")}
+                      value={form.customContext}
+                      onChange={updateField("customContext")}
+                    />
+                  </label>
+                ) : null}
+                <label className="react-field react-manual-entry-form__notes">
+                  <span>{t("manualEntry.notes")}</span>
+                  <textarea
+                    rows={2}
+                    placeholder={t("manualEntry.notesPlaceholder")}
+                    value={form.notes}
+                    onChange={updateField("notes")}
+                  />
+                </label>
+              </div>
+            </details>
+            <div className="react-manual-entry-form__actions">
               <button type="submit" className="react-button" disabled={submitting}>
                 {submitting ? t("manualEntry.submitting") : t("manualEntry.submit")}
               </button>
@@ -143,7 +165,7 @@ export default function ManualGlucoseEntryForm({ patientId, onCreated }) {
             </div>
           </form>
         </div>
-      </div>
+      ) : null}
     </section>
   );
 }

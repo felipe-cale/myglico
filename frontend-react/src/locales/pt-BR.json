@@ -284,7 +284,10 @@
       "glucoseRange": "Informe um valor de glicemia maior que 0 e até 1000 mg/dL.",
       "customContextRequired": "Descreva o contexto ou escolha outra opção.",
       "saveFailed": "Não foi possível registrar a leitura. Tente novamente."
-    }
+    },
+    "toggle": "Abrir formulário",
+    "toggleClose": "Fechar formulário",
+    "more": "Mais detalhes (opcional)"
   },
   "patientDetail": {
     "loading": {
@@ -314,7 +317,8 @@
       "availablePeriod": "Dados disponíveis de {{start}} a {{end}}.",
       "viewAllHistory": "Ver todo o histórico",
       "pendingAnalysisNote_one": "{{count}} dia com leituras recentes ainda aguarda a análise. Os indicadores desse dia aparecem depois do próximo processamento.",
-      "pendingAnalysisNote_other": "{{count}} dias com leituras recentes ainda aguardam a análise. Os indicadores desses dias aparecem depois do próximo processamento."
+      "pendingAnalysisNote_other": "{{count}} dias com leituras recentes ainda aguardam a análise. Os indicadores desses dias aparecem depois do próximo processamento.",
+      "newReading": "Registrar leitura"
     },
     "filter": {
       "eyebrow": "Período",
@@ -324,7 +328,8 @@
       "endDate": "Data final",
       "apply": "Filtrar",
       "invalidRange": "A data inicial não pode ser maior que a data final.",
-      "periodAdjusted": "Período ajustado para incluir o(s) dia(s) selecionado(s) {{dates}}: de {{originalStart}} – {{originalEnd}} para {{start}} – {{end}}. Ao limpar a seleção de dias, o período original volta."
+      "periodAdjusted": "Período ajustado para incluir o(s) dia(s) selecionado(s) {{dates}}: de {{originalStart}} – {{originalEnd}} para {{start}} – {{end}}. Ao limpar a seleção de dias, o período original volta.",
+      "toggle": "Alterar período"
     },
     "distribution": {
       "eyebrow": "Distribuição",
@@ -335,7 +340,9 @@
       "hyper": "Hiper",
       "hypoRange": "abaixo de 70 mg/dL",
       "inRangeRange": "de 70 a 180 mg/dL",
-      "hyperRange": "acima de 180 mg/dL"
+      "hyperRange": "acima de 180 mg/dL",
+      "readingsCount_one": "{{count}} leitura",
+      "readingsCount_other": "{{count}} leituras"
     },
     "extremeEvents": {
       "eyebrow": "Fora da faixa",
@@ -362,7 +369,8 @@
         "description": "Não há medições glicêmicas suficientes para compor a visualização horária deste dia."
       },
       "dayStripAriaLabel": "Dias disponíveis no período",
-      "chartLegendAriaLabel": "Legenda do gráfico glicêmico"
+      "chartLegendAriaLabel": "Legenda do gráfico glicêmico",
+      "viewModeLabel": "Visualização do gráfico"
     },
     "sidebar": {
       "eyebrowDay": "Foco diário",
@@ -429,7 +437,9 @@
       "profile": "Perfil do dia",
       "badgeAtypical": "Atípico",
       "badgeStable": "Estável",
-      "badgePending": "Pendente de análise"
+      "badgePending": "Pendente de análise",
+      "toggle_one": "Evolução diária ({{count}} dia)",
+      "toggle_other": "Evolução diária ({{count}} dias)"
     },
     "recentEvents": {
       "eyebrow": "Eventos recentes",
@@ -438,7 +448,24 @@
       "type": "Tipo",
       "subtype": "Subtipo",
       "value": "Valor",
-      "context": "Contexto"
+      "context": "Contexto",
+      "toggle": "Últimos registros ({{count}})"
+    },
+    "periodBar": {
+      "range": "Período: {{start}} – {{end}}"
+    },
+    "emptyWindow": {
+      "title": "Ainda não há dias analisados neste período",
+      "description": "O resumo e os gráficos aparecem quando houver um dia analisado. Leituras recentes podem ainda aguardar a análise; veja todo o histórico para rever os dias já analisados."
+    },
+    "summary": {
+      "titlePeriod": "Resumo do período",
+      "titleDay": "Resumo de {{date}}",
+      "timeInRange": "Faixa glicêmica"
+    },
+    "access": {
+      "title": "Acesso a este paciente",
+      "body": "Você vê estes dados porque o paciente autorizou o vínculo. Ao revogar, o acesso termina na hora e as conversas abertas são encerradas."
     }
   },
   "auth": {

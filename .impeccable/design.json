@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-12T18:00:00-03:00",
+  "generatedAt": "2026-10-12T20:00:00-03:00",
   "title": "Design System: MyGlico",
   "extensions": {
     "colorMeta": {
@@ -339,6 +339,30 @@
       "description": "Toggles and selection use the blue selection tint, never the gradient.",
       "html": "<div class=\"ds-chips\"><button class=\"ds-chip is-active\">Período</button><button class=\"ds-chip\">Dia selecionado</button></div>",
       "css": ".ds-chips { display: flex; gap: 8px; } .ds-chip { min-height: 2.75rem; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(22, 124, 217, 0.14); background: rgba(255, 255, 255, 0.92); color: #0a4c9c; font: 700 0.875rem/1.2 Aptos, 'Segoe UI', sans-serif; cursor: pointer; } .ds-chip.is-active { background: rgba(22, 124, 217, 0.10); border-color: rgba(22, 124, 217, 0.55); }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "toggle",
+      "refersTo": "chip-selected",
+      "description": "Exclusive view toggle (period / selected day): role=group with aria-pressed buttons inside one hairline pill; the pressed button takes the selection tint, never the gradient. Right-aligned in the panel header on desktop, full width under the heading on phones.",
+      "html": "<div class=\"ds-segmented\" role=\"group\" aria-label=\"Visualização do gráfico\"><button aria-pressed=\"false\">Período</button><button aria-pressed=\"true\">Dia selecionado</button></div>",
+      "css": ".ds-segmented { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid rgba(22, 124, 217, 0.14); border-radius: 999px; background: #fff; } .ds-segmented button { flex: 1 1 0; min-height: 2.75rem; padding: 0 16px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: #56677e; font: 700 0.875rem/1.2 Aptos, 'Segoe UI', sans-serif; cursor: pointer; } .ds-segmented button[aria-pressed=\"true\"] { background: rgba(22, 124, 217, 0.10); border-color: rgba(22, 124, 217, 0.55); color: #0a4c9c; }"
+    },
+    {
+      "name": "Period Bar",
+      "kind": "panel",
+      "refersTo": "panel",
+      "description": "One panel stating the active window: data-md range line, meta lines for the window kind and the available history, ghost actions 'Alterar período' (disclosure with the date form, aria-expanded) and 'Ver todo o histórico'; notices (adjusted period, selected-day chips, pending note) stack inside it.",
+      "html": "<section class=\"ds-period-bar\"><div><h2>Período: 01/04/1989 – 30/04/1989</h2><p>Janela padrão de 30 dias.</p></div><button class=\"ds-btn-ghost\" aria-expanded=\"false\">Alterar período</button></section>",
+      "css": ".ds-period-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; padding: 20px 24px; border-radius: 30px; border: 1px solid rgba(22, 124, 217, 0.14); background: rgba(255, 255, 255, 0.94); } .ds-period-bar h2 { margin: 0; font: 700 1.125rem/1.2 Aptos, 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; } .ds-period-bar p { margin: 4px 0 0; color: #56677e; font-size: 0.8125rem; }"
+    },
+    {
+      "name": "Disclosure Panel",
+      "kind": "disclosure",
+      "refersTo": "panel",
+      "description": "On phones a data panel collapses into <details> whose summary carries the h2 with a count ('Evolução diária (30 dias)') and a rotating chevron; closed by default. Its rows are divider rows, not cards.",
+      "html": "<details class=\"ds-disclosure\"><summary><h2>Últimos registros (97)</h2></summary><ul>…</ul></details>",
+      "css": ".ds-disclosure > summary { display: flex; align-items: center; justify-content: space-between; min-height: 2.75rem; list-style: none; cursor: pointer; } .ds-disclosure > summary::-webkit-details-marker { display: none; }"
     }
   ],
   "narrative": {
@@ -386,6 +410,16 @@
         "name": "The Triage Rail Rule",
         "body": "Doctor home at >=1080px: patients table in a 2fr main column, a 1fr (min 320px) rail with pending requests then conversations; DOM and focus order is pending, conversations, patients.",
         "section": "layout"
+      },
+      {
+        "name": "The Reading Path Rule",
+        "body": "Patient detail reads in task order: page header (back link, name h1, meta line, primary action), period bar, period summary (key figures + time in range, the only place the three percentages appear), full-width trend with the day strip, extremes chart, data panels, then the patient's manual entry and the doctor's access section. When the window has no analysed day, one state block replaces summary and charts.",
+        "section": "layout"
+      },
+      {
+        "name": "The Progressive Disclosure Rule",
+        "body": "Secondary controls open on demand: the period date form behind 'Alterar período' (open by default when the window is custom or days are selected), the manual entry form behind its header toggle (opened by '#new-reading' or the header CTA), optional entry fields behind 'Mais detalhes (opcional)', and phone data tables behind closed disclosures.",
+        "section": "components"
       }
     ],
     "dos": [

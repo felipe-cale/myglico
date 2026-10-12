@@ -284,7 +284,10 @@
       "glucoseRange": "Indique un valor de glucemia mayor que 0 y hasta 1000 mg/dL.",
       "customContextRequired": "Describa el contexto o elija otra opción.",
       "saveFailed": "No fue posible registrar la lectura. Inténtelo de nuevo."
-    }
+    },
+    "toggle": "Abrir formulario",
+    "toggleClose": "Cerrar formulario",
+    "more": "Más detalles (opcional)"
   },
   "patientDetail": {
     "loading": {
@@ -314,7 +317,8 @@
       "availablePeriod": "Datos disponibles del {{start}} al {{end}}.",
       "viewAllHistory": "Ver todo el historial",
       "pendingAnalysisNote_one": "{{count}} día con lecturas recientes aún espera el análisis. Sus indicadores aparecen después del próximo procesamiento.",
-      "pendingAnalysisNote_other": "{{count}} días con lecturas recientes aún esperan el análisis. Sus indicadores aparecen después del próximo procesamiento."
+      "pendingAnalysisNote_other": "{{count}} días con lecturas recientes aún esperan el análisis. Sus indicadores aparecen después del próximo procesamiento.",
+      "newReading": "Registrar lectura"
     },
     "filter": {
       "eyebrow": "Período",
@@ -324,7 +328,8 @@
       "endDate": "Fecha final",
       "apply": "Filtrar",
       "invalidRange": "La fecha inicial no puede ser posterior a la fecha final.",
-      "periodAdjusted": "Período ajustado para incluir el/los día(s) seleccionado(s) {{dates}}: de {{originalStart}} – {{originalEnd}} a {{start}} – {{end}}. Al limpiar la selección de días, vuelve el período original."
+      "periodAdjusted": "Período ajustado para incluir el/los día(s) seleccionado(s) {{dates}}: de {{originalStart}} – {{originalEnd}} a {{start}} – {{end}}. Al limpiar la selección de días, vuelve el período original.",
+      "toggle": "Cambiar período"
     },
     "distribution": {
       "eyebrow": "Distribución",
@@ -335,7 +340,9 @@
       "hyper": "Alto",
       "hypoRange": "por debajo de 70 mg/dL",
       "inRangeRange": "de 70 a 180 mg/dL",
-      "hyperRange": "por encima de 180 mg/dL"
+      "hyperRange": "por encima de 180 mg/dL",
+      "readingsCount_one": "{{count}} lectura",
+      "readingsCount_other": "{{count}} lecturas"
     },
     "extremeEvents": {
       "eyebrow": "Fuera del rango",
@@ -362,7 +369,8 @@
         "description": "No hay mediciones glucémicas suficientes para componer la vista horaria de este día."
       },
       "dayStripAriaLabel": "Días disponibles en el período",
-      "chartLegendAriaLabel": "Leyenda del gráfico glucémico"
+      "chartLegendAriaLabel": "Leyenda del gráfico glucémico",
+      "viewModeLabel": "Vista del gráfico"
     },
     "sidebar": {
       "eyebrowDay": "Foco diario",
@@ -429,7 +437,9 @@
       "profile": "Perfil del día",
       "badgeAtypical": "Atípico",
       "badgeStable": "Estable",
-      "badgePending": "Pendiente de análisis"
+      "badgePending": "Pendiente de análisis",
+      "toggle_one": "Evolución diaria ({{count}} día)",
+      "toggle_other": "Evolución diaria ({{count}} días)"
     },
     "recentEvents": {
       "eyebrow": "Eventos recientes",
@@ -438,7 +448,24 @@
       "type": "Tipo",
       "subtype": "Subtipo",
       "value": "Valor",
-      "context": "Contexto"
+      "context": "Contexto",
+      "toggle": "Últimos registros ({{count}})"
+    },
+    "periodBar": {
+      "range": "Período: {{start}} – {{end}}"
+    },
+    "emptyWindow": {
+      "title": "Aún no hay días analizados en este período",
+      "description": "El resumen y los gráficos aparecen cuando hay un día analizado. Las lecturas recientes pueden estar aún esperando el análisis; consulta todo el historial para revisar los días ya analizados."
+    },
+    "summary": {
+      "titlePeriod": "Resumen del período",
+      "titleDay": "Resumen del {{date}}",
+      "timeInRange": "Rango glucémico"
+    },
+    "access": {
+      "title": "Acceso a este paciente",
+      "body": "Ves estos datos porque el paciente autorizó el vínculo. Al revocar, el acceso termina de inmediato y se cierran las conversaciones abiertas."
     }
   },
   "auth": {

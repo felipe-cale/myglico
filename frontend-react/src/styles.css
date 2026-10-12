@@ -501,41 +501,15 @@ small {
 .react-page--patient-detail,
 .react-page--patient-detail > section,
 .react-page--patient-detail .react-hero__content,
-.react-page--patient-detail .react-hero__side,
-.react-page--patient-detail .react-summary-box,
 .react-page--patient-detail .react-panel__header > div,
 .react-page--patient-detail .react-filter-form,
-.react-page--patient-detail .react-filter-form label,
-.react-page--patient-detail .react-patient-main,
-.react-page--patient-detail .react-patient-sidebar,
-.react-page--patient-detail .react-stat-grid,
-.react-page--patient-detail .react-stat-card {
+.react-page--patient-detail .react-filter-form label {
   min-width: 0;
 }
 
-.react-page--patient-detail .react-summary-box strong,
-.react-page--patient-detail .react-stat-card strong,
 .react-page--patient-detail .react-hero h1,
 .react-page--patient-detail .react-panel h2 {
   overflow-wrap: anywhere;
-}
-
-.react-page--patient-detail .react-chip-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-  width: min(100%, 24.5rem);
-  margin-left: var(--space-5);
-  align-self: flex-start;
-  min-width: 0;
-  flex: 0 0 auto;
-}
-
-.react-page--patient-detail .react-chip-row .react-chip {
-  width: 100%;
-  min-width: 0;
-  padding-inline: var(--space-4);
-  white-space: nowrap;
 }
 
 /* Surfaces: only top-level panels, heroes, dialogs and popovers carry the ambient shadow. */
@@ -559,35 +533,6 @@ small {
 .react-hero__visual img {
   max-width: 100%;
   object-fit: contain;
-}
-
-.react-hero__side {
-  display: flex;
-  align-items: stretch;
-}
-
-.react-summary-box {
-  width: 100%;
-  padding: var(--space-6);
-  border-radius: 24px;
-  background: #fff;
-  border: 1px solid rgba(22, 124, 217, 0.18);
-}
-
-.react-summary-box span,
-.react-summary-box small {
-  display: block;
-  color: var(--react-muted);
-}
-
-.react-summary-box strong {
-  display: block;
-  margin: var(--space-2) 0;
-  font-family: var(--font-display);
-  font-size: var(--type-data-xl);
-  line-height: var(--type-data-xl-lh);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
 }
 
 .react-eyebrow {
@@ -771,7 +716,6 @@ small {
 }
 
 .react-table .react-badge--pending,
-.react-mobile-card .react-badge--pending,
 .react-table .react-badge--atypical {
   width: max-content;
   justify-self: start;
@@ -922,56 +866,12 @@ small {
   gap: var(--space-6);
 }
 
-.react-patient-insights {
-  display: grid;
-  gap: var(--space-6);
-  grid-template-columns: minmax(250px, 0.78fr) minmax(0, 1.52fr);
-  align-items: start;
-}
-
-.react-patient-insights > .react-panel {
-  height: 100%;
-}
-
-.react-patient-layout {
-  display: grid;
-  gap: var(--space-6);
-  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
-  align-items: stretch;
-}
-
-.react-patient-main {
-  min-width: 0;
-  height: 100%;
-}
-
-.react-patient-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  align-self: stretch;
-  position: sticky;
-  top: 6.25rem;
-  height: 100%;
-}
-
 .react-panel {
   padding: var(--space-6);
 }
 
 .react-panel--wide {
   grid-column: 1 / -1;
-}
-
-.react-patient-sidebar > .react-panel--summary {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.react-panel--drop-hours {
-  display: flex;
-  flex-direction: column;
 }
 
 .react-panel__header,
@@ -1002,7 +902,6 @@ small {
 }
 
 .react-panel__header p,
-.react-filter-copy p,
 .react-subpanel__copy p {
   max-width: 60ch;
 }
@@ -1020,7 +919,6 @@ small {
 .react-panel__header--patients .react-panel__header-copy {
   max-width: none;
 }
-
 
 .react-panel__footer:empty {
   display: none;
@@ -1135,31 +1033,6 @@ small {
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-.react-filter-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
-  gap: var(--space-6) var(--space-8);
-  align-items: center;
-}
-
-.react-filter-copy {
-  display: grid;
-  gap: var(--space-1);
-  max-width: 40rem;
-}
-
-.react-filter-copy > * {
-  margin: 0;
-}
-
-.react-filter-controls {
-  width: 100%;
-  padding: var(--space-4);
-  border-radius: 24px;
-  background: var(--react-bg);
-  border: 1px solid rgba(22, 124, 217, 0.12);
-}
-
 .react-filter-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
@@ -1185,139 +1058,6 @@ small {
   max-width: 16rem;
 }
 
-.react-manual-entry-form {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-.react-manual-entry-form__notes,
-.react-manual-entry-form__actions {
-  grid-column: 1 / -1;
-}
-
-.react-panel--manual-entry .react-filter-layout {
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
-  align-items: start;
-}
-
-.react-panel--manual-entry .react-filter-copy {
-  max-width: 58rem;
-  padding-top: 0;
-}
-
-.react-manual-entry-form textarea {
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border-radius: 20px;
-  border: 1px solid var(--react-border);
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--react-text);
-  font: inherit;
-  resize: vertical;
-}
-
-.react-manual-entry-form textarea:focus {
-  outline: none;
-  border-color: rgba(22, 124, 217, 0.35);
-  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.12);
-}
-
-.react-manual-entry-form__actions {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-}
-
-.react-manual-entry-form__actions > .react-button {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.react-manual-entry-form__feedback {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.react-filter-actions .react-manual-entry-form__feedback {
-  max-width: none;
-}
-
-.react-filter-actions .react-manual-entry-form__feedback.is-success {
-  color: var(--react-green-deep);
-}
-
-/* Stat cards (nested: flat, no shadow) */
-.react-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.react-patient-sidebar .react-stat-grid {
-  flex: 1;
-  grid-auto-rows: 1fr;
-  align-content: stretch;
-}
-
-.react-stat-card {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  border-radius: 22px;
-  border: 1px solid rgba(22, 124, 217, 0.12);
-  background: #fff;
-}
-
-.react-stat-card--interactive {
-  width: 100%;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.react-stat-card--interactive:hover,
-.react-stat-card--interactive:focus-visible {
-  border-color: rgba(22, 124, 217, 0.52);
-  box-shadow: inset 0 0 0 1px rgba(22, 124, 217, 0.12);
-}
-
-.react-stat-card--interactive:focus-visible {
-  outline: 3px solid rgba(39, 183, 231, 0.3);
-  outline-offset: 2px;
-}
-
-.react-stat-card__action-hint {
-  color: var(--react-blue-deep) !important;
-  font-weight: 700;
-}
-
-.react-patient-sidebar .react-stat-card {
-  height: 100%;
-}
-
-.react-stat-card span,
-.react-stat-card small {
-  color: var(--react-muted);
-}
-
-.react-stat-card span {
-  font-size: var(--type-label);
-  line-height: var(--type-label-lh);
-  font-weight: 700;
-}
-
-.react-stat-card strong {
-  font-family: var(--font-display);
-  font-size: var(--type-data-xl);
-  line-height: var(--type-data-xl-lh);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  color: var(--react-text);
-}
 
 /* Patient list (doctor home): table on desktop, divider rows below 900px */
 .react-table-shell.react-table-shell--patients {
@@ -1543,57 +1283,6 @@ small {
   min-height: 320px;
 }
 
-.react-chart--compact {
-  min-height: 260px;
-}
-
-.react-chart--insight {
-  min-height: 190px;
-}
-
-.react-chart--drop-hours {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-1);
-}
-
-.react-chart--drop-hours > div {
-  width: min(100%, 46rem);
-  margin-inline: auto;
-}
-
-.react-chart--distribution {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.react-chart--distribution > div {
-  width: min(100%, 15.25rem);
-  margin-inline: auto;
-}
-
-.react-chart--sidebar {
-  min-height: 0;
-}
-
-.react-insight-body {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.react-insight-body--distribution {
-  grid-template-columns: 1fr;
-  align-items: stretch;
-  gap: var(--space-1);
-}
-
-.react-insight-body--distribution > * {
-  min-width: 0;
-}
-
 .react-distribution-visual {
   position: relative;
   display: grid;
@@ -1603,7 +1292,7 @@ small {
 
 .react-distribution-legend {
   display: grid;
-  gap: var(--space-2);
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1613,10 +1302,13 @@ small {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: 14px;
-  background: var(--react-bg);
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--react-border);
+}
+
+.react-distribution-legend__item:first-child {
+  border-top: 0;
 }
 
 .react-distribution-legend__dot {
@@ -1645,10 +1337,6 @@ small {
   line-height: var(--type-data-md-lh);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-.react-panel--summary .react-chart {
-  height: 100%;
 }
 
 .react-chart-legend {
@@ -1721,54 +1409,6 @@ small {
   background: var(--state-selected-bg);
 }
 
-.react-distribution {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.react-distribution div {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-3);
-  border-radius: 18px;
-  background: #fff;
-  border: 1px solid rgba(22, 124, 217, 0.1);
-}
-
-.react-distribution__dot {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 999px;
-}
-
-.react-distribution__swatch {
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 4px;
-  flex: 0 0 auto;
-}
-
-.react-distribution--stacked {
-  grid-template-columns: 1fr;
-}
-
-.react-distribution--compact {
-  grid-template-columns: 1fr;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.react-distribution--compact div {
-  padding: var(--space-2) var(--space-3);
-  min-width: 0;
-}
-
-.react-distribution--compact strong,
-.react-distribution--compact small {
-  overflow-wrap: anywhere;
-}
-
 /* Tables and mobile cards */
 .react-table-shell {
   overflow-x: auto;
@@ -1778,136 +1418,6 @@ small {
 
 .react-table-shell--daily-indicators {
   overflow: visible;
-}
-
-.react-mobile-list {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.react-mobile-card {
-  width: 100%;
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: 20px;
-  border: 1px solid rgba(22, 124, 217, 0.12);
-  background: #fff;
-  text-align: left;
-}
-
-.react-mobile-card--interactive {
-  cursor: pointer;
-}
-
-.react-mobile-card--interactive.is-selected {
-  border-color: var(--state-selected-border);
-  background: var(--state-selected-bg);
-}
-
-.react-mobile-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.react-mobile-card__header h3 {
-  margin: var(--space-1) 0 0;
-  font-size: var(--type-subtitle);
-  line-height: var(--type-subtitle-lh);
-  font-variant-numeric: tabular-nums;
-}
-
-.react-mobile-card__eyebrow {
-  display: block;
-  color: var(--react-muted);
-  font-size: var(--type-meta);
-  line-height: var(--type-meta-lh);
-  font-weight: 600;
-}
-
-.react-mobile-card__badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2rem;
-  padding: var(--space-1) var(--space-3);
-  border-radius: 999px;
-  background: rgba(22, 124, 217, 0.08);
-  color: var(--react-blue-deep);
-  font-size: var(--type-label);
-  line-height: var(--type-label-lh);
-  font-weight: 700;
-  text-align: center;
-}
-
-.react-mobile-card__badge.is-alert {
-  background: var(--state-atypical-bg);
-  color: var(--state-atypical-text);
-}
-
-.react-mobile-card__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.react-mobile-card__field {
-  min-width: 0;
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-3);
-  border-radius: 16px;
-  background: var(--react-bg);
-  border: 1px solid rgba(22, 124, 217, 0.08);
-}
-
-.react-mobile-card__field--profile {
-  grid-column: 1 / -1;
-}
-
-.react-mobile-card__field span {
-  color: var(--react-muted);
-  font-size: var(--type-meta);
-  line-height: var(--type-meta-lh);
-  font-weight: 600;
-}
-
-.react-mobile-card__field strong {
-  color: var(--react-text);
-  font-size: var(--type-data-md);
-  line-height: var(--type-data-md-lh);
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-
-.react-mobile-card__field .react-cluster-profile {
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.react-mobile-card__field .react-cluster-profile__row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.react-mobile-card__field .react-cluster-profile__label {
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow-wrap: anywhere;
-}
-
-.react-mobile-card__field .react-info-tooltip__trigger {
-  width: 1.5rem;
-  height: 1.5rem;
-}
-
-.react-mobile-card__field--profile .react-info-tooltip {
-  align-self: flex-start;
 }
 
 .react-table {
@@ -3684,36 +3194,564 @@ small {
   background: var(--state-pending-bg);
 }
 
-.react-summary-box__history {
+/* Patient detail: header, period bar, summary, trend, data rows (one reading path). */
+.react-detail-header {
+  gap: var(--space-1);
+}
+
+.react-detail-header .react-back-link {
+  justify-self: start;
+}
+
+.react-detail-header__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-6);
+}
+
+.react-detail-header__copy {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.react-page-header .react-detail-header__meta {
+  color: var(--react-muted);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.react-detail-header__actions {
+  flex: 0 0 auto;
+}
+
+/* Disclosure toggles (button or summary) rotate their chevron when open. */
+.react-disclosure-toggle {
+  gap: var(--space-2);
+}
+
+.react-disclosure-toggle svg,
+.react-disclosure > summary svg {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.react-disclosure-toggle[aria-expanded="true"] svg,
+.react-disclosure[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.react-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  border-radius: 14px;
+  color: var(--react-blue-deep);
+  cursor: pointer;
+  list-style: none;
+}
+
+.react-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.react-disclosure > summary:focus-visible {
+  outline: 2px solid rgba(22, 124, 217, 0.55);
+  outline-offset: 2px;
+}
+
+.react-disclosure--panel > summary h2 {
+  color: var(--react-text);
+}
+
+.react-disclosure--panel[open] > summary {
+  margin-bottom: var(--space-2);
+}
+
+/* Period bar: the active window, its source and the controls to change it. */
+.react-period-bar {
+  padding: var(--space-5) var(--space-6);
+}
+
+.react-period-bar__main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid rgba(22, 124, 217, 0.14);
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-6);
 }
 
-.react-summary-box__history small {
-  flex: 1 1 12rem;
+.react-period-bar__summary {
+  display: grid;
+  gap: var(--space-1);
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+
+.react-period-bar__summary p {
+  margin: 0;
+  max-width: 60ch;
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+}
+
+.react-panel h2.react-period-bar__range {
+  font-family: var(--font-body);
+  font-size: var(--type-data-md);
+  line-height: var(--type-data-md-lh);
+  letter-spacing: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.react-period-bar__actions {
+  flex: 0 1 auto;
+}
+
+.react-period-bar__form {
+  max-width: 44rem;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--react-border);
+}
+
+/* Empty window: no analysed day in the active period. */
+.react-empty-window__actions {
+  margin-top: var(--space-4);
+  align-items: center;
+}
+
+.react-state .react-empty-window__actions .react-button {
+  margin-top: 0;
+}
+
+/* Period summary: key figures + time in range. */
+.react-period-summary__body {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.react-period-summary__figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-4);
+  align-content: start;
+}
+
+.react-figure {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  min-width: 0;
+}
+
+.react-figure__label {
+  color: var(--react-muted);
+  font-size: var(--type-label);
+  line-height: var(--type-label-lh);
+  font-weight: 700;
+}
+
+.react-figure__value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-1);
+  color: var(--react-text);
+  font-family: var(--font-display);
+  font-size: var(--type-data-xl);
+  line-height: var(--type-data-xl-lh);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.react-figure__value small {
+  color: var(--react-muted);
+  font-family: var(--font-body);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+  font-weight: 600;
+}
+
+.react-figure__helper {
+  color: var(--react-muted);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+}
+
+.react-figure--action {
+  grid-column: 1 / -1;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--react-border);
+  border-radius: 18px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.react-figure--action:hover {
+  border-color: var(--state-selected-border);
+}
+
+.react-figure--action:focus-visible {
+  outline: none;
+  border-color: var(--state-selected-border);
+  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22);
+}
+
+.react-figure__action {
+  margin-top: var(--space-1);
+  color: var(--react-blue-deep);
+  font-size: var(--type-label);
+  line-height: var(--type-label-lh);
+  font-weight: 700;
+}
+
+.react-period-summary__range h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--type-subtitle);
+  line-height: var(--type-subtitle-lh);
+}
+
+.react-period-summary__range-body {
+  display: grid;
+  grid-template-columns: 10.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.react-distribution-visual {
+  width: 100%;
+}
+
+.react-distribution-legend__dot.is-low {
+  background: var(--glyco-low);
+}
+
+.react-distribution-legend__dot.is-in-range {
+  background: var(--glyco-in-range);
+}
+
+.react-distribution-legend__dot.is-high {
+  background: var(--glyco-high);
+}
+
+/* Trend: segmented period / day toggle. */
+.react-segmented {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--react-border);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.react-segmented button {
+  flex: 1 1 0;
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--react-muted);
+  font: inherit;
+  font-size: var(--type-label);
+  line-height: var(--type-label-lh);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.react-segmented button:hover {
+  color: var(--react-blue-deep);
+}
+
+.react-segmented button[aria-pressed="true"] {
+  border-color: var(--state-selected-border);
+  background: var(--state-selected-bg);
+  color: var(--react-blue-deep);
+}
+
+.react-segmented button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22);
+}
+
+.react-page--patient-detail .react-chart.react-chart--extremes {
+  min-height: 0;
+}
+
+/* Data rows (phones): divider rows instead of cards. */
+.react-detail-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.react-detail-row {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--react-border);
+}
+
+.react-detail-row:first-child {
+  border-top: 0;
+}
+
+.react-detail-row.is-selected {
+  margin-inline: calc(-1 * var(--space-3));
+  padding-inline: var(--space-3);
+  border-radius: 14px;
+  background: var(--state-selected-bg);
+  box-shadow: inset 0 0 0 1px var(--state-selected-border);
+}
+
+.react-detail-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+}
+
+.react-detail-row__select,
+.react-detail-row__title {
+  color: var(--react-text);
+  font-size: var(--type-subtitle);
+  line-height: var(--type-subtitle-lh);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.react-detail-row__select {
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The date button covers the whole row, so tapping anywhere selects the day. */
+.react-detail-row__select::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+}
+
+.react-detail-row__select:focus-visible {
+  outline: none;
+}
+
+.react-detail-row__select:focus-visible::after {
+  box-shadow: 0 0 0 2px rgba(22, 124, 217, 0.55);
+}
+
+.react-detail-row .react-info-tooltip {
+  z-index: 1;
+}
+
+.react-detail-row__value {
+  color: var(--react-text);
+  font-size: var(--type-data-md);
+  line-height: var(--type-data-md-lh);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.react-detail-row__numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  color: var(--react-muted);
+  font-size: var(--type-body-sm);
+  line-height: var(--type-body-sm-lh);
+}
+
+.react-detail-row__numbers strong {
+  color: var(--react-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.react-detail-row__profile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  color: var(--react-muted);
+  font-size: var(--type-body-sm);
+  line-height: var(--type-body-sm-lh);
+}
+
+.react-detail-row__meta {
+  margin: 0;
+  color: var(--react-muted);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+}
+
+/* Manual entry: a collapsed header row that opens a flat form. */
+.react-manual-entry {
+  scroll-margin-top: var(--space-4);
+}
+
+.react-manual-entry__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+}
+
+.react-manual-entry__body {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.react-panel .react-manual-entry__intro {
+  margin: 0;
+  max-width: 60ch;
+}
+
+.react-manual-entry-form {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 44rem;
+}
+
+.react-manual-entry-form__row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.react-manual-entry-form__more > summary {
+  display: inline-flex;
+  justify-content: flex-start;
+  margin-left: calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: var(--type-label);
+  line-height: var(--type-label-lh);
+  font-weight: 700;
+}
+
+.react-manual-entry-form__more > summary:hover {
+  background: rgba(22, 124, 217, 0.06);
+}
+
+.react-manual-entry-form__optional {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.react-manual-entry-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.react-manual-entry-form__feedback {
+  color: var(--react-rose-text);
+  font-size: var(--type-label);
+  line-height: var(--type-label-lh);
+  font-weight: 700;
+}
+
+.react-manual-entry-form__feedback.is-success {
+  color: var(--react-green-deep);
+}
+
+/* Access: the doctor's revoke action closes the page, away from the reading path. */
+.react-patient-access {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+
+.react-patient-access__copy {
+  display: grid;
+  gap: var(--space-1);
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+
+.react-patient-access__copy > * {
+  margin: 0;
+}
+
+.react-patient-access__copy p {
+  max-width: 60ch;
+}
+
+@media (min-width: 900px) {
+  .react-period-summary__body {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-8);
+  }
+}
+
+@media (min-width: 1080px) {
+  .react-period-summary__figures {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .react-figure--action {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .react-period-bar {
+    padding: var(--space-5);
+  }
+
+  .react-period-bar__actions .react-button {
+    flex: 1 1 auto;
+  }
+
+  .react-period-summary__range-body {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .react-period-summary__range-body .react-distribution-legend {
+    width: 100%;
+  }
+
+  .react-distribution-visual {
+    width: 9.5rem;
+  }
 }
 
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1080px) {
   .react-hero,
-  .react-grid--detail,
-  .react-patient-insights,
-  .react-patient-layout {
+  .react-grid--detail {
     grid-template-columns: 1fr;
-  }
-
-  .react-patient-sidebar {
-    position: static;
-  }
-
-  .react-manual-entry-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .react-doctor-search {
@@ -3781,23 +3819,8 @@ small {
     display: block;
   }
 
-  .react-panel--manual-entry .react-filter-copy {
-    max-width: 44rem;
-  }
-
-  .react-page--patient-detail .react-hero--compact {
-    padding: var(--space-6);
-    gap: var(--space-4);
-    border-radius: 26px;
-  }
-
-  .react-page--patient-detail .react-panel,
-  .react-page--patient-detail .react-summary-box {
+  .react-page--patient-detail .react-panel {
     border-radius: 24px;
-  }
-
-  .react-page--patient-detail .react-summary-box {
-    padding: var(--space-4);
   }
 
   .react-page--patient-detail .react-filter-form {
@@ -3810,19 +3833,6 @@ small {
   .react-page--patient-detail .react-filter-form label,
   .react-page--patient-detail .react-filter-actions {
     width: 100%;
-  }
-
-  .react-page--patient-detail .react-chip-row {
-    width: 100%;
-    margin-left: 0;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-
-  .react-page--patient-detail .react-chip {
-    width: 100%;
-    min-width: 0;
   }
 
   .react-page--patient-detail .react-table th,
@@ -3863,15 +3873,11 @@ small {
     flex: 1 1 100%;
   }
 
-  .react-grid--metrics,
-  .react-distribution,
-  .react-stat-grid {
+  .react-grid--metrics {
     grid-template-columns: 1fr;
   }
 
   .react-grid--detail-data,
-  .react-patient-insights,
-  .react-patient-layout,
   .react-doctor-home,
   .react-doctor-home__rail {
     gap: var(--space-4);
@@ -3910,22 +3916,8 @@ small {
   }
 
   /* Patient detail */
-  .react-page--patient-detail .react-hero--compact {
-    padding: var(--space-5);
-    gap: var(--space-4);
-  }
 
   .react-page--patient-detail .react-panel {
-    border-radius: 22px;
-  }
-
-  .react-page--patient-detail .react-filter-layout {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-  }
-
-  .react-page--patient-detail .react-filter-controls {
-    padding: var(--space-3);
     border-radius: 22px;
   }
 
@@ -3934,30 +3926,15 @@ small {
   }
 
   .react-page--patient-detail .react-badge,
-  .react-page--patient-detail .react-button,
-  .react-page--patient-detail .react-chip {
+  .react-page--patient-detail .react-button {
     padding-inline: var(--space-3);
   }
 
-  .react-page--patient-detail .react-chip-row {
+  .react-detail-header__actions,
+  .react-detail-header__actions .react-button,
+  .react-empty-window__actions,
+  .react-empty-window__actions .react-button {
     width: 100%;
-    margin-left: 0;
-    gap: var(--space-2);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .react-page--patient-detail .react-chip-row .react-chip {
-    padding-inline: var(--space-2);
-  }
-
-  .react-page--patient-detail .react-actions,
-  .react-page--patient-detail .react-actions .react-button {
-    width: 100%;
-  }
-
-  .react-page--patient-detail .react-summary-box strong {
-    font-size: var(--type-data-md);
-    line-height: var(--type-data-md-lh);
   }
 
   .react-page--patient-detail .react-panel__header {
@@ -3986,46 +3963,21 @@ small {
     max-width: none;
   }
 
-  .react-page--patient-detail .react-manual-entry-form__actions > .react-button,
-  .react-page--patient-detail .react-manual-entry-form__feedback {
-    grid-column: 1;
-    grid-row: auto;
+  .react-manual-entry-form__row {
+    grid-template-columns: 1fr;
   }
 
-  .react-page--patient-detail .react-insight-body--distribution {
-    gap: var(--space-3);
+  .react-manual-entry-form__actions .react-button {
+    width: 100%;
   }
 
   .react-page--patient-detail .react-chart {
     min-height: 260px;
   }
 
-  .react-page--patient-detail .react-chart--insight {
-    min-height: 168px;
-  }
-
-  .react-page--patient-detail .react-chart--drop-hours {
-    padding: var(--space-1) var(--space-1) 0;
-  }
-
   .react-page--patient-detail .react-chart-legend {
     gap: var(--space-2) var(--space-3);
     margin-top: var(--space-3);
-  }
-
-  .react-page--patient-detail .react-stat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-
-  .react-page--patient-detail .react-stat-card {
-    padding: var(--space-3);
-    border-radius: 18px;
-  }
-
-  .react-page--patient-detail .react-stat-card strong {
-    font-size: var(--type-data-md);
-    line-height: var(--type-data-md-lh);
   }
 
   .react-page--patient-detail .react-day-strip {
@@ -4048,29 +4000,6 @@ small {
   .react-page--patient-detail .react-table th,
   .react-page--patient-detail .react-table td {
     padding: var(--space-3);
-  }
-
-  .react-page--patient-detail .react-mobile-card {
-    padding: var(--space-3);
-    border-radius: 18px;
-  }
-
-  .react-page--patient-detail .react-mobile-card__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-
-  .react-page--patient-detail .react-mobile-card__field {
-    padding: var(--space-3);
-  }
-
-  .react-page--patient-detail .react-mobile-card__header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .react-page--patient-detail .react-mobile-card__badge {
-    align-self: flex-start;
   }
 
   .react-page--patient-detail .react-info-tooltip__content {
@@ -4194,8 +4123,3 @@ small {
   }
 }
 
-@media (max-width: 360px) {
-  .react-page--patient-detail .react-mobile-card__grid {
-    grid-template-columns: 1fr;
-  }
-}
