@@ -422,6 +422,8 @@
     "email": "Correo",
     "password": "Contraseña",
     "passwordConfirm": "Confirmar Contraseña",
+    "showPassword": "Mostrar",
+    "hidePassword": "Ocultar",
     "role": "Soy",
     "rolePatient": "Paciente",
     "roleDoctor": "Médico",
@@ -676,6 +678,8 @@
     "emptyTitle": "Todo al día",
     "emptyDescription": "No tienes notificaciones sin leer.",
     "loading": "Cargando notificaciones",
+    "loadingMore": "Cargando más notificaciones…",
+    "retryMore": "Intentar cargar de nuevo",
     "error": "No fue posible cargar las notificaciones.",
     "unread_one": "{{count}} sin leer",
     "unread_other": "{{count}} sin leer"
@@ -706,10 +710,13 @@
     }
   },
   "doctorHome": {
+    "eyebrow": "Vista del médico",
+    "title": "Acompaña a tus pacientes",
+    "body": "Revisa solicitudes de vínculo, responde conversaciones y abre rápidamente los paneles de los pacientes asociados.",
     "pending": {
       "eyebrow": "Vínculos",
       "title": "Solicitudes pendientes",
-      "body": "Pacientes que pidieron ser acompañados por ti. Al aceptar, su panel aparece en tu lista.",
+      "body": "Solicitudes de pacientes que esperan tu decisión. Al aceptarlas, aparecerán en tu lista de pacientes en seguimiento.",
       "empty": {
         "title": "No hay solicitudes pendientes",
         "description": "Las nuevas solicitudes de vínculo aparecen aquí."

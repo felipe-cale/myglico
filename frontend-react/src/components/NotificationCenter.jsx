@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { fetchNotifications, readNotification } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import StateBlock from "./StateBlock";
-import Pagination from "./Pagination";
 
 function formatWhen(value, locale) {
   if (!value) return "";
@@ -36,31 +35,68 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
   const [status, setStatus] = useState("idle");
   const [notifications, setNotifications] = useState([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [pagination, setPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
+  const [retryMore, setRetryMore] = useState(0);
   const wrapperRef = useRef(null);
-
-  const loadNotifications = async () => {
-    setStatus((current) => (current === "ready" ? current : "loading"));
-    try {
-      const data = await fetchNotifications({ unread_only: true, page, page_size: pageSize });
-      setNotifications(data.notifications || data || []);
-      if (data.pagination) {
-        setPagination(data.pagination);
-        if (data.pagination.page !== page) setPage(data.pagination.page);
-      }
-      setStatus("ready");
-    } catch {
-      setStatus("error");
-    }
-  };
+  const panelRef = useRef(null);
+  const sentinelRef = useRef(null);
+  const loadingPageRef = useRef(false);
 
   useEffect(() => {
-    if (open) {
-      setStatus("loading");
-      loadNotifications();
-    }
-  }, [open, page, pageSize]);
+    if (!open) return undefined;
+
+    let cancelled = false;
+    loadingPageRef.current = true;
+    setLoadMoreError(false);
+    if (page === 1) setStatus("loading");
+    else setLoadingMore(true);
+
+    fetchNotifications({ unread_only: true, page, page_size: 10 })
+      .then((data) => {
+        if (cancelled) return;
+        const rows = data.notifications || data || [];
+        setNotifications((current) => {
+          if (page === 1) return rows;
+          const currentIds = new Set(current.map((item) => item.id));
+          return [...current, ...rows.filter((item) => !currentIds.has(item.id))];
+        });
+        setHasMore(Boolean(data.pagination && data.pagination.page < data.pagination.pages));
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (page === 1) setStatus("error");
+        else setLoadMoreError(true);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        loadingPageRef.current = false;
+        setLoadingMore(false);
+      });
+
+    return () => {
+      cancelled = true;
+      loadingPageRef.current = false;
+    };
+  }, [open, page, retryMore]);
+
+  useEffect(() => {
+    if (!open || !hasMore || loadMoreError) return undefined;
+    const sentinel = sentinelRef.current;
+    const panel = panelRef.current;
+    if (!sentinel || !panel || typeof IntersectionObserver === "undefined") return undefined;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !loadingPageRef.current) {
+        loadingPageRef.current = true;
+        setPage((current) => current + 1);
+      }
+    }, { root: panel, rootMargin: "80px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [open, hasMore, loadMoreError, notifications.length]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -83,7 +119,7 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
   const handleRead = async (id) => {
     try {
       await readNotification(id);
-      await loadNotifications();
+      setNotifications((current) => current.filter((item) => item.id !== id));
       onChange?.();
     } catch {
       setStatus("error");
@@ -116,7 +152,15 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
       <button
         type="button"
         className={`react-notifications__trigger${open ? " is-open" : ""}`}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (!open) {
+            setPage(1);
+            setNotifications([]);
+            setHasMore(false);
+            setLoadMoreError(false);
+          }
+          setOpen((current) => !current);
+        }}
         aria-label={t("notifications.title")}
         aria-expanded={open}
       >
@@ -129,7 +173,7 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
       </button>
 
       {open ? (
-        <div className="react-notifications__panel" role="region" aria-labelledby="notifications-title">
+        <div ref={panelRef} className="react-notifications__panel" role="region" aria-labelledby="notifications-title">
           <div className="react-notifications__header">
             <div>
               <p className="react-eyebrow">{t("notifications.eyebrow")}</p>
@@ -167,16 +211,17 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
               ))}
             </ul>
           )}
-          {status === "ready" && pagination.total > 0 ? (
-            <div className="react-notifications__pagination">
-              <Pagination
-                page={pagination.page}
-                pages={pagination.pages}
-                count={pagination.total}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-              />
+          {status === "ready" && hasMore ? (
+            <div ref={sentinelRef} className="react-notifications__feed-end" aria-live="polite">
+              {loadingMore ? t("notifications.loadingMore") : null}
+              {loadMoreError ? (
+                <button type="button" className="react-button react-button--text" onClick={() => {
+                  setLoadMoreError(false);
+                  setRetryMore((current) => current + 1);
+                }}>
+                  {t("notifications.retryMore")}
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>

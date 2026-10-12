@@ -422,6 +422,8 @@
     "email": "Email",
     "password": "Password",
     "passwordConfirm": "Confirm Password",
+    "showPassword": "Show",
+    "hidePassword": "Hide",
     "role": "I am a",
     "rolePatient": "Patient",
     "roleDoctor": "Doctor",
@@ -676,6 +678,8 @@
     "emptyTitle": "All caught up",
     "emptyDescription": "You have no unread notifications.",
     "loading": "Loading notifications",
+    "loadingMore": "Loading more notifications…",
+    "retryMore": "Try loading again",
     "error": "We could not load the notifications.",
     "unread_one": "{{count}} unread",
     "unread_other": "{{count}} unread"
@@ -706,10 +710,13 @@
     }
   },
   "doctorHome": {
+    "eyebrow": "Doctor overview",
+    "title": "Your patient workspace",
+    "body": "Review link requests, respond to conversations, and quickly open dashboards for patients you've accepted.",
     "pending": {
       "eyebrow": "Links",
       "title": "Pending requests",
-      "body": "Patients who asked to be followed by you. Once you accept, their dashboard shows up in your list.",
+      "body": "Patient requests waiting for your decision. Once accepted, they appear in your monitored patient list.",
       "empty": {
         "title": "No pending requests",
         "description": "New link requests show up here."

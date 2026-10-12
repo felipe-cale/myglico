@@ -9,9 +9,13 @@ import Pagination from "./Pagination";
 
 function formatDate(value, locale) {
   if (!value) return "";
-  const parsed = new Date(`${value}T00:00:00`);
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const parsed = new Date(dateOnly ? `${value}T00:00:00` : value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(parsed);
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    ...(dateOnly ? {} : { timeStyle: "short" }),
+  }).format(parsed);
 }
 
 async function loadUnreadCounts(items) {
@@ -181,11 +185,14 @@ export default function InvestigationsList() {
     setSearchParams(nextParams, { replace: true });
   };
 
+  const displayedInvestigations = [...investigations].sort((left, right) =>
+    (unreadById[right.id] || 0) - (unreadById[left.id] || 0)
+  );
   const counterpartName = (inv) =>
     inv.counterpart?.name || inv.counterpart?.display_name || inv.counterpart?.short_id || t("common.dash");
 
   return (
-    <section id="investigations" ref={sectionRef} className="react-panel react-investigations" aria-labelledby="investigations-title">
+    <section id="investigations" ref={sectionRef} className={`react-panel react-investigations${isPatient ? "" : " react-investigations--doctor"}`} aria-labelledby="investigations-title">
       <div className="react-panel__header">
         <div className="react-panel__header-copy">
           <p className="react-eyebrow">{t("cscw.panelEyebrow")}</p>
@@ -314,7 +321,7 @@ export default function InvestigationsList() {
       ) : (
         <>
           <ul className="react-investigation-grid">
-            {investigations.map(inv => {
+            {displayedInvestigations.map(inv => {
             const unread = unreadById[inv.id];
             return (
               <li key={inv.id} className={`react-investigation-card${unread ? " has-unread" : ""}`}>
@@ -349,16 +356,18 @@ export default function InvestigationsList() {
             );
             })}
           </ul>
-          <div className="react-panel__footer">
-            <Pagination
-              page={pagination.page}
-              pages={pagination.pages}
-              count={pagination.total}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-            />
-          </div>
+          {pagination.pages > 1 ? (
+            <div className="react-panel__footer">
+              <Pagination
+                page={pagination.page}
+                pages={pagination.pages}
+                count={pagination.total}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+              />
+            </div>
+          ) : null}
         </>
       )}
     </section>

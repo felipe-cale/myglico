@@ -112,11 +112,8 @@ function FilterHelpDialog({ signal, open, onClose }) {
 function DoctorHome() {
   const { t, i18n } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [summary, setSummary] = useState(null);
   const [patients, setPatients] = useState(null);
-  const [loadingSummary, setLoadingSummary] = useState(true);
   const [loadingPatients, setLoadingPatients] = useState(true);
-  const [summaryError, setSummaryError] = useState(null);
   const [patientsError, setPatientsError] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [copiedPatientId, setCopiedPatientId] = useState("");
@@ -133,31 +130,6 @@ function DoctorHome() {
   useEffect(() => {
     setSearchValue(currentQuery);
   }, [currentQuery]);
-
-  useEffect(() => {
-    let active = true;
-    setLoadingSummary(true);
-    setSummaryError(null);
-    fetchDashboardSummary()
-      .then((data) => {
-        if (active) {
-          setSummary(data);
-        }
-      })
-      .catch((error) => {
-        if (active) {
-          setSummaryError(error);
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoadingSummary(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [reloadToken]);
 
   useEffect(() => {
     const nextQuery = deferredSearch.trim();
@@ -259,36 +231,16 @@ function DoctorHome() {
   ];
 
   return (
-    <div className="react-page">
-      <section className="react-hero">
+    <div className="react-page react-page--doctor-home">
+      <section className="react-hero react-hero--doctor">
         <div className="react-hero__content">
-          <h1>{t("overview.hero.title")}</h1>
-          <p>{t("overview.hero.body")}</p>
-          <div className="react-badges react-badges--overview">
-            <span className="react-badge react-badge--brand">{t("overview.hero.badgeDaily")}</span>
-            <span className="react-badge react-badge--green">{t("overview.hero.badgeClinical")}</span>
-            <span className="react-badge react-badge--blue">{t("overview.hero.badgeContinuous")}</span>
-          </div>
-        </div>
-        <div className="react-hero__visual">
-          <img src={assetUrl("img/myglico-logo.png")} alt={t("overview.hero.imageAlt")} />
+          <p className="react-eyebrow">{t("doctorHome.eyebrow")}</p>
+          <h1>{t("doctorHome.title")}</h1>
+          <p>{t("doctorHome.body")}</p>
         </div>
       </section>
 
-      {loadingSummary ? (
-        <StateBlock title={t("overview.summaryLoading.title")} description={t("overview.summaryLoading.description")} tone="info" />
-      ) : summaryError ? (
-        <StateBlock title={t("overview.summaryError.title")} description={t("overview.summaryError.description")} tone="danger" />
-      ) : (
-        <section className="react-grid react-grid--metrics">
-          <MetricCard label={t("overview.metrics.patients.label")} value={summary.metrics.patient_count} helper={t("overview.metrics.patients.helper")} tone="blue" />
-          <MetricCard label={t("overview.metrics.records.label")} value={summary.metrics.normalized_count} helper={t("overview.metrics.records.helper")} tone="cyan" />
-          <MetricCard label={t("overview.metrics.days.label")} value={summary.metrics.indicator_count} helper={t("overview.metrics.days.helper")} tone="green" />
-          <MetricCard label={t("overview.metrics.issues.label")} value={summary.metrics.issue_count} helper={t("overview.metrics.issues.helper")} tone="yellow" />
-        </section>
-      )}
-
-      <div className="react-home-columns">
+      <div className="react-home-columns react-home-columns--doctor">
         <PendingLinksPanel onChange={() => setReloadToken((current) => current + 1)} />
         <InvestigationsList />
       </div>

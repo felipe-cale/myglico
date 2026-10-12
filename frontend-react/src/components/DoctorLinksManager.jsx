@@ -343,7 +343,7 @@ export function PendingLinksPanel({ onChange }) {
   };
 
   return (
-    <section id="pending-links" className="react-panel" aria-labelledby="pending-links-title">
+    <section id="pending-links" className="react-panel react-panel--pending-links" aria-labelledby="pending-links-title">
       <div className="react-panel__header">
         <div className="react-panel__header-copy">
           <p className="react-eyebrow">{t("doctorHome.pending.eyebrow")}</p>
@@ -367,9 +367,9 @@ export function PendingLinksPanel({ onChange }) {
         <StateBlock title={t("doctorHome.pending.empty.title")} description={t("doctorHome.pending.empty.description")} />
       ) : (
         <>
-          <ul className="react-link-list">
+          <ul className="react-link-list react-pending-list">
             {pending.map((link) => (
-            <li key={link.id} id={`pending-link-${link.id}`} className="react-link-card">
+            <li key={link.id} id={`pending-link-${link.id}`} className="react-link-card react-pending-request">
               <div className="react-link-card__identity">
                 <strong>{link.patient?.display_name}</strong>
                 <span className="react-link-card__meta">
@@ -399,9 +399,11 @@ export function PendingLinksPanel({ onChange }) {
             </li>
             ))}
           </ul>
-          <div className="react-panel__footer">
-            <Pagination page={pagination.page} pages={pagination.pages} count={pagination.total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />
-          </div>
+          {pagination.pages > 1 ? (
+            <div className="react-panel__footer">
+              <Pagination page={pagination.page} pages={pagination.pages} count={pagination.total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />
+            </div>
+          ) : null}
         </>
       )}
     </section>
