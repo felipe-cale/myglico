@@ -72,6 +72,17 @@ build-only check. After changes to `clinical_pdf.py`, download the report for
 all three `lang` values and confirm the translated strings and locale-aware
 date/number formatting.
 
+SQLite (local runs, integration tests, E2E, validators) must always enforce
+foreign keys, as MySQL does in deployment: `app/db/session.py` issues
+`PRAGMA foreign_keys=ON` on every SQLite connection. Never disable it to make a
+test pass; a constraint failure there means the code would fail on MySQL too.
+Every raw `sqlite3` connection opened by tests or scripts must also run
+`PRAGMA foreign_keys=ON`. When one flush inserts rows that reference each
+other, declare the `relationship()` (or flush explicitly) so the unit of work
+orders the INSERTs. Changes to persistence or migrations should also be
+exercised against MySQL 8 (e.g. `docker compose up db`) before they are
+considered done.
+
 ## Commit & Pull Request Guidelines
 
 Commits use conventional prefixes such as `feat:`, `fix:`, and `docs:` with a

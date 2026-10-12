@@ -90,6 +90,7 @@ def main() -> None:
             account_id = account.id
 
         with closing(sqlite3.connect(db_path)) as raw_db:
+            raw_db.execute("PRAGMA foreign_keys=ON")
             patient_row = raw_db.execute(
                 "SELECT name_encrypted, email_encrypted FROM patients WHERE id=?", (patient_id,)
             ).fetchone()

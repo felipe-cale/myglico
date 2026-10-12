@@ -145,7 +145,9 @@ def db_session(prepared_database: Path, app):
 
 def raw_sqlite() -> sqlite3.Connection:
     """Direct connection to the file, bypassing the ORM (what a DB reader sees)."""
-    return sqlite3.connect(INTEGRATION_DB_FILE, timeout=30)
+    connection = sqlite3.connect(INTEGRATION_DB_FILE, timeout=30)
+    connection.execute("PRAGMA foreign_keys=ON")
+    return connection
 
 
 def raw_execute(sql: str, params: tuple = ()) -> list[tuple]:

@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
@@ -28,7 +28,16 @@ def _build_engine(database_url: str):
             connect_args["ssl"] = {}
             database_url = urlunsplit(parts._replace(query=urlencode(query, doseq=True)))
 
-    return create_engine(database_url, connect_args=connect_args, future=True, pool_pre_ping=True)
+    engine = create_engine(database_url, connect_args=connect_args, future=True, pool_pre_ping=True)
+    if database_url.startswith("sqlite"):
+        # SQLite ignores foreign keys unless asked; enforce them so local and
+        # test runs fail on the same constraint violations MySQL rejects.
+        @event.listens_for(engine, "connect")
+        def _enable_sqlite_foreign_keys(dbapi_connection, _record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+    return engine
 
 
 engine = _build_engine(settings.database_url)

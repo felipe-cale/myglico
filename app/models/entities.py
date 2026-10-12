@@ -192,6 +192,10 @@ class Notification(Base):
     read_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
 
+    # Declared so the unit of work inserts the causing event before the
+    # notification within one flush; databases enforcing FKs reject the reverse.
+    causation_event: Mapped["ProvenanceEvent"] = relationship()
+
 
 class NotificationOutbox(Base):
     __tablename__ = "notification_outbox"
@@ -205,6 +209,8 @@ class NotificationOutbox(Base):
     last_error: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    notification: Mapped[Notification] = relationship()
 
 
 class Investigation(Base):
@@ -243,6 +249,8 @@ class InvestigationMessage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
     idempotency_key: Mapped[str | None] = mapped_column(String(128))
 
+    investigation: Mapped[Investigation] = relationship()
+
 
 class InvestigationReadPosition(Base):
     __tablename__ = "investigation_read_positions"
@@ -252,6 +260,8 @@ class InvestigationReadPosition(Base):
     participant_domain_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     last_read_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now, nullable=False)
+
+    investigation: Mapped[Investigation] = relationship()
 
 
 class AtypicalDayPrompt(Base):
