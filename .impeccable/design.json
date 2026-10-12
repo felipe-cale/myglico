@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-12T00:00:00-03:00",
+  "title": "Design System: MyGlico",
+  "extensions": {
+    "colorMeta": {
+      "trust-blue": {
+        "role": "primary",
+        "displayName": "Trust Blue",
+        "canonical": "#167cd9",
+        "tonalRamp": [
+          "#05213d",
+          "#0a3a6b",
+          "#0a4c9c",
+          "#167cd9",
+          "#4f9de3",
+          "#8bc0ee",
+          "#c4e0f7",
+          "#eaf4fd"
+        ]
+      },
+      "steady-green": {
+        "role": "secondary",
+        "displayName": "Steady Green",
+        "canonical": "#1eab69",
+        "tonalRamp": [
+          "#04301d",
+          "#0b5a39",
+          "#0b7a51",
+          "#1eab69",
+          "#4fc58c",
+          "#88dbb2",
+          "#c3eed8",
+          "#ebf9f2"
+        ]
+      },
+      "clear-cyan": {
+        "role": "primary",
+        "displayName": "Clear Cyan",
+        "canonical": "#27b7e7",
+        "tonalRamp": [
+          "#06303e",
+          "#0b5a74",
+          "#1288b0",
+          "#27b7e7",
+          "#5fcbef",
+          "#94dcf4",
+          "#c8edf9",
+          "#ecf9fd"
+        ]
+      },
+      "amber-attention": {
+        "role": "tertiary",
+        "displayName": "Amber Attention",
+        "canonical": "#f4a93d",
+        "tonalRamp": [
+          "#3a2400",
+          "#5f3a00",
+          "#8a5300",
+          "#c47d16",
+          "#f4a93d",
+          "#f8c67e",
+          "#fbe1bb",
+          "#fef4e6"
+        ]
+      },
+      "rose-alert": {
+        "role": "tertiary",
+        "displayName": "Rose Alert",
+        "canonical": "#e35d73",
+        "tonalRamp": [
+          "#3d0f18",
+          "#6b1c2b",
+          "#b23a50",
+          "#d24a63",
+          "#e35d73",
+          "#ec95a3",
+          "#f6cbd2",
+          "#fcedf0"
+        ]
+      },
+      "ink-navy": {
+        "role": "neutral",
+        "displayName": "Ink Navy",
+        "canonical": "#17304a"
+      },
+      "muted-ink": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#56677e"
+      },
+      "morning-mist": {
+        "role": "neutral",
+        "displayName": "Morning Mist",
+        "canonical": "#f4fbfe"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Landing and overview hero headings."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page heroes such as patient detail."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Panel h2 headings."
+      },
+      "eyebrow": {
+        "displayName": "Eyebrow",
+        "purpose": "Uppercase kicker above every panel heading."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Patient codes."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient-panel",
+        "value": "0 24px 52px rgba(20, 79, 126, 0.14)",
+        "purpose": "Heroes, panels, metric cards, dialogs."
+      },
+      {
+        "name": "soft-card",
+        "value": "0 10px 24px rgba(16, 59, 97, 0.08)",
+        "purpose": "Nested cards and list items."
+      },
+      {
+        "name": "button-rest",
+        "value": "0 3px 8px rgba(20, 99, 155, 0.18)",
+        "purpose": "Primary button at rest."
+      },
+      {
+        "name": "button-hover",
+        "value": "0 12px 26px rgba(16, 59, 97, 0.14)",
+        "purpose": "Buttons on hover, with 1px lift."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 4px rgba(39, 183, 231, 0.22)",
+        "purpose": "Focus on fields and buttons."
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-ease",
+        "value": "160ms ease",
+        "purpose": "Lift, shadow and border transitions on controls."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "xs",
+        "value": "360px"
+      },
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "900px"
+      },
+      {
+        "name": "lg",
+        "value": "1080px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action of a region; gradient pill.",
+      "html": "<button class=\"ds-btn-primary\">Salvar medição</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0 1rem; border-radius: 999px; border: 1px solid transparent; font-weight: 700; color: #fff; background: linear-gradient(135deg, #126fc1, #0d7f55); box-shadow: 0 3px 8px rgba(20, 99, 155, 0.18); cursor: pointer; transition: box-shadow 160ms ease, transform 160ms ease; } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(16, 59, 97, 0.14); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary actions and back navigation.",
+      "html": "<button class=\"ds-btn-ghost\">Voltar</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0 1rem; border-radius: 999px; font-weight: 700; color: #0a4c9c; background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(19, 100, 174, 0.3); box-shadow: 0 2px 5px rgba(22, 76, 126, 0.08); cursor: pointer; transition: box-shadow 160ms ease, transform 160ms ease; } .ds-btn-ghost:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(16, 59, 97, 0.14); } .ds-btn-ghost:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22); }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action, always behind a confirmation dialog.",
+      "html": "<button class=\"ds-btn-danger\">Revogar vínculo</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1rem; border-radius: 999px; font-weight: 700; color: #b23a50; background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(227, 93, 115, 0.35); cursor: pointer; } .ds-btn-danger:hover, .ds-btn-danger:focus-visible { outline: none; background: rgba(227, 93, 115, 0.08); border-color: rgba(227, 93, 115, 0.55); }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled field with soft pill-ish shell.",
+      "html": "<label class=\"ds-field\"><span>E-mail</span><input type=\"email\" placeholder=\"voce@exemplo.com\"></label>",
+      "css": ".ds-field { display: grid; gap: 0.35rem; font-family: Aptos, 'Segoe UI', sans-serif; } .ds-field span { font-size: 0.85rem; font-weight: 700; color: #56677e; } .ds-field input { min-height: 3rem; padding: 0 1rem; border-radius: 20px; border: 1px solid rgba(22, 124, 217, 0.14); background: rgba(255, 255, 255, 0.95); color: #17304a; font: inherit; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85); } .ds-field input:focus { outline: none; border-color: rgba(22, 124, 217, 0.35); box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.12); }"
+    },
+    {
+      "name": "Nav Link",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Topbar pill links; active takes the gradient.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link is-active\" href=\"#\">Visão geral</a><a class=\"ds-nav-link\" href=\"#\">Questionamentos <span class=\"ds-count\">3</span></a></nav>",
+      "css": ".ds-nav { display: flex; gap: 0.4rem; font-family: Aptos, 'Segoe UI', sans-serif; } .ds-nav-link { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.9rem 1.2rem; border-radius: 999px; font-weight: 700; color: #56677e; text-decoration: none; } .ds-nav-link:hover { color: #0a4c9c; } .ds-nav-link:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22); } .ds-nav-link.is-active { color: #fff; background: linear-gradient(135deg, #126fc1, #0d7f55); } .ds-count { min-width: 1.45rem; min-height: 1.45rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 0.78rem; background: rgba(39, 183, 231, 0.14); color: #0a4c9c; }"
+    },
+    {
+      "name": "Status Badges",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Tinted pills naming a state.",
+      "html": "<span class=\"ds-badge ds-badge--green\">Estável</span> <span class=\"ds-badge ds-badge--amber\">Aguardando análise</span> <span class=\"ds-badge ds-badge--soft\">Manual</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; min-height: 1.75rem; padding: 0.15rem 0.7rem; border-radius: 999px; font: 700 0.78rem/1.2 Aptos, 'Segoe UI', sans-serif; } .ds-badge--green { background: rgba(30, 171, 105, 0.12); color: #0b7a51; } .ds-badge--amber { background: rgba(244, 169, 61, 0.16); color: #8a5300; } .ds-badge--soft { background: rgba(97, 121, 146, 0.1); color: #52647a; }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Base container: eyebrow, heading, description.",
+      "html": "<section class=\"ds-panel\"><p class=\"ds-eyebrow\">Meus médicos</p><h2>Quem acompanha você</h2><p>Você decide quem vê seus dados.</p></section>",
+      "css": ".ds-panel { padding: 1.3rem; border-radius: 30px; border: 1px solid rgba(22, 124, 217, 0.14); background: rgba(255, 255, 255, 0.94); box-shadow: 0 24px 52px rgba(20, 79, 126, 0.14); color: #17304a; font-family: Aptos, 'Segoe UI', sans-serif; } .ds-eyebrow { margin: 0 0 0.4rem; color: #0b7a51; text-transform: uppercase; letter-spacing: 0.18em; font-size: 0.74rem; font-weight: 700; } .ds-panel h2 { margin: 0; font-family: 'Bahnschrift SemiBold', 'Trebuchet MS', sans-serif; letter-spacing: -0.03em; font-size: 1.5rem; } .ds-panel p:last-child { color: #56677e; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Serene Clinic",
+    "overview": "MyGlico should feel like a trustworthy, welcoming clinic: trust blue for action and structure, steady green for stability, and nothing that alarms. The system pairs a soft form language (pills, generous 20–30 px corners, translucent white panels over a pale morning-mist background) with precise information: legible numbers, explicit states, and chips that name what is going on. The balance is deliberate. The form welcomes patients who are not technical; the information stays as precise as a clinical panel. Warmth comes from shape and space, never from vague data.",
+    "keyCharacteristics": [
+      "Blue→green action gradient (action-blue → action-green, 135°) reserved for the primary action and the active state; darker stops keep white labels above 4.5:1.",
+      "Translucent white panels with a hairline blue border and a diffuse ambient shadow, floating over a pale gradient background.",
+      "Pill-shaped controls everywhere (buttons, chips, badges, nav links, pagination).",
+      "A condensed geometric display face for headings over a humanist sans body.",
+      "Uppercase green eyebrows above every panel heading."
+    ],
+    "rules": [
+      {
+        "name": "The Gradient Means Go Rule",
+        "body": "The action gradient marks only the main action of a view and the active state (active nav link, active chip, current page). One gradient-filled button per region.",
+        "section": "colors"
+      },
+      {
+        "name": "The Calm Signal Rule",
+        "body": "Amber and rose appear as tints with dark text (amber-attention-text, rose-alert-text), never as large fills, except the confirm button of a destructive dialog.",
+        "section": "colors"
+      },
+      {
+        "name": "The Eyebrow-Heading Pair Rule",
+        "body": "Every panel opens with an eyebrow, then an h2, then an optional one-line description.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do build every new screen from the panel + eyebrow + h2 structure.",
+      "Do use the shared field, button, badge and state primitives instead of inline styles.",
+      "Do keep the gradient for one primary action per region and for active states.",
+      "Do put destructive actions in the danger style behind a confirmation dialog.",
+      "Do show pending or atypical status as a tinted chip with dark text."
+    ],
+    "donts": [
+      "Don't ship browser-default inputs, square corners or flat #005fcc buttons; those were the off-system patterns removed in the 2026-10 layout review.",
+      "Don't use emoji as icons.",
+      "Don't fill large areas with amber or rose.",
+      "Don't hardcode colors outside the --react-* tokens; alert text uses --react-rose-text and --react-amber-text.",
+      "Don't put white text on the light brand trust-blue/steady-green fills; use the action gradient."
+    ]
+  }
+}
