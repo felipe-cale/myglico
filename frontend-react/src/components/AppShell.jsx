@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useAuth } from "../contexts/AuthContext";
 import { fetchUnreadSummary, logout } from "../api";
 import NotificationCenter from "./NotificationCenter";
+import CloseIcon from "./CloseIcon";
+import useFocusTrap from "../hooks/useFocusTrap";
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 const EMPTY_SUMMARY = { notifications_unread: 0, messages_unread: 0 };
@@ -15,6 +17,8 @@ export default function AppShell({ children }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [unread, setUnread] = useState(EMPTY_SUMMARY);
+  const drawerRef = useRef(null);
+  const drawerCloseRef = useRef(null);
 
   const { session, refreshSession } = useAuth();
   const authenticated = Boolean(session?.authenticated);
@@ -58,15 +62,19 @@ export default function AppShell({ children }) {
     }
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const handleEscape = (event) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    window.addEventListener("keydown", handleEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleEscape);
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+    if (menuOpen) drawer.removeAttribute("inert");
+    else drawer.setAttribute("inert", "");
+  }, [menuOpen]);
+
+  useFocusTrap(menuOpen, drawerRef, { initialFocusRef: drawerCloseRef, onEscape: () => setMenuOpen(false) });
 
   const messagesUnread = unread.messages_unread || 0;
   const investigationsActive = location.pathname.startsWith("/investigations");
@@ -84,10 +92,16 @@ export default function AppShell({ children }) {
         >
           {t("appShell.nav.overview")}
         </NavLink>
+        {session?.patient?.id ? (
+          <NavLink to={`/patients/${session.patient.id}`} className={({ isActive }) => `${linkClass}${isActive ? " is-active" : ""}`}>
+            {t("appShell.nav.myPanel")}
+          </NavLink>
+        ) : null}
         <Link
           to="/dashboard#investigations"
           className={`${linkClass}${investigationsActive || location.hash === "#investigations" ? " is-active" : ""}`}
           aria-label={t("cscw.menuAria", { label: investigationsLabel, count: messagesUnread })}
+          aria-current={investigationsActive || location.hash === "#investigations" ? "page" : undefined}
         >
           <span>{investigationsLabel}</span>
           {messagesUnread > 0 ? (
@@ -107,11 +121,16 @@ export default function AppShell({ children }) {
         type="button"
         className={`react-drawer__overlay${menuOpen ? " is-open" : ""}`}
         aria-label={t("appShell.closeMenu")}
-        aria-hidden={!menuOpen}
-        tabIndex={menuOpen ? 0 : -1}
+        aria-hidden="true"
+        tabIndex={-1}
         onClick={() => setMenuOpen(false)}
       />
-      <aside className={`react-drawer${menuOpen ? " is-open" : ""}`} aria-hidden={!menuOpen}>
+      <aside
+        ref={drawerRef}
+        className={`react-drawer${menuOpen ? " is-open" : ""}`}
+        aria-hidden={!menuOpen}
+        aria-label={t("appShell.menu")}
+      >
         <div className="react-drawer__header">
           <strong>{t("appShell.menu")}</strong>
           <button
@@ -119,8 +138,9 @@ export default function AppShell({ children }) {
             className="react-drawer__close"
             onClick={() => setMenuOpen(false)}
             aria-label={t("appShell.closeMenu")}
+            ref={drawerCloseRef}
           >
-            ×
+            <CloseIcon />
           </button>
         </div>
         <nav className="react-drawer__nav" aria-label={t("appShell.mobileNavLabel")}>

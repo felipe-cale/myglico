@@ -5,6 +5,7 @@ import { fetchAtypicalDays } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import StateBlock from "./StateBlock";
 import Pagination from "./Pagination";
+import CloseIcon from "./CloseIcon";
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
@@ -167,7 +168,7 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
                 <h3 id="atypical-days-title" ref={headingRef} tabIndex={-1}>{t("cscw.popupTitle")}</h3>
               </div>
               <button type="button" className="react-dialog__close" onClick={close} aria-label={t("cscw.popupCloseAria")}>
-                ×
+                <CloseIcon />
               </button>
             </div>
 

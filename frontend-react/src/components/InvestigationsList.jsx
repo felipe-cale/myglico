@@ -354,7 +354,9 @@ export default function InvestigationsList() {
                   </span>
                   {inv.status === "open" ? (
                     <span className="react-badge react-badge--soft react-badge--compact">
-                      {t("cscw.awaitingChip", { role: inv.awaiting_role ? t(`cscw.roles.${inv.awaiting_role}`, { defaultValue: inv.awaiting_role }) : t("cscw.nobody") })}
+                      {inv.awaiting_role === (isPatient ? "patient" : "doctor")
+                        ? t("cscw.awaitingYou")
+                        : t("cscw.awaitingChip", { role: inv.awaiting_role ? t(`cscw.roles.${inv.awaiting_role}`, { defaultValue: inv.awaiting_role }) : t("cscw.nobody") })}
                     </span>
                   ) : null}
                 </div>

@@ -186,7 +186,7 @@ export default function InvestigationPage() {
         <div className="react-chip-row react-conversation__chips">
           <span className={`react-status-chip react-status-chip--${inv.status}`}>{t(`cscw.status.${inv.status}`, { defaultValue: inv.status })}</span>
           {inv.status === "open" ? (
-            <span className="react-badge react-badge--soft react-badge--compact">{t("cscw.awaitingChip", { role: roleLabel(inv.awaiting_role) })}</span>
+            <span className="react-badge react-badge--soft react-badge--compact">{inv.awaiting_role === ownRole ? t("cscw.awaitingYou") : t("cscw.awaitingChip", { role: roleLabel(inv.awaiting_role) })}</span>
           ) : null}
           <InvestigationOrigin investigation={inv} variant="chip" />
         </div>

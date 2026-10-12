@@ -922,6 +922,26 @@ def api_dashboard(
             ) or 0,
         },
         "links": {"latest_batch": [], "latest_run": []},
+        "latest_reading": _latest_reading(db, principal.patient),
+    }
+
+
+def _latest_reading(db: Session, patient: Patient | None) -> dict[str, object] | None:
+    """The patient's own most recent reading, in their local time; None for doctors."""
+    if patient is None:
+        return None
+    record = db.scalar(
+        select(GlucoseRecord)
+        .where(GlucoseRecord.patient_id == patient.id)
+        .order_by(GlucoseRecord.measured_at.desc(), GlucoseRecord.id.desc())
+        .limit(1)
+    )
+    if record is None:
+        return None
+    return {
+        "glucose_mg_dl": record.glucose_mg_dl,
+        "measured_at": patient_local_datetime(record.measured_at, patient.timezone).replace(tzinfo=None).isoformat(),
+        "context_label": record.context_label,
     }
 
 

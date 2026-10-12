@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 
 export default function Pagination({ page, pages, count, pageSize = 10, onPageChange, onPageSizeChange }) {
   const { t } = useTranslation();
+  if (pages <= 1 && (!Number.isFinite(count) || count <= 10)) return null;
   const items = [];
   const start = Math.max(1, page - 2);
   const end = Math.min(pages, start + 4);
@@ -12,6 +13,8 @@ export default function Pagination({ page, pages, count, pageSize = 10, onPageCh
         key={current}
         type="button"
         className={`react-pagination__item${current === page ? " is-active" : ""}`}
+        aria-current={current === page ? "page" : undefined}
+        aria-label={t("pagination.page", { page: current })}
         onClick={() => onPageChange(current)}
       >
         {current}

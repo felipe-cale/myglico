@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import CloseIcon from "./CloseIcon";
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]';
 
@@ -78,7 +79,7 @@ export default function ConfirmDialog({
             <h3 id={titleId}>{title}</h3>
           </div>
           <button type="button" className="react-dialog__close" onClick={onCancel} aria-label={t("common.closeDialog")}>
-            ×
+            <CloseIcon />
           </button>
         </div>
         <div className="react-dialog__body">

@@ -21,11 +21,13 @@
     "mobileNavLabel": "Mobile navigation",
     "navLabel": "React navigation",
     "nav": {
-      "overview": "Overview"
+      "overview": "Overview",
+      "myPanel": "My dashboard"
     },
     "footerText": "An experience designed to follow patients, recognize meaningful changes, and support decisions with more context."
   },
   "pagination": {
+    "page": "Page {{page}}",
     "previous": "Previous",
     "next": "Next",
     "perPage": "Per page",
@@ -267,15 +269,15 @@
   "patientDetail": {
     "loading": {
       "title": "Loading patient dashboard",
-      "description": "We're preparing the indicators and clinical visualization."
+      "description": "We're preparing the indicators and charts."
     },
     "error": {
       "title": "Couldn't load this patient",
-      "description": "We had a problem building this patient's analytical breakdown."
+      "description": "We had a problem loading this patient's data. Please try again in a moment."
     },
     "hero": {
       "eyebrow": "Patient detail",
-      "body": "This dashboard consolidates the selected period from the clinical core, with dynamic updates to indicators, records, and charts.",
+      "body": "This dashboard brings together the readings, indicators, and charts for the selected period.",
       "backToOverview": "Back to overview",
       "downloadReport": "Download Glucose Report",
       "periodAnalyzed": "Period analyzed",
@@ -295,9 +297,9 @@
       "pendingAnalysisNote_other": "{{count}} days with recent readings are still awaiting analysis. Their indicators show up after the next processing run."
     },
     "filter": {
-      "eyebrow": "Time filter",
-      "title": "Refine the analysis window",
-      "body": "Select the desired range and apply the filter to update the analysis.",
+      "eyebrow": "Period",
+      "title": "Choose the period",
+      "body": "Pick the dates and tap Filter to update the charts and indicators.",
       "startDate": "Start date",
       "endDate": "End date",
       "apply": "Filter",
@@ -310,11 +312,14 @@
       "titleDay": "Range for {{date}}",
       "hypo": "Low",
       "inRange": "In range",
-      "hyper": "High"
+      "hyper": "High",
+      "hypoRange": "below 70 mg/dL",
+      "inRangeRange": "70 to 180 mg/dL",
+      "hyperRange": "above 180 mg/dL"
     },
     "extremeEvents": {
-      "eyebrow": "Extreme events",
-      "title": "Critical occurrences by time of day",
+      "eyebrow": "Out of range",
+      "title": "Very low or very high readings by time of day",
       "tooltipEvents": "{{count}} events"
     },
     "trend": {
@@ -329,7 +334,7 @@
       "legendDayCurve": "Glucose curve",
       "legendHypo": "Hypoglycemia < 70 mg/dL",
       "legendHyperTarget": "High target 180 mg/dL",
-      "legendHighRisk": "Risk > 250 mg/dL",
+      "legendHighRisk": "Very high > 250 mg/dL",
       "seriesAverage": "Average",
       "seriesGlucose": "Glucose",
       "insufficientData": {
@@ -341,10 +346,10 @@
     },
     "sidebar": {
       "eyebrowDay": "Daily focus",
-      "eyebrowPeriod": "Clinical summary",
+      "eyebrowPeriod": "Period summary",
       "titlePeriod": "Period view",
       "bodyDay": "Summary of the main signals observed on the selected day.",
-      "bodyPeriod": "Synthesis of the most relevant indicators for a quick clinical review."
+      "bodyPeriod": "The key numbers for the selected period."
     },
     "stats": {
       "measurements": {
@@ -389,7 +394,7 @@
       "anomalyDays": {
         "label": "Atypical days",
         "helper": "flagged by the analysis",
-        "action": "Click to review and select days"
+        "action": "Review and select the days"
       }
     },
     "dailyIndicators": {
@@ -475,7 +480,7 @@
   "dashboard": {
     "myDoctors": "My Doctors",
     "searchDoctor": "Search Doctor",
-    "shortId": "Code (SHORTID)",
+    "shortId": "Doctor code",
     "search": "Search",
     "requestLink": "Request Link",
     "revokeLink": "Revoke Link",
@@ -487,7 +492,7 @@
     "statusLabel": "Status",
     "doctorLabel": "Doctor",
     "patientLabel": "Patient",
-    "searchCriteriaRequired": "Enter a SHORTID or both CRM and state.",
+    "searchCriteriaRequired": "Enter the doctor code or both CRM and state.",
     "doctorNotFound": "No doctor found.",
     "searchFailed": "Could not search for the doctor.",
     "linkActionFailed": "Could not update the association.",
@@ -653,13 +658,13 @@
     "closeDialogBody": "Once closed, nobody can send new messages. The history remains available to both sides.",
     "keepOpen": "Keep open",
     "awaitingChip": "Awaiting: {{role}}",
+    "awaitingYou": "Awaiting your reply",
     "promptEyebrow": "Atypical day",
     "promptTitle": "Want to talk about it?",
     "popupEmptyHint": "Adjust the period or see the whole history."
   },
   "notifications": {
     "title": "Notifications",
-    "openItem": "Open notification item",
     "markRead": "Mark as read",
     "types": {
       "association_requested": "New association request",
@@ -689,12 +694,17 @@
     "greeting": "Hello, {{name}}",
     "body": "Here you follow a summary of your readings, the doctors who can see your data and the conversations about your glucose.",
     "openPanel": "Open my full dashboard",
+    "newReading": "Log a reading",
     "summary": {
       "eyebrow": "Personal summary",
       "title": "Your numbers",
       "body": "A consolidated view of the readings recorded for you in MyGlico."
     },
     "metrics": {
+      "latest": {
+        "label": "Latest reading",
+        "empty": "You have not logged any readings yet."
+      },
       "records": {
         "label": "My readings",
         "helper": "Glucose readings available on your dashboard."
@@ -702,10 +712,6 @@
       "days": {
         "label": "Days analyzed",
         "helper": "Days with indicators calculated for you."
-      },
-      "issues": {
-        "label": "Quality alerts",
-        "helper": "Readings worth reviewing."
       }
     }
   },

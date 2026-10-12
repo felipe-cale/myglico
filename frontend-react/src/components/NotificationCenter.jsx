@@ -41,6 +41,8 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
   const [retryMore, setRetryMore] = useState(0);
   const wrapperRef = useRef(null);
   const panelRef = useRef(null);
+  const triggerRef = useRef(null);
+  const titleRef = useRef(null);
   const sentinelRef = useRef(null);
   const loadingPageRef = useRef(false);
 
@@ -106,8 +108,12 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
       }
     };
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
+    titleRef.current?.focus();
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -151,6 +157,7 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
     <div ref={wrapperRef} className="react-notifications">
       <button
         type="button"
+        ref={triggerRef}
         className={`react-notifications__trigger${open ? " is-open" : ""}`}
         onClick={() => {
           if (!open) {
@@ -177,7 +184,7 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
           <div className="react-notifications__header">
             <div>
               <p className="react-eyebrow">{t("notifications.eyebrow")}</p>
-              <h3 id="notifications-title">{t("notifications.title")}</h3>
+              <h3 id="notifications-title" ref={titleRef} tabIndex={-1}>{t("notifications.title")}</h3>
             </div>
             {unreadCount > 0 ? (
               <span className="react-badge react-badge--blue react-badge--compact">{t("notifications.unread", { count: unreadCount })}</span>
@@ -198,9 +205,9 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
               {notifications.map((n) => (
                 <li key={n.id} className="react-notifications__item">
                   <span className="react-notifications__dot" aria-hidden="true" />
-                  <button type="button" className="react-notifications__open" onClick={() => handleOpen(n)} aria-label={t("notifications.openItem")}>
+                  <button type="button" className="react-notifications__open" onClick={() => handleOpen(n)}>
                     <span className="react-notifications__copy">
-                    <p>{t(`notifications.types.${n.notification_type}${session?.patient?.id && n.notification_type.startsWith("investigation_") ? "_patient" : ""}`, { defaultValue: n.notification_type })}</p>
+                    <span className="react-notifications__label">{t(`notifications.types.${n.notification_type}${session?.patient?.id && n.notification_type.startsWith("investigation_") ? "_patient" : ""}`, { defaultValue: n.notification_type })}</span>
                     {n.created_at ? <small>{formatWhen(n.created_at, i18n.language)}</small> : null}
                     </span>
                   </button>

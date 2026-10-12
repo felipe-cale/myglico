@@ -21,11 +21,13 @@
     "mobileNavLabel": "Navegação mobile",
     "navLabel": "Navegação React",
     "nav": {
-      "overview": "Visão geral"
+      "overview": "Visão geral",
+      "myPanel": "Meu painel"
     },
     "footerText": "Uma experiência pensada para acompanhar pessoas, reconhecer mudanças relevantes e apoiar decisões com mais contexto."
   },
   "pagination": {
+    "page": "Página {{page}}",
     "previous": "Anterior",
     "next": "Próxima",
     "perPage": "Por página",
@@ -267,15 +269,15 @@
   "patientDetail": {
     "loading": {
       "title": "Carregando painel do paciente",
-      "description": "Estamos preparando os indicadores e a visualização clínica."
+      "description": "Estamos preparando os indicadores e os gráficos."
     },
     "error": {
       "title": "Não foi possível carregar o paciente",
-      "description": "Tivemos um problema ao montar o detalhamento analítico deste paciente."
+      "description": "Tivemos um problema ao carregar os dados deste paciente. Tente novamente em instantes."
     },
     "hero": {
       "eyebrow": "Detalhe do paciente",
-      "body": "Este painel consolida o período selecionado a partir do core clínico, com atualização dinâmica dos indicadores, registros e gráficos.",
+      "body": "Este painel reúne as leituras, os indicadores e os gráficos do período selecionado.",
       "backToOverview": "Voltar para a visão geral",
       "downloadReport": "Baixar Relatório Glicêmico",
       "periodAnalyzed": "Período analisado",
@@ -295,9 +297,9 @@
       "pendingAnalysisNote_other": "{{count}} dias com leituras recentes ainda aguardam a análise. Os indicadores desses dias aparecem depois do próximo processamento."
     },
     "filter": {
-      "eyebrow": "Filtro temporal",
-      "title": "Refinar o recorte analítico",
-      "body": "Selecione o intervalo desejado e aplique o filtro para atualizar a análise.",
+      "eyebrow": "Período",
+      "title": "Escolher o período",
+      "body": "Escolha as datas e toque em Filtrar para atualizar os gráficos e indicadores.",
       "startDate": "Data inicial",
       "endDate": "Data final",
       "apply": "Filtrar",
@@ -310,11 +312,14 @@
       "titleDay": "Faixa de {{date}}",
       "hypo": "Hipo",
       "inRange": "Em faixa",
-      "hyper": "Hiper"
+      "hyper": "Hiper",
+      "hypoRange": "abaixo de 70 mg/dL",
+      "inRangeRange": "de 70 a 180 mg/dL",
+      "hyperRange": "acima de 180 mg/dL"
     },
     "extremeEvents": {
-      "eyebrow": "Eventos extremos",
-      "title": "Ocorrências críticas por horário",
+      "eyebrow": "Fora da faixa",
+      "title": "Leituras muito baixas ou muito altas por horário",
       "tooltipEvents": "{{count}} eventos"
     },
     "trend": {
@@ -329,7 +334,7 @@
       "legendDayCurve": "Curva glicêmica",
       "legendHypo": "Hipoglicemia < 70 mg/dL",
       "legendHyperTarget": "Meta alta 180 mg/dL",
-      "legendHighRisk": "Risco > 250 mg/dL",
+      "legendHighRisk": "Muito alta > 250 mg/dL",
       "seriesAverage": "Média",
       "seriesGlucose": "Glicemia",
       "insufficientData": {
@@ -341,10 +346,10 @@
     },
     "sidebar": {
       "eyebrowDay": "Foco diário",
-      "eyebrowPeriod": "Resumo clínico",
+      "eyebrowPeriod": "Resumo do período",
       "titlePeriod": "Visão do período",
       "bodyDay": "Resumo dos principais sinais observados no dia selecionado.",
-      "bodyPeriod": "Síntese dos indicadores mais relevantes para leitura clínica rápida."
+      "bodyPeriod": "Os principais números do período selecionado."
     },
     "stats": {
       "measurements": {
@@ -389,7 +394,7 @@
       "anomalyDays": {
         "label": "Dias atípicos",
         "helper": "sinalizados pela análise",
-        "action": "Clique para ver e selecionar os dias"
+        "action": "Ver e selecionar os dias"
       }
     },
     "dailyIndicators": {
@@ -475,7 +480,7 @@
   "dashboard": {
     "myDoctors": "Meus médicos",
     "searchDoctor": "Buscar médico",
-    "shortId": "Código (SHORTID)",
+    "shortId": "Código do médico",
     "search": "Buscar",
     "requestLink": "Solicitar associação",
     "revokeLink": "Revogar associação",
@@ -487,7 +492,7 @@
     "statusLabel": "Status",
     "doctorLabel": "Médico",
     "patientLabel": "Paciente",
-    "searchCriteriaRequired": "Informe um SHORTID ou CRM e UF.",
+    "searchCriteriaRequired": "Informe o código do médico ou o CRM e a UF.",
     "doctorNotFound": "Nenhum médico encontrado.",
     "searchFailed": "Não foi possível buscar o médico.",
     "linkActionFailed": "Não foi possível atualizar o vínculo.",
@@ -653,13 +658,13 @@
     "closeDialogBody": "Depois de encerrado, ninguém poderá enviar novas mensagens. O histórico continua disponível para os dois lados.",
     "keepOpen": "Manter aberto",
     "awaitingChip": "Aguardando: {{role}}",
+    "awaitingYou": "Aguardando sua resposta",
     "promptEyebrow": "Dia atípico",
     "promptTitle": "Quer conversar sobre isso?",
     "popupEmptyHint": "Ajuste o período ou veja todo o histórico."
   },
   "notifications": {
     "title": "Notificações",
-    "openItem": "Abrir item da notificação",
     "markRead": "Marcar como lida",
     "types": {
       "association_requested": "Nova solicitação de vínculo",
@@ -689,12 +694,17 @@
     "greeting": "Olá, {{name}}",
     "body": "Aqui você acompanha o resumo das suas leituras, os médicos que podem ver seus dados e as conversas sobre a sua glicemia.",
     "openPanel": "Abrir meu painel completo",
+    "newReading": "Registrar leitura",
     "summary": {
       "eyebrow": "Resumo pessoal",
       "title": "Seus números",
       "body": "Visão consolidada das leituras registradas para você no MyGlico."
     },
     "metrics": {
+      "latest": {
+        "label": "Última leitura",
+        "empty": "Você ainda não registrou leituras."
+      },
       "records": {
         "label": "Minhas leituras",
         "helper": "Leituras de glicemia disponíveis no seu painel."
@@ -702,10 +712,6 @@
       "days": {
         "label": "Dias analisados",
         "helper": "Dias com indicadores calculados para você."
-      },
-      "issues": {
-        "label": "Alertas de qualidade",
-        "helper": "Leituras que merecem uma revisão."
       }
     }
   },

@@ -9,15 +9,10 @@ import { useAuth } from "../contexts/AuthContext";
 import DoctorLinksManager, { PendingLinksPanel } from "../components/DoctorLinksManager";
 import InvestigationsList from "../components/InvestigationsList";
 import ProactivePrompt from "../components/ProactivePrompt";
+import CloseIcon from "../components/CloseIcon";
+import useFocusTrap from "../hooks/useFocusTrap";
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
-const JUSTIFIED_TEXT_STYLE = {
-  textAlign: "justify",
-  textJustify: "inter-word",
-  hyphens: "auto",
-  display: "block",
-  width: "100%"
-};
 
 function formatNumber(value, suffix = "", locale = "pt-BR") {
   if (value === null || value === undefined) {
@@ -41,6 +36,7 @@ function getPatientSignal(patient, t) {
 function FilterHelpDialog({ signal, open, onClose }) {
   const { t } = useTranslation();
   const dialogRef = useRef(null);
+  const closeRef = useRef(null);
   const content = t(`overview.profileHelp.${signal}`, { returnObjects: true, defaultValue: t("overview.profileHelp.all", { returnObjects: true }) });
 
   useEffect(() => {
@@ -54,22 +50,16 @@ function FilterHelpDialog({ signal, open, onClose }) {
       }
     };
 
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [onClose, open]);
+
+  useFocusTrap(open, dialogRef, { initialFocusRef: closeRef, onEscape: onClose });
 
   if (!open) {
     return null;
@@ -89,17 +79,17 @@ function FilterHelpDialog({ signal, open, onClose }) {
             <p className="react-eyebrow">{t("overview.profileHelp.eyebrow")}</p>
             <h3 id="profile-help-title">{content.title}</h3>
           </div>
-          <button type="button" className="react-dialog__close" onClick={onClose} aria-label={t("overview.profileHelp.closeAriaLabel")}>
-            ×
+          <button type="button" className="react-dialog__close" onClick={onClose} aria-label={t("overview.profileHelp.closeAriaLabel")} ref={closeRef}>
+            <CloseIcon />
           </button>
         </div>
         <div className="react-dialog__body">
-          <p style={JUSTIFIED_TEXT_STYLE}>{content.intro}</p>
+          <p>{content.intro}</p>
           <div className="react-dialog__sections">
             {content.sections.map((section) => (
               <section key={section.title} className="react-dialog__section">
                 <h4>{section.title}</h4>
-                <p style={JUSTIFIED_TEXT_STYLE}>{section.body}</p>
+                <p>{section.body}</p>
               </section>
             ))}
           </div>
@@ -354,8 +344,12 @@ function DoctorHome() {
   );
 }
 
+function formatReadingWhen(value, locale) {
+  return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
 function PatientHome({ patient }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [summary, setSummary] = useState(null);
   const [status, setStatus] = useState("loading");
 
@@ -377,13 +371,16 @@ function PatientHome({ patient }) {
 
   return (
     <div className="react-page">
-      <section className="react-hero">
+      <section className="react-hero react-hero--patient-home">
         <div className="react-hero__content">
           <p className="react-eyebrow">{t("patientHome.eyebrow")}</p>
           <h1>{t("patientHome.greeting", { name: patient.display_name })}</h1>
           <p>{t("patientHome.body")}</p>
           <div className="react-actions react-hero__actions">
-            <Link to={`/patients/${patient.id}`} className="react-button">
+            <Link to={`/patients/${patient.id}#new-reading`} className="react-button">
+              {t("patientHome.newReading")}
+            </Link>
+            <Link to={`/patients/${patient.id}`} className="react-button react-button--ghost">
               {t("patientHome.openPanel")}
             </Link>
           </div>
@@ -409,9 +406,14 @@ function PatientHome({ patient }) {
           <StateBlock title={t("overview.summaryError.title")} description={t("overview.summaryError.description")} tone="danger" />
         ) : (
           <div className="react-grid react-grid--metrics react-grid--embedded">
+            <MetricCard
+              label={t("patientHome.metrics.latest.label")}
+              value={summary.latest_reading ? `${formatNumber(summary.latest_reading.glucose_mg_dl, "", i18n.language)} mg/dL` : "-"}
+              helper={summary.latest_reading ? formatReadingWhen(summary.latest_reading.measured_at, i18n.language) : t("patientHome.metrics.latest.empty")}
+              tone="blue"
+            />
             <MetricCard label={t("patientHome.metrics.records.label")} value={summary.metrics.normalized_count} helper={t("patientHome.metrics.records.helper")} tone="cyan" />
             <MetricCard label={t("patientHome.metrics.days.label")} value={summary.metrics.indicator_count} helper={t("patientHome.metrics.days.helper")} tone="green" />
-            <MetricCard label={t("patientHome.metrics.issues.label")} value={summary.metrics.issue_count} helper={t("patientHome.metrics.issues.helper")} tone="yellow" />
           </div>
         )}
       </section>

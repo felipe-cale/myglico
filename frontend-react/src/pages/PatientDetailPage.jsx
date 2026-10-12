@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Bar,
@@ -25,12 +25,12 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import ManualGlucoseEntryForm from "../components/ManualGlucoseEntryForm";
 import { useAuth } from "../contexts/AuthContext";
 
-const PIE_COLORS = ["#e35d73", "#19a86a", "#f4a93d"];
+const PIE_COLORS = ["#e35d73", "#1eab69", "#f4a93d"];
 const HOURLY_TICKS = Array.from({ length: 24 }, (_, index) => index);
 const TREND_COLOR = "#167cd9";
 const HYPO_COLOR = "#e35d73";
 const HYPER_COLOR = "#f4a93d";
-const HIGH_RISK_COLOR = "#7a52cc";
+const HIGH_RISK_COLOR = "#8a5300";
 
 function formatNumberBase(value, suffix = "", locale = "pt-BR") {
   if (value === null || value === undefined) {
@@ -276,6 +276,7 @@ export default function PatientDetailPage() {
   const formatShortDate = (dateValue) => formatShortDateBase(dateValue, locale);
   const { patientId } = useParams();
   const { session } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const isDoctorView = Boolean(session?.doctor?.id);
   const [doctorLink, setDoctorLink] = useState(null);
@@ -528,9 +529,9 @@ export default function PatientDetailPage() {
       return [];
     }
     return [
-      { name: t("patientDetail.distribution.hypo"), value: data.summary.pct_hypo },
-      { name: t("patientDetail.distribution.inRange"), value: data.summary.pct_in_range },
-      { name: t("patientDetail.distribution.hyper"), value: data.summary.pct_hyper }
+      { name: t("patientDetail.distribution.hypo"), range: t("patientDetail.distribution.hypoRange"), value: data.summary.pct_hypo },
+      { name: t("patientDetail.distribution.inRange"), range: t("patientDetail.distribution.inRangeRange"), value: data.summary.pct_in_range },
+      { name: t("patientDetail.distribution.hyper"), range: t("patientDetail.distribution.hyperRange"), value: data.summary.pct_hyper }
     ];
   }, [data, t]);
 
@@ -540,9 +541,9 @@ export default function PatientDetailPage() {
     }
 
     return [
-      { name: t("patientDetail.distribution.hypo"), value: selectedDaySummary.pctHypo },
-      { name: t("patientDetail.distribution.inRange"), value: selectedDaySummary.pctInRange },
-      { name: t("patientDetail.distribution.hyper"), value: selectedDaySummary.pctHyper }
+      { name: t("patientDetail.distribution.hypo"), range: t("patientDetail.distribution.hypoRange"), value: selectedDaySummary.pctHypo },
+      { name: t("patientDetail.distribution.inRange"), range: t("patientDetail.distribution.inRangeRange"), value: selectedDaySummary.pctInRange },
+      { name: t("patientDetail.distribution.hyper"), range: t("patientDetail.distribution.hyperRange"), value: selectedDaySummary.pctHyper }
     ];
   }, [selectedDaySummary, t]);
 
@@ -633,6 +634,14 @@ export default function PatientDetailPage() {
       })),
     [hourlyHighs250, hourlyLows]
   );
+
+  useEffect(() => {
+    if (!data || location.hash !== "#new-reading") return;
+    const target = document.getElementById("new-reading");
+    if (!target) return;
+    target.scrollIntoView({ block: "start" });
+    target.querySelector("input")?.focus({ preventScroll: true });
+  }, [data, location.hash]);
 
   useEffect(() => {
     if (!availableDayDates.length) {
@@ -1035,7 +1044,7 @@ export default function PatientDetailPage() {
             </div>
           </div>
             <div className="react-insight-body react-insight-body--distribution">
-              <div className="react-distribution-visual">
+              <div className="react-distribution-visual" aria-hidden="true">
                 <div className="react-chart react-chart--insight react-chart--distribution">
                   <ResponsiveContainer width="100%" height={distributionChartHeight}>
                   <PieChart>
@@ -1054,26 +1063,23 @@ export default function PatientDetailPage() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-                <div className="react-distribution-center" aria-hidden="true">
-                  <div className="react-distribution-center__stack">
-                    {activeDistributionData.map((item, index) => (
-                    <div key={item.name} className="react-distribution-center__item">
-                      <span
-                        className="react-distribution-center__dot"
-                        style={{ backgroundColor: PIE_COLORS[index] }}
-                      />
-                      <span className="react-distribution-center__label">{item.name}</span>
-                      <strong
-                        className="react-distribution-center__value"
-                        style={{ color: PIE_COLORS[index] }}
-                      >
-                        {formatNumber(item.value, "%")}
-                      </strong>
-                    </div>
-                  ))}
-                  </div>
-                </div>
               </div>
+              <ul className="react-distribution-legend">
+                {activeDistributionData.map((item, index) => (
+                  <li key={item.name} className="react-distribution-legend__item">
+                    <span
+                      className="react-distribution-legend__dot"
+                      style={{ backgroundColor: PIE_COLORS[index] }}
+                      aria-hidden="true"
+                    />
+                    <span className="react-distribution-legend__label">
+                      {item.name}
+                      <small>{item.range}</small>
+                    </span>
+                    <strong className="react-distribution-legend__value">{formatNumber(item.value, "%")}</strong>
+                  </li>
+                ))}
+              </ul>
             </div>
           </article>
 
@@ -1100,8 +1106,8 @@ export default function PatientDetailPage() {
                 <YAxis allowDecimals={false} tick={axisTickStyle} width={isCompactMobile ? 24 : 32} />
                 <Tooltip formatter={(value) => t("patientDetail.extremeEvents.tooltipEvents", { count: value })} labelFormatter={(label) => `${String(label).padStart(2, "0")}h`} />
                 <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: isCompactMobile ? "11px" : "12px" }} />
-                <Bar dataKey="lowCount" name="< 70 mg/dL" fill="#27b7e7" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="highCount" name="> 250 mg/dL" fill="#f4a93d" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="lowCount" name="< 70 mg/dL" fill={HYPO_COLOR} radius={[8, 8, 0, 0]} />
+                <Bar dataKey="highCount" name="> 250 mg/dL" fill={HIGH_RISK_COLOR} radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1376,7 +1382,7 @@ export default function PatientDetailPage() {
                       <td>{indicator.analysis_pending ? t("common.dash") : indicator.anomaly_flag ? t("common.yes") : t("common.no")}</td>
                       <td>
                         <div className="react-table-meta">
-                          <ClusterProfileValue indicator={indicator} />
+                          <ClusterProfileValue indicator={indicator} showGroup={!isOwnPatientView} />
                         </div>
                       </td>
                     </tr>
