@@ -325,9 +325,28 @@ restates the heading ("Período" over "Escolher o período").
 
 Content sits in a centered container (max 1240 px, 20 px padding, 16 px
 below 900 px). Pages stack panels with a 24 px gap (16 px below 640 px).
-Heroes split into a 1.15fr copy column and a 0.85fr visual or summary column.
-Metric grids use `auto-fit` with 220 px minimum columns; detail grids use two
-equal columns.
+Heroes split into a 1.15fr copy column and a 0.85fr visual or summary column
+(landing and patient detail only).
+
+**Page header.** App pages open with a page header on the background, outside
+any panel: the `h1` in the headline role plus at most one body line (60ch), no
+eyebrow (`.react-page-header`). The homes use it instead of a hero.
+
+**Patient home** is one reading column (max 760 px, centered): page header,
+latest reading (data-xl value, meta time and counts, the primary "Registrar
+leitura" plus a ghost link to the full panel), atypical-day prompt,
+conversations, doctors.
+
+**Doctor home** is triage-first. At ≥1080 px it is a grid
+`minmax(0, 2fr) minmax(320px, 1fr)`: the patient list in the main column and a
+rail with pending requests, then conversations. The DOM (and phone/focus
+order) is pending → conversations → patients. In the rail, the conversation
+origin line is hidden below 1280 px. The patient list is a `react-table`
+(name, code with an icon copy button, profile chip, numeric columns
+right-aligned with `is-num`, an "Abrir painel" row link) and becomes divider
+rows below 900 px.
+
+Detail grids use two equal columns.
 
 ### Spacing scale
 4 px base: 4, 8, 12, 16, 20, 24, 32, 40, 48 (`--space-1` … `--space-12`).
@@ -357,9 +376,8 @@ ambient shadow; everything nested inside them is flat.
   buttons and icon buttons on focus or hover.
 - **Inner highlight** (`inset 0 1px 0 rgba(255, 255, 255, 0.85)`): fields.
 
-Nested cards (stat cards, patient cards, metric tiles, link and
-investigation cards) have no shadow and no hover lift; hover only deepens the
-hairline border.
+Nested surfaces (stat cards, mobile cards) have no shadow and no hover lift;
+lists inside panels are divider rows with no surface at all.
 
 ## Shapes
 
@@ -384,6 +402,11 @@ Pills with bold 14 px labels, gentle lift on hover.
   always behind a confirmation dialog. **Danger solid** (rose gradient) only
   as that dialog's confirm button.
 - **Quiet / Text:** transparent, muted or blue label, for tertiary actions.
+- **Danger text:** a text button in rose text for destructive row actions
+  (revoke a link); still behind the confirmation dialog, 44 px hit area, never
+  the loudest element in the row.
+- **Icon-only:** a 20 px drawn icon in a 44 px transparent hit area with an
+  `aria-label` (copy code). Icons are inline SVG with a 2 px stroke.
 
 ### Chips and Badges
 - **Chips:** ghost pills used as filters and segmented toggles; the active
@@ -416,6 +439,19 @@ text button below the language switcher. The footer is a single meta-role
 line stating that MyGlico does not diagnose.
 
 ### Lists, Popovers and Conversation
+- **Lists are divider rows, not cards.** Conversations, doctor links,
+  pending requests, atypical-day prompts and the phone patient list are rows
+  separated by a top hairline with 16 px vertical padding (12 px in prompts);
+  no per-row border, fill, radius or shadow. A row whose whole surface opens
+  something stretches its visible text link over the row (`::after`), keeps
+  the visible label right-aligned on desktop and rings the whole row on
+  keyboard focus. Ended items (revoked, rejected, cancelled links) collapse
+  behind a `<details>` disclosure ("Vínculos anteriores (n)").
+- **Inline forms are flat:** a sub-panel opened inside a panel (new
+  conversation, doctor search) is bracketed by hairlines with 16 px padding;
+  only true overlays (the atypical-day multi-select) keep a surface.
+- **Header CTAs follow the content:** a panel's "add / new" action is primary
+  only while its list is empty and ghost once there are items.
 - **Overlays are opaque:** the drawer and the notifications popover use a
   solid white (or white → morning mist) fill; translucent glass is for
   panels over the page background only.

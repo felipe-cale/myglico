@@ -38,7 +38,12 @@
   "signal": {
     "stable": "Perfil en Rango",
     "attention": "Perfil Hiperglucémico",
-    "oscillation": "Perfil Hipoglucémico"
+    "oscillation": "Perfil Hipoglucémico",
+    "short": {
+      "stable": "En rango",
+      "attention": "Hiperglucémico",
+      "oscillation": "Hipoglucémico"
+    }
   },
   "clusterProfile": {
     "group": "Grupo {{n}}",
@@ -176,7 +181,21 @@
         "description": "Intenta buscar por otro nombre o identificador para continuar."
       },
       "daysObserved_one": "{{count}} día con lecturas disponibles",
-      "daysObserved_other": "{{count}} días con lecturas disponibles"
+      "daysObserved_other": "{{count}} días con lecturas disponibles",
+      "helpButtonLabel": "Cómo se definen los perfiles",
+      "openPanelShort": "Abrir panel",
+      "openPanelAria": "Abrir panel de {{name}}",
+      "rowSummary": "{{avg}} mg/dL · {{low}} baja · {{high}} alta",
+      "columns": {
+        "patient": "Paciente",
+        "code": "Código",
+        "profile": "Perfil",
+        "days": "Días",
+        "avg": "Media (mg/dL)",
+        "low": "% baja",
+        "high": "% alta",
+        "actions": "Acciones"
+      }
     },
     "profileHelp": {
       "eyebrow": "Ayuda del filtro",
@@ -528,7 +547,8 @@
       "bodyPatient": "{{name}} deja de ver tus datos de inmediato y se cierran las consultas abiertas con este médico. El historial de las conversaciones sigue disponible para ti.",
       "titleDoctor": "¿Revocar la asociación con {{name}}?",
       "bodyDoctor": "Dejas de ver los datos de {{name}} de inmediato y se cierran las consultas abiertas. Un nuevo vínculo requerirá otra solicitud del paciente."
-    }
+    },
+    "historyToggle": "Vínculos anteriores ({{count}})"
   },
   "cscw": {
     "investigations": "Investigaciones",
@@ -702,7 +722,13 @@
     "summary": {
       "eyebrow": "Resumen personal",
       "title": "Tus números",
-      "body": "Vista consolidada de las lecturas registradas para ti en MyGlico."
+      "body": "Vista consolidada de las lecturas registradas para ti en MyGlico.",
+      "counts": {
+        "readings_one": "{{value}} lectura",
+        "readings_other": "{{value}} lecturas",
+        "days_one": "{{value}} día analizado",
+        "days_other": "{{value}} días analizados"
+      }
     },
     "metrics": {
       "latest": {

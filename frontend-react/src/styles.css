@@ -1021,8 +1021,9 @@ small {
   max-width: none;
 }
 
-.react-panel__header--patients .react-patient-toolbar {
-  margin-left: 0;
+
+.react-panel__footer:empty {
+  display: none;
 }
 
 .react-panel__footer {
@@ -1032,20 +1033,14 @@ small {
 }
 
 .react-patient-toolbar {
-  width: min(100%, 34rem);
-  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--space-3);
+  gap: var(--space-3) var(--space-4);
 }
 
-.react-patient-filter-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-3);
-  align-items: end;
-  flex: 1 1 14rem;
+.react-patient-toolbar__filter {
+  flex: 0 1 12rem;
 }
 
 /* Fields: label to control 8px, field to field 16px, form to actions 24px. */
@@ -1099,26 +1094,15 @@ small {
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-.react-help-button {
-  width: 3rem;
-  height: 3rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 20px;
-  border: 1px solid var(--react-border);
-  background: #fff;
-  color: var(--react-blue-deep);
-  font-size: var(--type-subtitle);
-  font-weight: 700;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+.react-help-link {
+  gap: var(--space-2);
+  min-height: 3rem;
+  padding-inline: var(--space-2);
 }
 
-.react-help-button:hover,
-.react-help-button:focus-visible {
-  outline: none;
-  border-color: rgba(22, 124, 217, 0.3);
-  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.12);
+.react-help-link:hover span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .react-search {
@@ -1126,7 +1110,7 @@ small {
 }
 
 .react-search--patients {
-  flex: 1 1 12rem;
+  flex: 1 1 15rem;
   width: auto;
 }
 
@@ -1335,231 +1319,222 @@ small {
   color: var(--react-text);
 }
 
-/* Patient cards (doctor home) */
-.react-patient-grid {
+/* Patient list (doctor home): table on desktop, divider rows below 900px */
+.react-table-shell.react-table-shell--patients {
+  border: 0;
+  border-radius: 0;
+}
+
+.react-table.react-patient-table {
+  min-width: 0;
+}
+
+.react-table.react-patient-table th,
+.react-table.react-patient-table td {
+  padding: var(--space-3) var(--space-2);
+  vertical-align: middle;
+}
+
+.react-table.react-patient-table th:first-child,
+.react-table.react-patient-table td:first-child {
+  padding-left: 0;
+}
+
+.react-table.react-patient-table th:last-child,
+.react-table.react-patient-table td:last-child {
+  padding-right: 0;
+}
+
+.react-table.react-patient-table thead th {
+  background: transparent;
+  vertical-align: bottom;
+}
+
+.react-table.react-patient-table tbody tr {
+  cursor: default;
+}
+
+.react-table.react-patient-table tbody th {
+  font-size: var(--type-body-sm);
+  line-height: var(--type-body-sm-lh);
+  font-weight: 700;
+  color: var(--react-text);
+  min-width: 7rem;
+}
+
+.react-table.react-patient-table tbody tr:last-child th,
+.react-table.react-patient-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.react-table.react-patient-table td.is-num {
+  white-space: nowrap;
+}
+
+.react-table td.react-patient-table__action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.react-patient-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.react-patient-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: var(--space-4);
-  margin-top: var(--space-6);
+  gap: var(--space-1);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--react-border);
 }
 
-.react-patient-card {
-  display: grid;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  border-radius: 26px;
-  border: 1px solid rgba(22, 124, 217, 0.12);
-  background: #fff;
-  transition: border-color 140ms ease;
+.react-patient-row:first-child {
+  border-top: 0;
+  padding-top: var(--space-2);
 }
 
-.react-patient-card:hover {
-  border-color: rgba(22, 124, 217, 0.3);
+.react-patient-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
 }
 
-.react-patient-card__signal {
+.react-patient-row h3 {
+  margin: 0;
+  font-size: var(--type-subtitle);
+  line-height: var(--type-subtitle-lh);
+  overflow-wrap: anywhere;
+}
+
+.react-patient-row__numbers {
+  margin: 0;
+  color: var(--react-text);
+  font-size: var(--type-data);
+  line-height: var(--type-data-lh);
+  font-variant-numeric: tabular-nums;
+}
+
+.react-patient-row__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--space-3);
+}
+
+.react-patient-code-inline {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-height: 2rem;
-  width: fit-content;
-  padding: var(--space-1) var(--space-3);
-  border-radius: 999px;
-  font-size: var(--type-label);
-  line-height: var(--type-label-lh);
-  font-weight: 700;
+  gap: var(--space-1);
 }
 
-.react-patient-card__signal--stable {
+.react-mono {
+  font-family: var(--font-mono);
+  font-size: var(--type-mono);
+  font-weight: 700;
+  letter-spacing: var(--type-mono-ls);
+  color: var(--react-blue-deep);
+}
+
+.react-signal-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  width: fit-content;
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.react-signal-chip--stable {
   color: var(--react-green-deep);
   background: rgba(30, 171, 105, 0.12);
 }
 
-.react-patient-card__signal--warning {
+.react-signal-chip--warning {
   color: var(--react-amber-text);
-  background: rgba(244, 169, 61, 0.16);
+  background: var(--state-atypical-bg);
 }
 
-.react-patient-card__signal--alert {
+.react-signal-chip--alert {
   color: var(--react-rose-text);
-  background: rgba(227, 93, 115, 0.14);
+  background: rgba(227, 93, 115, 0.12);
 }
 
-.react-patient-card__identity {
-  display: grid;
-  gap: var(--space-2);
-  align-content: start;
-}
-
-.react-patient-card h3 {
-  margin: 0;
-  font-size: var(--type-subtitle);
-  line-height: var(--type-subtitle-lh);
-}
-
-.react-patient-card__identity p {
-  margin: 0;
-  color: var(--react-muted);
-  font-size: var(--type-body-sm);
-  line-height: var(--type-body-sm-lh);
-}
-
-.react-patient-card__short-id {
-  font-family: var(--font-mono);
-  font-size: var(--type-mono);
-  font-weight: 700;
-  letter-spacing: var(--type-mono-ls);
+/* Icon-only button: small visible mark, 44px hit area. */
+.react-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   color: var(--react-blue-deep);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
 }
 
-.react-patient-code {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-3);
+.react-icon-button:hover {
+  background: rgba(22, 124, 217, 0.08);
+}
+
+.react-icon-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22);
+}
+
+.react-patient-code-inline .react-copy-button {
+  margin-inline: calc(-1 * var(--space-2));
+}
+
+.react-copy-button.is-copied {
+  color: var(--react-green-deep);
+}
+
+/* Row link: quiet text link with an arrow, 44px tall. */
+.react-row-link {
+  display: inline-flex;
   align-items: center;
-  padding: var(--space-3);
-  border-radius: 18px;
-  border: 1px solid rgba(22, 124, 217, 0.1);
-  background: var(--react-bg);
-}
-
-.react-patient-code__content {
-  display: grid;
   gap: var(--space-1);
-  min-width: 0;
-}
-
-.react-patient-code__label {
-  font-size: var(--type-meta);
-  line-height: var(--type-meta-lh);
-  font-weight: 600;
-  color: var(--react-muted);
-}
-
-.react-patient-code__value {
-  font-family: var(--font-mono);
-  font-size: var(--type-mono);
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: var(--type-mono-ls);
-  color: var(--react-blue-deep);
-}
-
-.react-patient-code__copy {
   min-height: 2.75rem;
-  padding: 0 var(--space-4);
-  border-radius: 14px;
-  border: 1px solid rgba(22, 124, 217, 0.14);
-  background: #fff;
+  padding: 0 var(--space-1);
+  border-radius: 999px;
   color: var(--react-blue-deep);
   font-size: var(--type-label);
   line-height: var(--type-label-lh);
   font-weight: 700;
   white-space: nowrap;
-  cursor: pointer;
 }
 
-.react-patient-code__copy:hover,
-.react-patient-code__copy:focus-visible {
-  outline: none;
-  border-color: rgba(22, 124, 217, 0.28);
-  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.12);
+.react-row-link:hover span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-.react-patient-code__copy.is-copied {
-  color: var(--react-green-deep);
-  border-color: rgba(30, 171, 105, 0.22);
-  background: rgba(30, 171, 105, 0.1);
+.react-row-link:focus-visible {
+  outline: 2px solid rgba(22, 124, 217, 0.55);
+  outline-offset: 2px;
 }
 
-.react-patient-card__metrics {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.react-patient-card__metric-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-3);
-  align-items: center;
-  padding: var(--space-3) var(--space-4);
-  border-radius: 18px;
-  background: var(--react-bg);
-  border: 1px solid rgba(22, 124, 217, 0.08);
-}
-
-.react-patient-card dt {
-  font-size: var(--type-meta);
-  line-height: var(--type-meta-lh);
-  color: var(--react-muted);
-  font-weight: 600;
-}
-
-.react-patient-card dd {
-  margin: 0;
-  font-size: var(--type-data-md);
-  line-height: var(--type-data-md-lh);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-  text-align: right;
-}
-
-.react-patient-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 2.75rem;
-  padding: var(--space-1) 0 0;
-  color: var(--react-blue-deep);
-  font-size: var(--type-label);
-  font-weight: 700;
-}
-
-.react-patient-card__footer::after {
-  content: "\2192";
-  font-size: var(--type-subtitle);
-  line-height: 1;
-}
-
-/* Metric tiles (nested inside the patient summary panel) */
-.react-metric {
-  position: relative;
-  padding: var(--space-5);
+.react-visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
   overflow: hidden;
-  border-radius: 24px;
-  border: 1px solid var(--react-border);
-  background: #fff;
-}
-
-.react-metric span,
-.react-metric p {
-  display: block;
-  color: var(--react-muted);
-}
-
-.react-metric span {
-  font-size: var(--type-label);
-  line-height: var(--type-label-lh);
-  font-weight: 700;
-}
-
-.react-metric p {
-  margin: var(--space-2) 0 0;
-  font-size: var(--type-body-sm);
-  line-height: var(--type-body-sm-lh);
-}
-
-.react-metric strong {
-  display: block;
-  margin-top: var(--space-2);
-  font-family: var(--font-display);
-  font-size: var(--type-data-xl);
-  line-height: var(--type-data-xl-lh);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  color: var(--react-text);
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Charts */
@@ -2705,13 +2680,14 @@ small {
 
 .react-password-input__toggle {
   position: absolute;
-  right: var(--space-2);
+  right: 2px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  min-height: 2.25rem;
-  padding: 0 var(--space-2);
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0 var(--space-3);
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -2771,112 +2747,145 @@ small {
   line-height: var(--type-body-sm-lh);
 }
 
-/* Homes */
-.react-grid--embedded {
-  margin-top: var(--space-4);
+/* Page header: the page h1 sits on the background, outside any panel. */
+.react-page-header {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
 }
 
-.react-home-columns {
+.react-page-header h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--type-headline);
+  line-height: var(--type-headline-lh);
+  letter-spacing: var(--type-headline-ls);
+  overflow-wrap: anywhere;
+}
+
+.react-page-header p {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--react-muted);
+}
+
+/* Patient home: one reading column. */
+.react-page--patient-home {
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.react-latest-reading {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+  gap: var(--space-2);
+}
+
+.react-panel .react-latest-reading__label {
+  font-family: var(--font-body);
+  font-size: var(--type-label);
+  line-height: var(--type-label-lh);
+  letter-spacing: 0;
+  font-weight: 700;
+  color: var(--react-muted);
+}
+
+.react-latest-reading__reading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-4);
+}
+
+.react-panel .react-latest-reading__value,
+.react-panel .react-latest-reading__time,
+.react-panel .react-latest-reading__empty,
+.react-panel .react-latest-reading__counts {
+  margin: 0;
+}
+
+.react-latest-reading__value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.react-latest-reading__value strong {
+  font-family: var(--font-display);
+  font-size: var(--type-data-xl);
+  line-height: var(--type-data-xl-lh);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--react-text);
+}
+
+.react-panel .react-latest-reading__value span,
+.react-panel .react-latest-reading__time,
+.react-panel .react-latest-reading__counts {
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+  font-variant-numeric: tabular-nums;
+  color: var(--react-muted);
+}
+
+.react-panel .react-latest-reading__empty {
+  color: var(--react-text);
+}
+
+.react-latest-reading__actions {
+  margin-top: var(--space-3);
+}
+
+/* Doctor home: patients in the main column, triage rail on the side (rail first in the DOM). */
+.react-doctor-home {
+  display: grid;
   gap: var(--space-6);
   align-items: start;
 }
 
-.react-hero--doctor {
-  grid-template-columns: minmax(0, 1fr);
-  min-height: 0;
-  padding: var(--space-6) var(--space-8);
-}
-
-.react-hero--doctor .react-hero__content {
+.react-doctor-home__rail {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-1) var(--space-8);
-  max-width: none;
+  gap: var(--space-6);
+  min-width: 0;
 }
 
-.react-hero--doctor h1 {
-  grid-column: 1;
-  grid-row: 1;
-  max-width: none;
+.react-doctor-home__patients {
+  min-width: 0;
 }
 
-.react-hero--doctor .react-hero__content > p:last-child {
-  grid-column: 2;
-  grid-row: 1;
-  max-width: 54ch;
-  margin: 0;
+@media (min-width: 1080px) {
+  .react-doctor-home {
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  }
+
+  .react-doctor-home__rail {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .react-doctor-home__patients {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .react-doctor-home__rail .react-panel__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .react-doctor-home__rail .react-panel__header > .react-button {
+    align-self: flex-start;
+  }
 }
 
-.react-home-columns--doctor {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.react-pending-list {
-  margin-top: var(--space-4);
-  gap: var(--space-2);
-}
-
-.react-pending-request {
-  padding: var(--space-3) var(--space-4);
-  border-radius: 18px;
-}
-
-.react-pending-request .react-link-card__identity {
-  gap: var(--space-1);
-}
-
-.react-pending-request .react-link-card__meta {
-  line-height: 1.4;
+@media (max-width: 1279px) {
+  .react-doctor-home__rail .react-investigation-card .react-origin {
+    display: none;
+  }
 }
 
 .react-panel--pending-links .react-panel__header > .react-badge {
   align-self: flex-start;
-}
-
-.react-investigations--doctor .react-investigation-grid {
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
-
-.react-investigations--doctor .react-investigation-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(14rem, 0.9fr) auto;
-  grid-template-rows: auto auto;
-  align-items: center;
-  gap: var(--space-1) var(--space-6);
-  padding: var(--space-3) var(--space-4);
-  border-radius: 18px;
-}
-
-.react-investigations--doctor .react-investigation-card__header {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.react-investigations--doctor .react-investigation-card__meta {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.react-investigations--doctor .react-investigation-card__chips {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.react-investigations--doctor .react-origin {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.react-investigations--doctor .react-investigation-card__footer {
-  grid-column: 3;
-  grid-row: 1 / span 2;
-  margin-top: 0;
-  white-space: nowrap;
 }
 
 /* Atypical-day prompt: a real state, so a flat amber tint. */
@@ -2894,16 +2903,18 @@ small {
   margin: var(--space-4) 0 0;
   padding: 0;
   display: grid;
-  gap: var(--space-3);
 }
 
 .react-prompt__item {
   display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: 20px;
-  border: 1px solid rgba(244, 169, 61, 0.28);
-  background: #fff;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-top: 1px solid rgba(244, 169, 61, 0.32);
+}
+
+.react-prompt__item > .react-button--text {
+  justify-self: start;
+  margin-left: calc(-1 * var(--space-3));
 }
 
 .react-prompt__item p {
@@ -2928,16 +2939,22 @@ small {
   cursor: pointer;
 }
 
-.react-prompt__toggle > span:last-child {
+.react-prompt__toggle:focus-visible {
+  outline: 2px solid rgba(22, 124, 217, 0.55);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.react-prompt__chevron {
   display: grid;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
   flex: 0 0 auto;
-  border: 1px solid rgba(19, 100, 174, 0.28);
-  border-radius: 50%;
   color: var(--react-blue-deep);
-  background: white;
+  transition: transform 160ms ease;
+}
+
+.react-prompt__toggle[aria-expanded="true"] .react-prompt__chevron {
+  transform: rotate(180deg);
 }
 
 .react-prompt__days {
@@ -2956,21 +2973,21 @@ small {
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-top: 1px solid var(--react-border);
+  border-top: 1px dashed rgba(244, 169, 61, 0.32);
 }
 
 .react-atypical-association {
   display: grid;
   gap: var(--space-2);
+  min-width: 0;
   margin: var(--space-4) 0 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--react-border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.75);
+  padding: 0;
+  border: 0;
 }
 
 .react-atypical-association legend {
-  padding: 0 var(--space-1);
+  padding: 0;
+  margin-bottom: var(--space-2);
   font-weight: 700;
   color: var(--react-text);
 }
@@ -3076,10 +3093,13 @@ small {
 /* Sub-panels (inline forms inside a panel) */
 .react-subpanel {
   margin-top: var(--space-4);
-  padding: var(--space-5);
-  border-radius: 24px;
-  background: var(--react-bg);
-  border: 1px solid rgba(22, 124, 217, 0.12);
+  padding-block: var(--space-4);
+  border-block: 1px solid var(--react-border);
+}
+
+.react-subpanel + .react-link-list,
+.react-subpanel + .react-investigation-grid {
+  margin-top: 0;
 }
 
 .react-subpanel__copy {
@@ -3120,13 +3140,12 @@ small {
   min-height: 3rem;
 }
 
-/* Link cards (doctors, pending requests, search result) */
+/* Link rows (doctors, pending requests, search result): divider rows, no card. */
 .react-link-list {
   list-style: none;
-  margin: var(--space-4) 0 0;
+  margin: var(--space-2) 0 0;
   padding: 0;
   display: grid;
-  gap: var(--space-3);
 }
 
 .react-link-card {
@@ -3134,19 +3153,22 @@ small {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3) var(--space-4);
-  padding: var(--space-4);
-  border-radius: 22px;
-  border: 1px solid var(--react-border);
-  background: #fff;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--react-border);
+}
+
+.react-link-list > .react-link-card:first-child {
+  border-top: 0;
+  padding-top: var(--space-2);
+}
+
+.react-link-history .react-link-list > .react-link-card:first-child {
+  padding-top: var(--space-4);
 }
 
 .react-link-card--result {
   margin-top: var(--space-4);
-}
-
-.react-link-card.is-history {
-  background: rgba(248, 252, 255, 0.7);
 }
 
 .react-link-card.is-history .react-link-card__identity strong {
@@ -3178,45 +3200,140 @@ small {
   gap: var(--space-2);
 }
 
-/* Investigations */
+.react-button--danger-text {
+  color: var(--react-rose-text);
+}
+
+.react-button--danger-text:not(:disabled):hover,
+.react-button--danger-text:focus-visible {
+  background: rgba(227, 93, 115, 0.08);
+  box-shadow: none;
+  transform: none;
+}
+
+.react-button--danger-text:focus-visible {
+  box-shadow: 0 0 0 4px rgba(227, 93, 115, 0.18);
+}
+
+.react-link-history {
+  margin-top: var(--space-2);
+  border-top: 1px solid var(--react-border);
+}
+
+.react-link-history > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+  border-radius: 999px;
+  color: var(--react-blue-deep);
+  font-size: var(--type-label);
+  line-height: var(--type-label-lh);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.react-link-history > summary::-webkit-details-marker {
+  display: none;
+}
+
+.react-link-history > summary:hover {
+  background: rgba(22, 124, 217, 0.06);
+}
+
+.react-link-history > summary:focus-visible {
+  outline: 2px solid rgba(22, 124, 217, 0.55);
+  outline-offset: 2px;
+}
+
+.react-link-history > summary svg {
+  transition: transform 160ms ease;
+}
+
+.react-link-history[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.react-link-history > .react-link-list {
+  margin-top: 0;
+}
+
+/* Pending requests (doctor rail) */
+.react-pending-request .react-link-card__identity strong {
+  font-size: var(--type-body);
+}
+
+/* Investigations: divider rows; the "open conversation" link stretches over the row. */
+.react-investigations {
+  container-type: inline-size;
+}
+
 .react-investigation-grid {
   list-style: none;
-  margin: var(--space-4) 0 0;
+  margin: var(--space-2) 0 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
-  gap: var(--space-3);
 }
 
 .react-investigation-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border-radius: 22px;
-  border: 1px solid var(--react-border);
-  background: #fff;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head link"
+    "meta link"
+    "status link"
+    "origin link";
+  align-items: center;
+  gap: var(--space-1) var(--space-6);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--react-border);
   min-width: 0;
 }
 
-.react-investigation-card.has-unread {
-  border-color: rgba(22, 124, 217, 0.45);
-  box-shadow: 0 0 0 1px rgba(22, 124, 217, 0.25);
+.react-investigation-card:first-child {
+  border-top: 0;
+  padding-top: var(--space-2);
+}
+
+.react-investigation-card:hover h3 {
+  color: var(--react-blue-deep);
+}
+
+.react-investigation-card:has(.react-investigation-card__footer:focus-visible) {
+  outline: 2px solid rgba(22, 124, 217, 0.55);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .react-investigation-card__header {
+  grid-area: head;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-3);
 }
 
 .react-investigation-card__header h3 {
   margin: 0;
+  font-size: var(--type-subtitle);
+  line-height: var(--type-subtitle-lh);
   overflow-wrap: anywhere;
+  transition: color 140ms ease;
+}
+
+.react-investigation-card__header .react-badge--count {
+  flex: 0 0 auto;
+  padding-inline: var(--space-2);
+  margin-top: 0.1rem;
 }
 
 .react-investigation-card__meta {
+  grid-area: meta;
   margin: 0;
   color: var(--react-muted);
   font-size: var(--type-body-sm);
@@ -3228,11 +3345,63 @@ small {
 }
 
 .react-investigation-card__chips {
-  gap: var(--space-2);
+  grid-area: status;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.react-investigation-card__awaiting {
+  color: var(--react-muted);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+}
+
+.react-investigation-card > .react-origin {
+  grid-area: origin;
 }
 
 .react-investigation-card__footer {
-  margin-top: auto;
+  grid-area: link;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.75rem;
+  color: var(--react-blue-deep);
+  font-size: var(--type-label);
+  line-height: var(--type-label-lh);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.react-investigation-card__footer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.react-investigation-card__footer:focus-visible {
+  outline: none;
+}
+
+.react-investigation-card:hover .react-investigation-card__footer span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Narrow containers (doctor rail, phones): the link joins the status line. */
+@container (max-width: 34rem) {
+  .react-investigation-card {
+    grid-template-areas:
+      "head head"
+      "meta meta"
+      "status link"
+      "origin origin";
+    gap: var(--space-1) var(--space-3);
+  }
 }
 
 .react-origin {
@@ -3535,8 +3704,7 @@ small {
   .react-hero,
   .react-grid--detail,
   .react-patient-insights,
-  .react-patient-layout,
-  .react-home-columns {
+  .react-patient-layout {
     grid-template-columns: 1fr;
   }
 
@@ -3603,11 +3771,6 @@ small {
     margin-left: auto;
   }
 
-  .react-patient-toolbar {
-    width: 100%;
-    margin-left: 0;
-  }
-
   .react-topbar__menu-button,
   .react-drawer,
   .react-drawer__overlay {
@@ -3667,27 +3830,6 @@ small {
     padding: var(--space-3);
   }
 
-  .react-investigations--doctor .react-investigation-card {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .react-investigations--doctor .react-investigation-card__chips,
-  .react-investigations--doctor .react-origin {
-    grid-column: 1;
-  }
-
-  .react-investigations--doctor .react-investigation-card__chips {
-    grid-row: 3;
-  }
-
-  .react-investigations--doctor .react-origin {
-    grid-row: 4;
-  }
-
-  .react-investigations--doctor .react-investigation-card__footer {
-    grid-column: 2;
-    grid-row: 1 / span 4;
-  }
 }
 
 @media (max-width: 640px) {
@@ -3709,15 +3851,16 @@ small {
     max-width: none;
   }
 
-  .react-hero--patient-home .react-hero__visual {
+  .react-hero--landing .react-hero__visual {
     display: none;
   }
 
-  .react-hero--landing .react-hero__visual img {
-    display: block;
-    width: 100%;
-    max-width: 220px;
-    margin-inline: auto;
+  .react-page-header {
+    padding-top: 0;
+  }
+
+  .react-latest-reading__actions .react-button {
+    flex: 1 1 100%;
   }
 
   .react-grid--metrics,
@@ -3729,26 +3872,14 @@ small {
   .react-grid--detail-data,
   .react-patient-insights,
   .react-patient-layout,
-  .react-home-columns {
+  .react-doctor-home,
+  .react-doctor-home__rail {
     gap: var(--space-4);
   }
 
-  .react-patient-filter-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .react-help-button {
-    width: 2.75rem;
-    height: 2.75rem;
-    align-self: end;
-  }
-
-  .react-patient-code {
-    grid-template-columns: 1fr;
-  }
-
-  .react-patient-code__copy {
-    width: 100%;
+  .react-patient-toolbar__filter,
+  .react-search--patients {
+    flex: 1 1 100%;
   }
 
   .react-notifications {
@@ -3967,45 +4098,6 @@ small {
     transform: translateY(0);
   }
 
-  /* Doctor home */
-  .react-hero--doctor {
-    padding: var(--space-5);
-  }
-
-  .react-hero--doctor .react-hero__content {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-1);
-  }
-
-  .react-hero--doctor h1,
-  .react-hero--doctor .react-hero__content > p:last-child {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
-  .react-hero--doctor .react-hero__content > p:last-child {
-    margin-top: var(--space-2);
-  }
-
-  .react-investigations--doctor .react-investigation-card {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-2);
-  }
-
-  .react-investigations--doctor .react-investigation-card__header,
-  .react-investigations--doctor .react-investigation-card__meta,
-  .react-investigations--doctor .react-investigation-card__chips,
-  .react-investigations--doctor .react-origin,
-  .react-investigations--doctor .react-investigation-card__footer {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
-  .react-investigations--doctor .react-investigation-card__footer {
-    justify-self: start;
-    padding-top: var(--space-1);
-  }
-
   /* Auth and forms */
   .react-auth__card {
     padding: var(--space-5);
@@ -4057,13 +4149,13 @@ small {
     width: 100%;
   }
 
-  .react-link-card__actions,
-  .react-link-card__actions .react-button {
+  .react-link-card__actions {
     width: 100%;
+    justify-content: space-between;
   }
 
-  .react-link-card__actions .react-button {
-    flex: 1 1 auto;
+  .react-pending-request .react-link-card__actions .react-button {
+    flex: 1 1 0;
   }
 
   .react-panel__header > .react-button {

@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { fetchAtypicalDayPrompts, deferAtypicalDayPrompt } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import Pagination from "./Pagination";
+import { ChevronDownIcon } from "./Icons";
 
 function formatPromptDate(value, locale) {
   if (!value) return "";
@@ -104,7 +105,7 @@ export default function ProactivePrompt() {
         {prompts.map(p => (
           <li key={p.batch_id || p.indicator_id} className={`react-prompt__item${expandedPrompt === p.batch_id ? " is-expanded" : ""}`}>
             <button type="button" className="react-prompt__toggle" aria-expanded={expandedPrompt === p.batch_id} onClick={() => setExpandedPrompt(expandedPrompt === p.batch_id ? null : p.batch_id)}>
-              <span>{promptText(p)}</span><span aria-hidden="true">{expandedPrompt === p.batch_id ? "−" : "+"}</span>
+              <span>{promptText(p)}</span><span className="react-prompt__chevron"><ChevronDownIcon /></span>
             </button>
             {expandedPrompt === p.batch_id && <>
               <ul className="react-prompt__days">

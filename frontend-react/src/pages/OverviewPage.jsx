@@ -2,7 +2,6 @@ import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { fetchDashboardSummary, fetchPatients } from "../api";
-import MetricCard from "../components/MetricCard";
 import Pagination from "../components/Pagination";
 import StateBlock from "../components/StateBlock";
 import { useAuth } from "../contexts/AuthContext";
@@ -11,8 +10,8 @@ import InvestigationsList from "../components/InvestigationsList";
 import ProactivePrompt from "../components/ProactivePrompt";
 import CloseIcon from "../components/CloseIcon";
 import useFocusTrap from "../hooks/useFocusTrap";
-
-const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
+import useMediaQuery from "../hooks/useMediaQuery";
+import { ArrowRightIcon, CheckIcon, CopyIcon, HelpIcon } from "../components/Icons";
 
 function formatNumber(value, suffix = "", locale = "pt-BR") {
   if (value === null || value === undefined) {
@@ -30,7 +29,7 @@ function getPatientSignal(patient, t) {
         ? "oscillation"
         : "stable");
   const tone = code === "attention" ? "warning" : code === "oscillation" ? "alert" : "stable";
-  return { label: t(`signal.${code}`), tone };
+  return { label: t(`signal.${code}`), shortLabel: t(`signal.short.${code}`), tone };
 }
 
 function FilterHelpDialog({ signal, open, onClose }) {
@@ -220,30 +219,59 @@ function DoctorHome() {
     { value: "oscillation", label: t("signal.oscillation") }
   ];
 
+  const compactList = useMediaQuery("(max-width: 899px)");
+
+  const copyButton = (patient) => {
+    const copied = copiedPatientId === patient.id;
+    return (
+      <button
+        type="button"
+        className={`react-icon-button react-copy-button${copied ? " is-copied" : ""}`}
+        aria-label={t("overview.patients.copyAriaLabel", { code: patient.short_id })}
+        title={copied ? t("overview.patients.copied") : t("overview.patients.copy")}
+        onClick={() => handleCopyShortId(patient.id, patient.short_id)}
+      >
+        {copied ? <CheckIcon /> : <CopyIcon />}
+      </button>
+    );
+  };
+
+  const openPanelLink = (patient) => (
+    <Link
+      to={`/patients/${patient.id}`}
+      className="react-row-link"
+      aria-label={t("overview.patients.openPanelAria", { name: patient.display_name })}
+    >
+      <span>{t("overview.patients.openPanelShort")}</span>
+      <ArrowRightIcon />
+    </Link>
+  );
+
+  const avgLabel = (patient) => (patient.avg_glucose != null ? formatNumber(patient.avg_glucose, "", i18n.language) : "-");
+  const copiedPatient = visiblePatients.find((patient) => patient.id === copiedPatientId);
+
   return (
     <div className="react-page react-page--doctor-home">
-      <section className="react-hero react-hero--doctor">
-        <div className="react-hero__content">
-          <h1>{t("doctorHome.title")}</h1>
-          <p>{t("doctorHome.body")}</p>
+      <header className="react-page-header">
+        <h1>{t("doctorHome.title")}</h1>
+        <p>{t("doctorHome.body")}</p>
+      </header>
+
+      <div className="react-doctor-home">
+        <div className="react-doctor-home__rail">
+          <PendingLinksPanel onChange={() => setReloadToken((current) => current + 1)} />
+          <InvestigationsList />
         </div>
-      </section>
 
-      <div className="react-home-columns react-home-columns--doctor">
-        <PendingLinksPanel onChange={() => setReloadToken((current) => current + 1)} />
-        <InvestigationsList />
-      </div>
-
-      <section className="react-panel">
-        <div className="react-panel__header react-panel__header--patients">
-          <div className="react-panel__header-copy">
-            <p className="react-eyebrow">{t("overview.patients.eyebrow")}</p>
-            <h2>{t("overview.patients.title")}</h2>
-            <p>{t("overview.patients.body")}</p>
-          </div>
-          <div className="react-patient-toolbar">
-            <div className="react-patient-filter-row">
-              <label className="react-select-field">
+        <section className="react-panel react-doctor-home__patients" aria-labelledby="patients-title">
+          <div className="react-panel__header react-panel__header--patients">
+            <div className="react-panel__header-copy">
+              <p className="react-eyebrow">{t("overview.patients.eyebrow")}</p>
+              <h2 id="patients-title">{t("overview.patients.title")}</h2>
+              <p>{t("overview.patients.body")}</p>
+            </div>
+            <div className="react-patient-toolbar">
+              <label className="react-select-field react-patient-toolbar__filter">
                 <span>{t("overview.patients.filterLabel")}</span>
                 <select value={currentSignal} onChange={(event) => handleSignalChange(event.target.value)} aria-label={t("overview.patients.filterAriaLabel")}>
                   {signalFilters.map((filter) => (
@@ -255,89 +283,111 @@ function DoctorHome() {
               </label>
               <button
                 type="button"
-                className="react-help-button"
-                aria-label={t("overview.patients.helpButtonAriaLabel")}
+                className="react-button react-button--text react-help-link"
                 onClick={() => setHelpOpen(true)}
               >
-                ?
+                <HelpIcon />
+                <span>{t("overview.patients.helpButtonLabel")}</span>
               </button>
-            </div>
-            <div className="react-search react-search--patients">
-              <input
-                type="search"
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                placeholder={t("overview.patients.searchPlaceholder")}
-                aria-label={t("overview.patients.searchAriaLabel")}
-              />
+              <div className="react-search react-search--patients">
+                <input
+                  type="search"
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  placeholder={t("overview.patients.searchPlaceholder")}
+                  aria-label={t("overview.patients.searchAriaLabel")}
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {loadingPatients ? (
-          <StateBlock title={t("overview.patients.loading.title")} description={t("overview.patients.loading.description")} tone="info" />
-        ) : patientsError ? (
-          <StateBlock title={t("overview.patients.error.title")} description={t("overview.patients.error.description")} tone="danger" />
-        ) : patients && patients.patients.length ? (
-          <>
-            <div className="react-patient-grid">
-              {visiblePatients.map((patient) => {
-                const signal = getPatientSignal(patient, t);
-                const copied = copiedPatientId === patient.id;
-                return (
-                  <article key={patient.id} className="react-patient-card">
-                    <div className="react-patient-card__identity">
-                      <h3>{patient.display_name}</h3>
-                      <div className="react-patient-code">
-                        <div className="react-patient-code__content">
-                          <span className="react-patient-code__label">{t("overview.patients.patientCode")}</span>
-                          <strong className="react-patient-code__value">{patient.short_id}</strong>
+          <p className="react-visually-hidden" role="status">
+            {copiedPatient ? `${t("overview.patients.copied")}: ${copiedPatient.short_id}` : ""}
+          </p>
+
+          {loadingPatients ? (
+            <StateBlock title={t("overview.patients.loading.title")} description={t("overview.patients.loading.description")} tone="info" />
+          ) : patientsError ? (
+            <StateBlock title={t("overview.patients.error.title")} description={t("overview.patients.error.description")} tone="danger" />
+          ) : visiblePatients.length ? (
+            <>
+              {compactList ? (
+                <ul className="react-patient-rows">
+                  {visiblePatients.map((patient) => {
+                    const signal = getPatientSignal(patient, t);
+                    return (
+                      <li key={patient.id} className="react-patient-row">
+                        <div className="react-patient-row__head">
+                          <h3>{patient.display_name}</h3>
+                          <span className={`react-signal-chip react-signal-chip--${signal.tone}`}>{signal.label}</span>
                         </div>
-                        <button
-                          type="button"
-                          className={`react-patient-code__copy${copied ? " is-copied" : ""}`}
-                          aria-label={t("overview.patients.copyAriaLabel", { code: patient.short_id })}
-                          onClick={() => handleCopyShortId(patient.id, patient.short_id)}
-                        >
-                          {copied ? t("overview.patients.copied") : t("overview.patients.copy")}
-                        </button>
-                      </div>
-                      <span className={`react-patient-card__signal react-patient-card__signal--${signal.tone}`}>{signal.label}</span>
-                      <p>{t("overview.patients.daysObserved", { count: patient.days_observed })}</p>
-                    </div>
-                    <dl className="react-patient-card__metrics">
-                      <div className="react-patient-card__metric-row">
-                        <dt>{t("overview.patients.avgPeriod")}</dt>
-                        <dd>{patient.avg_glucose != null ? `${formatNumber(patient.avg_glucose, "", i18n.language)} mg/dL` : "-"}</dd>
-                      </div>
-                      <div className="react-patient-card__metric-row">
-                        <dt>{t("overview.patients.timeInLow")}</dt>
-                        <dd>{formatNumber(patient.pct_hypo, "%", i18n.language)}</dd>
-                      </div>
-                      <div className="react-patient-card__metric-row">
-                        <dt>{t("overview.patients.timeInHigh")}</dt>
-                        <dd>{formatNumber(patient.pct_hyper, "%", i18n.language)}</dd>
-                      </div>
-                    </dl>
-                    <Link to={`/patients/${patient.id}`} className="react-patient-card__footer">
-                      <span>{t("overview.patients.openPatientPanel")}</span>
-                    </Link>
-                  </article>
-                );
-              })}
-            </div>
-            {visiblePatients.length ? (
+                        <p className="react-patient-row__numbers">
+                          {t("overview.patients.rowSummary", {
+                            avg: avgLabel(patient),
+                            low: formatNumber(patient.pct_hypo, "%", i18n.language),
+                            high: formatNumber(patient.pct_hyper, "%", i18n.language)
+                          })}
+                        </p>
+                        <div className="react-patient-row__foot">
+                          <span className="react-patient-code-inline">
+                            <span className="react-mono">{patient.short_id}</span>
+                            {copyButton(patient)}
+                          </span>
+                          {openPanelLink(patient)}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="react-table-shell react-table-shell--patients">
+                  <table className="react-table react-patient-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">{t("overview.patients.columns.patient")}</th>
+                        <th scope="col">{t("overview.patients.columns.code")}</th>
+                        <th scope="col">{t("overview.patients.columns.profile")}</th>
+                        <th scope="col" className="is-num">{t("overview.patients.columns.days")}</th>
+                        <th scope="col" className="is-num">{t("overview.patients.columns.avg")}</th>
+                        <th scope="col" className="is-num">{t("overview.patients.columns.low")}</th>
+                        <th scope="col" className="is-num">{t("overview.patients.columns.high")}</th>
+                        <th scope="col"><span className="react-visually-hidden">{t("overview.patients.columns.actions")}</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visiblePatients.map((patient) => {
+                        const signal = getPatientSignal(patient, t);
+                        return (
+                          <tr key={patient.id}>
+                            <th scope="row">{patient.display_name}</th>
+                            <td>
+                              <span className="react-patient-code-inline">
+                                <span className="react-mono">{patient.short_id}</span>
+                                {copyButton(patient)}
+                              </span>
+                            </td>
+                            <td><span className={`react-signal-chip react-signal-chip--${signal.tone}`} title={signal.label}>{signal.shortLabel}</span></td>
+                            <td className="is-num">{formatNumber(patient.days_observed, "", i18n.language)}</td>
+                            <td className="is-num">{avgLabel(patient)}</td>
+                            <td className="is-num">{formatNumber(patient.pct_hypo, "%", i18n.language)}</td>
+                            <td className="is-num">{formatNumber(patient.pct_hyper, "%", i18n.language)}</td>
+                            <td className="react-patient-table__action">{openPanelLink(patient)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               <div className="react-panel__footer">
                 <Pagination page={patients.page} pages={patients.pages} count={patients.count} pageSize={currentPageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
               </div>
-            ) : (
-              <StateBlock title={t("overview.patients.emptyFilter.title")} description={t("overview.patients.emptyFilter.description")} />
-            )}
-          </>
-        ) : (
-          <StateBlock title={t("overview.patients.emptyAll.title")} description={t("overview.patients.emptyAll.description")} />
-        )}
-      </section>
+            </>
+          ) : (
+            <StateBlock title={t("overview.patients.emptyAll.title")} description={t("overview.patients.emptyAll.description")} />
+          )}
+        </section>
+      </div>
       <FilterHelpDialog signal={currentSignal} open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
@@ -368,55 +418,57 @@ function PatientHome({ patient }) {
     };
   }, []);
 
+  const latest = summary?.latest_reading;
+  const formatCount = (value) => new Intl.NumberFormat(i18n.language).format(value ?? 0);
+
   return (
-    <div className="react-page">
-      <section className="react-hero react-hero--patient-home">
-        <div className="react-hero__content">
-          <h1>{t("patientHome.greeting", { name: patient.display_name })}</h1>
-          <p>{t("patientHome.body")}</p>
-          <div className="react-actions react-hero__actions">
-            <Link to={`/patients/${patient.id}#new-reading`} className="react-button">
-              {t("patientHome.newReading")}
-            </Link>
-            <Link to={`/patients/${patient.id}`} className="react-button react-button--ghost">
-              {t("patientHome.openPanel")}
-            </Link>
-          </div>
-        </div>
-        <div className="react-hero__visual">
-          <img src={assetUrl("img/myglico-logo.png")} alt={t("overview.hero.imageAlt")} />
-        </div>
-      </section>
+    <div className="react-page react-page--patient-home">
+      <header className="react-page-header">
+        <h1>{t("patientHome.greeting", { name: patient.display_name })}</h1>
+        <p>{t("patientHome.body")}</p>
+      </header>
 
-      <ProactivePrompt />
-
-      <section className="react-panel" aria-labelledby="personal-summary-title">
-        <div className="react-panel__header">
-          <div className="react-panel__header-copy">
-            <h2 id="personal-summary-title">{t("patientHome.summary.title")}</h2>
-            <p>{t("patientHome.summary.body")}</p>
-          </div>
-        </div>
+      <section className="react-panel react-latest-reading" aria-labelledby="latest-reading-title">
+        <h2 id="latest-reading-title" className="react-latest-reading__label">{t("patientHome.metrics.latest.label")}</h2>
         {status === "loading" ? (
           <StateBlock title={t("overview.summaryLoading.title")} description={t("overview.summaryLoading.description")} tone="info" />
         ) : status === "error" ? (
           <StateBlock title={t("overview.summaryError.title")} description={t("overview.summaryError.description")} tone="danger" />
         ) : (
-          <div className="react-grid react-grid--metrics react-grid--embedded">
-            <MetricCard
-              label={t("patientHome.metrics.latest.label")}
-              value={summary.latest_reading ? `${formatNumber(summary.latest_reading.glucose_mg_dl, "", i18n.language)} mg/dL` : "-"}
-              helper={summary.latest_reading ? formatReadingWhen(summary.latest_reading.measured_at, i18n.language) : t("patientHome.metrics.latest.empty")}
-              tone="blue"
-            />
-            <MetricCard label={t("patientHome.metrics.records.label")} value={summary.metrics.normalized_count} helper={t("patientHome.metrics.records.helper")} tone="cyan" />
-            <MetricCard label={t("patientHome.metrics.days.label")} value={summary.metrics.indicator_count} helper={t("patientHome.metrics.days.helper")} tone="green" />
-          </div>
+          <>
+            {latest ? (
+              <div className="react-latest-reading__reading">
+                <p className="react-latest-reading__value">
+                  <strong>{formatNumber(latest.glucose_mg_dl, "", i18n.language)}</strong>
+                  <span>mg/dL</span>
+                </p>
+                <p className="react-latest-reading__time">
+                  <time dateTime={latest.measured_at}>{formatReadingWhen(latest.measured_at, i18n.language)}</time>
+                </p>
+              </div>
+            ) : (
+              <p className="react-latest-reading__empty">{t("patientHome.metrics.latest.empty")}</p>
+            )}
+            <p className="react-latest-reading__counts">
+              {t("patientHome.summary.counts.readings", { count: summary.metrics.normalized_count ?? 0, value: formatCount(summary.metrics.normalized_count) })}
+              {" · "}
+              {t("patientHome.summary.counts.days", { count: summary.metrics.indicator_count ?? 0, value: formatCount(summary.metrics.indicator_count) })}
+            </p>
+          </>
         )}
+        <div className="react-actions react-latest-reading__actions">
+          <Link to={`/patients/${patient.id}#new-reading`} className="react-button">
+            {t("patientHome.newReading")}
+          </Link>
+          <Link to={`/patients/${patient.id}`} className="react-button react-button--ghost">
+            {t("patientHome.openPanel")}
+          </Link>
+        </div>
       </section>
 
-      <DoctorLinksManager />
+      <ProactivePrompt />
       <InvestigationsList />
+      <DoctorLinksManager />
     </div>
   );
 }

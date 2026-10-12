@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import InvestigationOrigin from "./InvestigationOrigin";
 import StateBlock from "./StateBlock";
 import Pagination from "./Pagination";
+import { ArrowRightIcon } from "./Icons";
 
 function formatDate(value, locale) {
   if (!value) return "";
@@ -195,9 +196,18 @@ export default function InvestigationsList() {
     setSearchParams(nextParams, { replace: true });
   };
 
+  const ownRole = isPatient ? "patient" : "doctor";
+  const awaitsViewer = (inv) => inv.status === "open" && inv.awaiting_role === ownRole;
+  const openedTime = (inv) => {
+    const time = new Date(inv.opened_at).getTime();
+    return Number.isNaN(time) ? 0 : time;
+  };
   const displayedInvestigations = [...investigations].sort((left, right) =>
     (unreadById[right.id] || 0) - (unreadById[left.id] || 0)
+    || Number(awaitsViewer(right)) - Number(awaitsViewer(left))
+    || openedTime(right) - openedTime(left)
   );
+  const hasInvestigations = listStatus === "ready" && investigations.length > 0;
   const counterpartName = (inv) =>
     inv.counterpart?.name || inv.counterpart?.display_name || inv.counterpart?.short_id || t("common.dash");
 
@@ -212,7 +222,7 @@ export default function InvestigationsList() {
         <button
           type="button"
           onClick={() => setShowNew(!showNew)}
-          className={`react-button${showNew ? " react-button--ghost" : ""}`}
+          className={`react-button${showNew || hasInvestigations || listStatus !== "ready" ? " react-button--ghost" : ""}`}
           aria-expanded={showNew}
         >
           {t(isPatient ? "cscw.newPatient" : "cscw.newDoctor")}
@@ -348,21 +358,24 @@ export default function InvestigationsList() {
                   {" · "}
                   {t("cscw.openedAt", { date: formatDate(inv.opened_at, i18n.language) })}
                 </p>
-                <div className="react-chip-row react-investigation-card__chips">
+                <div className="react-investigation-card__chips">
                   <span className={`react-status-chip react-status-chip--${inv.status}`}>
                     {t(`cscw.status.${inv.status}`, { defaultValue: inv.status })}
                   </span>
                   {inv.status === "open" ? (
-                    <span className="react-badge react-badge--soft react-badge--compact">
-                      {inv.awaiting_role === (isPatient ? "patient" : "doctor")
-                        ? t("cscw.awaitingYou")
-                        : t("cscw.awaitingChip", { role: inv.awaiting_role ? t(`cscw.roles.${inv.awaiting_role}`, { defaultValue: inv.awaiting_role }) : t("cscw.nobody") })}
-                    </span>
+                    awaitsViewer(inv) ? (
+                      <span className="react-badge react-badge--blue react-badge--compact">{t("cscw.awaitingYou")}</span>
+                    ) : (
+                      <span className="react-investigation-card__awaiting">
+                        {t("cscw.awaitingChip", { role: inv.awaiting_role ? t(`cscw.roles.${inv.awaiting_role}`, { defaultValue: inv.awaiting_role }) : t("cscw.nobody") })}
+                      </span>
+                    )
                   ) : null}
                 </div>
                 <InvestigationOrigin investigation={inv} />
-                <Link to={`/investigations/${inv.id}`} className="react-patient-card__footer react-investigation-card__footer">
+                <Link to={`/investigations/${inv.id}`} className="react-investigation-card__footer">
                   <span>{t("cscw.openConversation")}</span>
+                  <ArrowRightIcon />
                 </Link>
               </li>
             );

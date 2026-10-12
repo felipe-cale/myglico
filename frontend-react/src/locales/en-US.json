@@ -38,7 +38,12 @@
   "signal": {
     "stable": "In-Range Profile",
     "attention": "Hyperglycemic Profile",
-    "oscillation": "Hypoglycemic Profile"
+    "oscillation": "Hypoglycemic Profile",
+    "short": {
+      "stable": "In range",
+      "attention": "Hyperglycemic",
+      "oscillation": "Hypoglycemic"
+    }
   },
   "clusterProfile": {
     "group": "Group {{n}}",
@@ -176,7 +181,21 @@
         "description": "Try searching by another name or identifier to continue."
       },
       "daysObserved_one": "{{count}} day with readings available",
-      "daysObserved_other": "{{count}} days with readings available"
+      "daysObserved_other": "{{count}} days with readings available",
+      "helpButtonLabel": "How profiles are defined",
+      "openPanelShort": "Open dashboard",
+      "openPanelAria": "Open dashboard for {{name}}",
+      "rowSummary": "{{avg}} mg/dL · {{low}} low · {{high}} high",
+      "columns": {
+        "patient": "Patient",
+        "code": "Code",
+        "profile": "Profile",
+        "days": "Days",
+        "avg": "Average (mg/dL)",
+        "low": "% low",
+        "high": "% high",
+        "actions": "Actions"
+      }
     },
     "profileHelp": {
       "eyebrow": "Filter help",
@@ -528,7 +547,8 @@
       "bodyPatient": "{{name}} stops seeing your data immediately and the open questions with this doctor are closed. The conversation history remains available to you.",
       "titleDoctor": "Revoke the association with {{name}}?",
       "bodyDoctor": "You stop seeing {{name}}'s data immediately and open questions are closed. A new link will require another request from the patient."
-    }
+    },
+    "historyToggle": "Previous links ({{count}})"
   },
   "cscw": {
     "investigations": "Investigations",
@@ -702,7 +722,13 @@
     "summary": {
       "eyebrow": "Personal summary",
       "title": "Your numbers",
-      "body": "A consolidated view of the readings recorded for you in MyGlico."
+      "body": "A consolidated view of the readings recorded for you in MyGlico.",
+      "counts": {
+        "readings_one": "{{value}} reading",
+        "readings_other": "{{value}} readings",
+        "days_one": "{{value}} day analyzed",
+        "days_other": "{{value}} days analyzed"
+      }
     },
     "metrics": {
       "latest": {

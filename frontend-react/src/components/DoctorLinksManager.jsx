@@ -5,6 +5,7 @@ import { searchDoctors, requestDoctorLink, fetchDoctorLinks, revokeDoctorLink, c
 import StateBlock from "./StateBlock";
 import ConfirmDialog from "./ConfirmDialog";
 import Pagination from "./Pagination";
+import { ChevronDownIcon } from "./Icons";
 
 const STATUS_ORDER = { active: 0, pending: 1, revoked: 2, rejected: 3, cancelled: 4 };
 
@@ -178,6 +179,36 @@ export default function DoctorLinksManager() {
   };
 
   const sortedLinks = [...links].sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
+  const isCurrent = (link) => link.status === "active" || link.status === "pending";
+  const currentLinks = sortedLinks.filter(isCurrent);
+  const historyLinks = sortedLinks.filter((link) => !isCurrent(link));
+  const historyTargeted = historyLinks.some((link) => location.hash === `#doctor-link-${link.id}`);
+
+  const renderLink = (link) => (
+    <li key={link.id} id={`doctor-link-${link.id}`} className={`react-link-card${isCurrent(link) ? "" : " is-history"}`}>
+      <DoctorIdentity doctor={link.doctor} />
+      <div className="react-link-card__actions">
+        <StatusChip status={link.status} />
+        {link.status === "pending" && (
+          <button type="button" className="react-button react-button--text" onClick={() => handleCancel(link)}>
+            {t("dashboard.cancel")}
+          </button>
+        )}
+        {link.status === "active" && (
+          <button
+            type="button"
+            className="react-button react-button--text react-button--danger-text"
+            onClick={() => {
+              setRevokeError("");
+              setRevokeTarget(link);
+            }}
+          >
+            {t("dashboard.revokeLink")}
+          </button>
+        )}
+      </div>
+    </li>
+  );
 
   return (
     <section id="doctor-links" className="react-panel" aria-labelledby="my-doctors-title">
@@ -188,7 +219,7 @@ export default function DoctorLinksManager() {
         </div>
         <button
           type="button"
-          className={`react-button${showSearch ? " react-button--ghost" : ""}`}
+          className={`react-button${showSearch || currentLinks.length > 0 || linksStatus !== "ready" ? " react-button--ghost" : ""}`}
           aria-expanded={showSearch}
           aria-controls="doctor-search"
           onClick={toggleSearch}
@@ -246,37 +277,26 @@ export default function DoctorLinksManager() {
         <div role="alert">
           <StateBlock title={t("dashboard.linksLoadFailed")} tone="danger" />
         </div>
-      ) : sortedLinks.length === 0 ? (
-        <StateBlock title={t("dashboard.noDoctors.title")} description={t("dashboard.noDoctors.description")} />
       ) : (
         <>
-          <ul className="react-link-list">
-            {sortedLinks.map((link) => (
-              <li key={link.id} id={`doctor-link-${link.id}`} className={`react-link-card${link.status === "active" || link.status === "pending" ? "" : " is-history"}`}>
-                <DoctorIdentity doctor={link.doctor} />
-                <div className="react-link-card__actions">
-                  <StatusChip status={link.status} />
-                  {link.status === "pending" && (
-                    <button type="button" className="react-button react-button--ghost react-button--compact" onClick={() => handleCancel(link)}>
-                      {t("dashboard.cancel")}
-                    </button>
-                  )}
-                  {link.status === "active" && (
-                    <button
-                      type="button"
-                      className="react-button react-button--danger react-button--compact"
-                      onClick={() => {
-                        setRevokeError("");
-                        setRevokeTarget(link);
-                      }}
-                    >
-                      {t("dashboard.revokeLink")}
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+          {currentLinks.length === 0 ? (
+            <StateBlock title={t("dashboard.noDoctors.title")} description={t("dashboard.noDoctors.description")} />
+          ) : (
+            <ul className="react-link-list">
+              {currentLinks.map(renderLink)}
+            </ul>
+          )}
+          {historyLinks.length > 0 && (
+            <details className="react-link-history" open={historyTargeted || undefined}>
+              <summary>
+                <span>{t("dashboard.historyToggle", { count: historyLinks.length })}</span>
+                <ChevronDownIcon />
+              </summary>
+              <ul className="react-link-list">
+                {historyLinks.map(renderLink)}
+              </ul>
+            </details>
+          )}
           <div className="react-panel__footer">
             <Pagination page={pagination.page} pages={pagination.pages} count={pagination.total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />
           </div>

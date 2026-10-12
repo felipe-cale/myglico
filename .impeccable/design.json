@@ -371,6 +371,21 @@
         "name": "The No Decoration Rule",
         "body": "No gradients or tone tints on cards that carry no state; a flat tint only for a real state (atypical, pending, selected, own message).",
         "section": "colors"
+      },
+      {
+        "name": "The Divider Row Rule",
+        "body": "Lists inside panels (conversations, doctor links, pending requests, prompts, phone patient list) are rows separated by a top hairline with 16px vertical padding; no per-row card. A row that opens something stretches its text link over the row. Ended links collapse behind a 'Vínculos anteriores (n)' disclosure.",
+        "section": "components"
+      },
+      {
+        "name": "The Page Header Rule",
+        "body": "App pages open with a headline-role h1 and at most one body line on the background, outside any panel, with no eyebrow.",
+        "section": "layout"
+      },
+      {
+        "name": "The Triage Rail Rule",
+        "body": "Doctor home at >=1080px: patients table in a 2fr main column, a 1fr (min 320px) rail with pending requests then conversations; DOM and focus order is pending, conversations, patients.",
+        "section": "layout"
       }
     ],
     "dos": [
@@ -378,7 +393,8 @@
       "Do use the shared field, button, badge and state primitives instead of inline styles.",
       "Do keep the gradient for one primary action per region, the active nav link and the current page.",
       "Do put destructive actions in the danger style behind a confirmation dialog.",
-      "Do show pending status as the neutral dashed chip and atypical status as the amber chip, both with dark text."
+      "Do show pending status as the neutral dashed chip and atypical status as the amber chip, both with dark text.",
+      "Do render lists as divider rows and make the header 'add/new' action primary only while the list is empty."
     ],
     "donts": [
       "Don't ship browser-default inputs, square corners or flat #005fcc buttons; those were the off-system patterns removed in the 2026-10 layout review.",
@@ -388,7 +404,8 @@
       "Don't use emoji as icons.",
       "Don't fill large areas with amber or rose.",
       "Don't hardcode colors outside the :root tokens; alert text uses --react-rose-text and --react-amber-text.",
-      "Don't put white text on the light brand trust-blue/steady-green fills; use the action gradient."
+      "Don't put white text on the light brand trust-blue/steady-green fills; use the action gradient.",
+      "Don't wrap list items in cards or nest boxes inside rows; revoke is a danger text button, not a bordered pill."
     ]
   }
 }

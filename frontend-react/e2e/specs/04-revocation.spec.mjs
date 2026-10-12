@@ -22,6 +22,8 @@ test.describe("Group 4 - revocation", () => {
     const revoked = ui.page.waitForResponse((r) => r.url().includes(`/api/doctor-links/${link.id}/revoke`));
     await ui.page.getByRole("button", { name: tx("dashboard.revokeConfirm") }).click();
     expect((await revoked).status()).toBe(200);
+    // Ended links move behind the "previous links" disclosure; expand it before asserting.
+    await ui.page.getByText(t("dashboard.historyToggle", "pt-BR", { count: 1 }), { exact: true }).click();
     await expect(ui.page.getByText(t("dashboard.status.revoked")).first()).toBeVisible();
 
     const seenByDoctor = (await api.listDoctorLinks(doctor.request)).body.links.find((l) => l.id === link.id);
