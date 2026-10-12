@@ -237,10 +237,12 @@ test.describe("Group 6 - messaging and closure", () => {
     expect(detail.investigation.origin?.is_current_classification).toBe(false);
 
     const [y, m, d] = origin.date.split("-");
+    const dateLabel = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(Number(y), Number(m) - 1, Number(d)));
     const ui = await conversationPage(browserSession, "patientA", inv.id);
     const originLine = ui.page.getByTestId("investigation-origin");
-    await expect(originLine).toContainText(t("cscw.previousClassification"));
-    await expect(originLine).toContainText(new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(Number(y), Number(m) - 1, Number(d))));
+    // The origin line states that the day was atypical in an earlier analysis and no longer is.
+    await expect(originLine).toContainText(t("cscw.originPreviousClassification", "pt-BR", { date: dateLabel }));
+    await expect(originLine).toContainText(dateLabel);
     await expect(ui.page.getByText("sobre o dia")).toBeVisible();
   });
 
@@ -255,9 +257,14 @@ test.describe("Group 6 - messaging and closure", () => {
     const ui = await browserSession("patientA");
     await ui.authenticateWithApi();
     let currentClassification = false;
-    const augment = (summary) => (summary.id === inv.id
-      ? { ...summary, origin: { ...(summary.origin ?? { indicator_id: origin.indicator_id, date: origin.date, analysis_run_id: first.run_id }), is_current_classification: currentClassification } }
-      : summary);
+    // The UI renders from `origins` (all associated days) and falls back to `origin`; both are augmented.
+    const augmentOrigin = (item) => ({ ...item, is_current_classification: currentClassification });
+    const augment = (summary) => {
+      if (summary.id !== inv.id) return summary;
+      const base = summary.origin ?? { indicator_id: origin.indicator_id, date: origin.date, analysis_run_id: first.run_id };
+      const origins = summary.origins?.length ? summary.origins : [base];
+      return { ...summary, origin: augmentOrigin(base), origins: origins.map(augmentOrigin) };
+    };
     await ui.context.route(/\/api\/investigations(\/[^/]+)?(\?.*)?$/, async (route) => {
       const response = await route.fetch();
       const body = await response.json();
@@ -269,19 +276,20 @@ test.describe("Group 6 - messaging and closure", () => {
     const dateLabel = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(Number(y), Number(m) - 1, Number(d)));
 
     // Previous classification: badge + explanation in the conversation and in the list.
+    const previousLabel = t("cscw.originPreviousClassification", "pt-BR", { date: dateLabel });
     await ui.page.goto(ROUTES.investigation(inv.id));
     const originLine = ui.page.getByTestId("investigation-origin");
-    await expect(originLine).toContainText(t("cscw.previousClassification"));
+    await expect(originLine).toContainText(previousLabel);
     await expect(originLine).toContainText(dateLabel);
     await expect(ui.page.getByText("sobre o dia")).toBeVisible();
     await ui.page.goto("/dashboard#investigations");
-    await expect(ui.page.locator(".react-investigation-card").getByTestId("investigation-origin")).toContainText(t("cscw.previousClassification"));
+    await expect(ui.page.locator(".react-investigation-card").getByTestId("investigation-origin")).toContainText(previousLabel);
 
     // Still atypical in the current analysis: dated origin, no "previous" badge.
     currentClassification = true;
     await ui.page.goto(ROUTES.investigation(inv.id));
     await expect(originLine).toHaveText(t("cscw.originAtypicalDated", "pt-BR", { date: dateLabel }));
-    await expect(originLine).not.toContainText(t("cscw.previousClassification"));
+    await expect(originLine).not.toContainText(previousLabel);
   });
 
   test("AUT-CA-15 (secondary) - two linked doctors never share conversations", async ({ actor }) => {

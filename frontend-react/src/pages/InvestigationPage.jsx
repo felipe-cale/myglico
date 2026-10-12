@@ -42,9 +42,17 @@ export default function InvestigationPage() {
       const investigation = data.investigation || data;
       const items = data.messages || data.items || [];
       const ownRole = investigation.counterpart?.role === "doctor" ? "patient" : "doctor";
+      let firstUnreadPage = null;
       if (seenMessageIds.current === null) {
         const fromCounterpart = items.filter((m) => m.author_role !== ownRole);
         const unread = data.unread_count || 0;
+        // Sequences are contiguous per conversation, so the server marker is total - unread.
+        const total = data.pagination?.total ?? items.length;
+        lastReadSequence.current = Math.max(0, total - unread);
+        if (unread > 0 && data.pagination?.page_size) {
+          followLatestRef.current = false;
+          firstUnreadPage = Math.floor(lastReadSequence.current / data.pagination.page_size) + 1;
+        }
         const fresh = unread > 0 ? fromCounterpart.slice(-unread) : [];
         setNewMessageIds(new Set(fresh.map((m) => m.id)));
         seenMessageIds.current = new Set(items.map((m) => m.id));
@@ -61,7 +69,8 @@ export default function InvestigationPage() {
         const pages = data.pagination.pages ?? Math.max(1, Math.ceil(data.pagination.total / data.pagination.page_size));
         const currentPage = data.pagination.page ?? requestedPage;
         setPagination({ ...data.pagination, page: currentPage, pages });
-        if (followLatestRef.current && currentPage !== pages) setPage(pages);
+        if (firstUnreadPage && firstUnreadPage !== currentPage) setPage(Math.min(firstUnreadPage, pages));
+        else if (followLatestRef.current && currentPage !== pages) setPage(pages);
         else if (currentPage !== requestedPage) setPage(currentPage);
       }
       setLoadError(false);
@@ -88,6 +97,8 @@ export default function InvestigationPage() {
   useEffect(() => {
     const sequence = messages.at(-1)?.sequence || 0;
     if (!sequence || sequence <= lastReadSequence.current) return undefined;
+    // The marker is cumulative: advance it only from a page contiguous with what was already read.
+    if ((messages[0]?.sequence || 0) > lastReadSequence.current + 1) return undefined;
     const frame = requestAnimationFrame(async () => {
       try {
         await readInvestigation(id, sequence);

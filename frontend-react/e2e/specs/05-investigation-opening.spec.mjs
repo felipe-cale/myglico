@@ -112,7 +112,7 @@ test.describe("Group 5 - investigation opening and isolation", () => {
     const ui = await browserSession("patientA");
     await ui.authenticateWithApi();
     await ui.page.goto(ROUTES.dashboard);
-    await ui.page.getByRole("button", { name: tx("cscw.new") }).click();
+    await ui.page.getByRole("button", { name: tx("cscw.newPatient") }).click();
     const select = ui.page.getByLabel(t("cscw.association"));
     // No implicit default: placeholder first, both doctors offered.
     await expect(select).toHaveValue("");

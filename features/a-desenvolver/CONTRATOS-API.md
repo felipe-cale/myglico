@@ -57,8 +57,9 @@ existente para registrar o segundo papel.
 
 - `GET /api/patients/{id}/atypical-days?start_date=&end_date=` → lista de
   dias com `{indicator_id, date, reason_summary, has_investigation}`.
-- `GET /api/patients/{id}/atypical-day-prompts` → convites pendentes do
-  paciente logado (`{indicator_id, date, status: "created"|"deferred"}`).
+- `GET /api/patients/{id}/atypical-day-prompts` → convites ainda não
+  respondidos (`status: "created"`) do paciente logado, paginados e agrupados
+  em lotes; convites adiados não voltam a ser listados.
 - `POST /api/atypical-day-prompts/{indicator_id}/defer` — "Agora não".
 
 ## Investigações / CSCW (feature 02, seção 6-8)

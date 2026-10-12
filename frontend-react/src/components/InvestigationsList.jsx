@@ -86,6 +86,16 @@ export default function InvestigationsList() {
 
   useEffect(() => { loadData(); }, [page, pageSize]);
 
+  // Atypical days belong to the patient: a patient keeps them for any doctor,
+  // a doctor loses them only when switching to another patient's link.
+  const handleLinkChange = (value) => {
+    if (!isPatient) {
+      const patientOf = (id) => links.find((link) => String(link.id) === String(id))?.patient_id;
+      if (patientOf(value) !== patientOf(selectedLink)) setSelectedAtypicalIds([]);
+    }
+    setSelectedLink(value);
+  };
+
   useEffect(() => {
     if (atypicalDayEventId) setShowNew(true);
   }, [atypicalDayEventId]);
@@ -225,7 +235,7 @@ export default function InvestigationsList() {
               <div className="react-form__row">
                 <label className="react-select-field">
                   <span>{t("cscw.association")}</span>
-                    <select value={selectedLink} onChange={e => { setSelectedLink(e.target.value); setSelectedAtypicalIds([]); }} required>
+                    <select value={selectedLink} onChange={e => handleLinkChange(e.target.value)} required>
                     <option value="">{t("cscw.selectAssociation")}</option>
                     {links.map(l => (
                       <option key={l.id} value={l.id}>

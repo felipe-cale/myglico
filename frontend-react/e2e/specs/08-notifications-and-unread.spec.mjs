@@ -6,7 +6,7 @@
 // CSCW-CA-42, CSCW-CA-43, CSCW-CA-44.
 import { expect, linkActive, openInvestigationAsPatient, test } from "../fixtures/test-fixtures.mjs";
 import { ROUTES } from "../fixtures/routes.mjs";
-import { t } from "../fixtures/i18n.mjs";
+import { t, tx } from "../fixtures/i18n.mjs";
 import * as api from "../fixtures/api.mjs";
 
 function messagesMenu(page, count) {
@@ -92,14 +92,26 @@ test.describe("Group 8 - notifications and unread counters", () => {
     await ui.authenticateWithApi();
     const read = ui.page.waitForResponse((r) => r.url().endsWith(`/api/investigations/${inv.id}/read`));
     await ui.page.goto(ROUTES.investigation(inv.id));
+    // The conversation opens at the first unread page (10 messages) and marks only what it shows.
     const readBody = (await read).request().postDataJSON();
-    expect(readBody.up_to_sequence).toBe(50);
-    await expect.poll(async () => (await api.unreadSummary(doctor.request)).body.messages_unread).toBe(10);
-    await expect(ui.page.getByText("m51", { exact: true })).toHaveCount(0);
-    test.info().annotations.push({
-      type: "observation",
-      description: "The conversation UI loads only the first page (50) and offers no way to reach messages 51+; the backend marker is correct.",
-    });
+    expect(readBody.up_to_sequence).toBe(10);
+    await expect.poll(async () => (await api.unreadSummary(doctor.request)).body.messages_unread).toBe(50);
+    await expect(ui.page.getByText("m10", { exact: true })).toBeVisible();
+    await expect(ui.page.getByText("m11", { exact: true })).toHaveCount(0);
+    await expect(ui.page.getByText("m60", { exact: true })).toHaveCount(0);
+
+    // Reaching the next page displays it and advances the marker by exactly that page.
+    const nextRead = ui.page.waitForResponse((r) => r.url().endsWith(`/api/investigations/${inv.id}/read`));
+    await ui.page.getByRole("button", { name: tx("pagination.next") }).click();
+    await expect(ui.page.getByText("m20", { exact: true })).toBeVisible();
+    expect((await nextRead).request().postDataJSON().up_to_sequence).toBe(20);
+    await expect.poll(async () => (await api.unreadSummary(doctor.request)).body.messages_unread).toBe(40);
+
+    // Jumping ahead to page 5 shows m41-m50 but cannot mark the unseen m21-m40 as read.
+    await ui.page.getByRole("button", { name: t("pagination.page", "pt-BR", { page: 5 }), exact: true }).click();
+    await expect(ui.page.getByText("m50", { exact: true })).toBeVisible();
+    await ui.page.waitForTimeout(1500);
+    expect((await api.unreadSummary(doctor.request)).body.messages_unread).toBe(40);
   });
 
   test("CSCW-CA-43 - an effectively displayed message advances the marker and updates the counter once", async ({ actor, browserSession }) => {

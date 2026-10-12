@@ -5,13 +5,21 @@
 // Criteria: CSCW-CA-23, CSCW-CA-24, CSCW-CA-25, CSCW-CA-26, CSCW-CA-27.
 import { expect, seedAtypicalDays, test } from "../fixtures/test-fixtures.mjs";
 import { ROUTES } from "../fixtures/routes.mjs";
-import { t, tx } from "../fixtures/i18n.mjs";
+import { escapeRegex, t, tx } from "../fixtures/i18n.mjs";
 import * as api from "../fixtures/api.mjs";
 
 const RANGE = { start_date: "2026-06-01", end_date: "2026-07-31" };
 // Window used only by the global-run scenario (see CSCW-CA-23 (A1)).
 const GLOBAL_RUN_RANGE = { start_date: "2025-02-03", end_date: "2025-03-31" };
 const dayOf = (row) => row.indicator_date || row.date || row.metric_date;
+
+// The popup trigger is the interactive "Dias atípicos" stat card of the
+// patient detail; its accessible name is "<label>: <count>. <action hint>".
+function popupTrigger(page) {
+  const label = escapeRegex(t("patientDetail.stats.anomalyDays.label"));
+  const action = escapeRegex(t("patientDetail.stats.anomalyDays.action"));
+  return page.getByRole("button", { name: new RegExp(`^\\s*${label}: .*\\. ${action}\\s*$`, "i") });
+}
 
 // The trigger only exists once the session and the patient detail have loaded.
 // Waiting on those real responses (instead of only on the button) makes a
@@ -30,12 +38,12 @@ async function openDetail(browserSession, key, patientId, search = "") {
     if (response instanceof Error) throw new Error(`GET ${label} never answered (page at ${ui.page.url()}): ${response.message}`);
     expect(response.status(), `GET ${label} (page at ${ui.page.url()})`).toBe(200);
   }
-  await expect(ui.page.getByRole("button", { name: tx("cscw.popupButton") })).toBeVisible();
+  await expect(popupTrigger(ui.page)).toBeVisible();
   return ui;
 }
 
 async function openPopup(page) {
-  await page.getByRole("button", { name: tx("cscw.popupButton") }).click();
+  await popupTrigger(page).click();
   const dialog = page.getByRole("dialog", { name: t("cscw.popupTitle") });
   await expect(dialog).toBeVisible();
   return dialog;
@@ -192,7 +200,7 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
 
     // O6: explicit custom period -> no default-window text.
     await ui.page.goto(ROUTES.patientDetailQuery(patient.patientId, `?start_date=${shortRange.start_date}&end_date=${shortRange.end_date}`));
-    await expect(ui.page.getByRole("button", { name: tx("cscw.popupButton") })).toBeVisible();
+    await expect(popupTrigger(ui.page)).toBeVisible();
     const customDays = Math.round((Date.parse(`${shortRange.end_date}T00:00:00Z`) - Date.parse(`${shortRange.start_date}T00:00:00Z`)) / 86400000) + 1;
     await expect(summary).toContainText(t("patientDetail.hero.customWindow", "pt-BR", { count: customDays }));
     await expect(summary).not.toContainText(t("patientDetail.hero.defaultWindow"));
@@ -208,7 +216,7 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
 
     // O5: after a reload the notice is still there and clearing restores the original period.
     await ui.page.reload();
-    await expect(ui.page.getByRole("button", { name: tx("cscw.popupButton") })).toBeVisible();
+    await expect(popupTrigger(ui.page)).toBeVisible();
     await expect(ui.page).toHaveURL(new RegExp(`dates=${outsideDay}`));
     await expect(ui.page.getByTestId("period-adjusted")).toBeVisible();
     await ui.page.locator(".react-selected-days").getByRole("button", { name: tx("cscw.popupClearDays") }).click();
@@ -220,7 +228,7 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
 
     // A further reload without dates keeps the restored period (no stale state).
     await ui.page.reload();
-    await expect(ui.page.getByRole("button", { name: tx("cscw.popupButton") })).toBeVisible();
+    await expect(popupTrigger(ui.page)).toBeVisible();
     await expect.poll(() => new URL(ui.page.url()).searchParams.get("end_date")).toBe(shortRange.end_date);
     await expect(ui.page.getByTestId("period-adjusted")).toHaveCount(0);
   });
@@ -295,7 +303,7 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
     const patient = await actor("patientA");
     seedAtypicalDays(patient.patientId);
     const ui = await openDetail(browserSession, "patientA", patient.patientId);
-    const trigger = ui.page.getByRole("button", { name: tx("cscw.popupButton") });
+    const trigger = popupTrigger(ui.page);
     const dialog = await openPopup(ui.page);
     await expect.poll(() => ui.page.evaluate(() => Boolean(document.activeElement?.closest("[role=dialog]")))).toBe(true);
     await expect(dialog.getByRole("button", { name: t("cscw.popupCloseAria") })).toBeVisible();

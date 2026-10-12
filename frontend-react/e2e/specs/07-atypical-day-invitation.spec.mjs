@@ -12,6 +12,19 @@ function promptRegion(page) {
   return page.getByRole("region", { name: t("cscw.promptRegion") });
 }
 
+// Each invitation batch is a collapsed disclosure; its days and the
+// "Agora não" action only render once it is expanded.
+function batchToggles(region) {
+  return region.locator("button[aria-expanded]");
+}
+
+async function expandFirstBatch(region) {
+  const toggle = batchToggles(region).first();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+
 test.describe("Group 7 - atypical-day invitation", () => {
   test("CSCW-CA-36 - a newly persisted atypical day invites the patient and never opens a conversation by itself", async ({ actor, browserSession }) => {
     const patient = await actor("patientA");
@@ -37,6 +50,7 @@ test.describe("Group 7 - atypical-day invitation", () => {
     await ui.page.goto(ROUTES.dashboard);
     const region = promptRegion(ui.page);
     await expect(region).toBeVisible();
+    await expandFirstBatch(region);
     await expect(region.getByRole("button", { name: tx("cscw.defer") }).first()).toBeVisible();
     // The historical date (2026-06/07) is shown, not "today".
     await expect(region).toContainText(/2026/);
@@ -52,23 +66,37 @@ test.describe("Group 7 - atypical-day invitation", () => {
     await ui.authenticateWithApi();
     await ui.page.goto(ROUTES.dashboard);
     const region = promptRegion(ui.page);
-    const deferButtons = region.getByRole("button", { name: tx("cscw.defer") });
-    await expect(deferButtons.first()).toBeVisible();
-    const before = await deferButtons.count();
+    const batches = batchToggles(region);
+    await expect(batches.first()).toBeVisible();
+    const before = await batches.count();
+    await expandFirstBatch(region);
+    const deferButton = region.getByRole("button", { name: tx("cscw.defer") });
     const deferred = ui.page.waitForResponse((r) => r.url().endsWith("/api/atypical-day-prompts/defer"));
-    await deferButtons.first().click();
+    await deferButton.first().click();
     const response = await deferred;
     expect(response.status()).toBe(200);
-    const deferredId = (await response.json()).prompts[0].indicator_id;
-    await expect(deferButtons).toHaveCount(before - 1);
+    const deferredPrompts = (await response.json()).prompts;
+    expect(deferredPrompts.length).toBeGreaterThan(0);
+    expect(deferredPrompts.every((p) => p.status === "deferred")).toBe(true);
+    const deferredId = deferredPrompts[0].indicator_id;
+    await expect(batches).toHaveCount(before - 1);
 
+    // Wait for the prompts to be fetched again so an empty region is a real
+    // answer and not just the page before the data arrived.
+    const reloadedPrompts = ui.page.waitForResponse((r) => r.request().method() === "GET"
+      && new URL(r.url()).pathname === `/api/patients/${patient.patientId}/atypical-day-prompts`);
     await ui.page.reload();
+    expect((await reloadedPrompts).status()).toBe(200);
     await expect(ui.page.getByRole("heading").first()).toBeVisible();
-    await expect(deferButtons).toHaveCount(before - 1);
+    await expect(batches).toHaveCount(before - 1);
 
     const prompts = (await api.atypicalPrompts(patient.request, patient.patientId)).body.prompts;
-    const deferredBatch = prompts.find((p) => p.indicator_ids.includes(deferredId));
-    expect(deferredBatch?.status).toBe("deferred");
+    // Since the server-side pagination (ebb0a01) the listing only returns
+    // pending ("created") invitations, so a persisted deferral is one that is
+    // no longer listed.
+    expect(prompts.every((p) => p.status === "created")).toBe(true);
+    const stillListed = prompts.flatMap((p) => p.indicator_ids);
+    expect(deferredPrompts.filter((p) => stillListed.includes(p.indicator_id))).toEqual([]);
     // Deferring twice is idempotent.
     expect((await api.deferAtypicalPrompt(patient.request, deferredId)).body.prompt.status).toBe("deferred");
     // Manual opening for the deferred day is still possible.
@@ -99,7 +127,9 @@ test.describe("Group 7 - atypical-day invitation", () => {
     const ui = await browserSession("patientA");
     await ui.authenticateWithApi();
     await ui.page.goto(ROUTES.dashboard);
-    await promptRegion(ui.page).getByRole("button", { name: tx("cscw.open") }).first().click();
+    const region = promptRegion(ui.page);
+    await expandFirstBatch(region);
+    await region.getByRole("button", { name: tx("cscw.openPatient") }).first().click();
     await expect(ui.page).toHaveURL(/atypical_day_event_id=/);
     const eventId = new URL(ui.page.url()).searchParams.get("atypical_day_event_id");
     // Nobody is notified merely by opening the form.

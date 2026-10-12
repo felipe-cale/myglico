@@ -57,7 +57,8 @@ test.describe("Group 10 - three languages and the clinical PDF", () => {
       await page.getByRole("button", { name: tx("auth.submitLogin", lang) }).click();
       await expect(page).toHaveURL(/\/dashboard$/);
       await expect(page.getByText(t("dashboard.myDoctors", lang)).first()).toBeVisible();
-      await expect(page.locator(".react-nav").getByText(t("cscw.investigations", lang))).toBeVisible();
+      // A patient's navigation labels the investigations entry "my investigations".
+      await expect(page.locator(".react-nav").getByText(t("cscw.myInvestigations", lang))).toBeVisible();
       await expect(page.getByText(t("dashboard.status.active", lang)).first()).toBeVisible();
       const body = await page.locator("body").innerText();
       expect(body).not.toMatch(RAW_KEY);
