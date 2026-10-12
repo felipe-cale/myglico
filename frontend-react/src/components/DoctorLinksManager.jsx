@@ -183,7 +183,6 @@ export default function DoctorLinksManager() {
     <section id="doctor-links" className="react-panel" aria-labelledby="my-doctors-title">
       <div className="react-panel__header">
         <div className="react-panel__header-copy">
-          <p className="react-eyebrow">{t("dashboard.linksEyebrow")}</p>
           <h2 id="my-doctors-title">{t("dashboard.myDoctors")}</h2>
           <p>{t("dashboard.myDoctorsBody")}</p>
         </div>

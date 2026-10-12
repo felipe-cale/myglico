@@ -72,7 +72,6 @@ export default function ManualGlucoseEntryForm({ patientId, onCreated }) {
     <section id="new-reading" className="react-panel react-panel--filter react-panel--manual-entry">
       <div className="react-filter-layout">
         <div className="react-filter-copy">
-          <p className="react-eyebrow">{t("manualEntry.eyebrow")}</p>
           <h2>{t("manualEntry.title")}</h2>
           <p>{t("manualEntry.body")}</p>
         </div>

@@ -201,7 +201,6 @@ export default function InvestigationPage() {
       <section className="react-panel react-conversation__body" aria-labelledby="conversation-messages-title">
         <div className="react-panel__header">
           <div className="react-panel__header-copy">
-            <p className="react-eyebrow">{t("cscw.messagesEyebrow")}</p>
             <h2 id="conversation-messages-title">{t("cscw.messagesTitle")}</h2>
           </div>
         </div>

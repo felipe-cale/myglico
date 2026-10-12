@@ -183,7 +183,6 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
         <div ref={panelRef} className="react-notifications__panel" role="region" aria-labelledby="notifications-title">
           <div className="react-notifications__header">
             <div>
-              <p className="react-eyebrow">{t("notifications.eyebrow")}</p>
               <h3 id="notifications-title" ref={titleRef} tabIndex={-1}>{t("notifications.title")}</h3>
             </div>
             {unreadCount > 0 ? (

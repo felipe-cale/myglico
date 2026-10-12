@@ -29,7 +29,7 @@ function getPatientSignal(patient, t) {
       : patient.pct_hypo >= 10
         ? "oscillation"
         : "stable");
-  const tone = patient.signal_tone || (code === "attention" ? "alert" : code === "oscillation" ? "warning" : "stable");
+  const tone = code === "attention" ? "warning" : code === "oscillation" ? "alert" : "stable";
   return { label: t(`signal.${code}`), tone };
 }
 
@@ -224,7 +224,6 @@ function DoctorHome() {
     <div className="react-page react-page--doctor-home">
       <section className="react-hero react-hero--doctor">
         <div className="react-hero__content">
-          <p className="react-eyebrow">{t("doctorHome.eyebrow")}</p>
           <h1>{t("doctorHome.title")}</h1>
           <p>{t("doctorHome.body")}</p>
         </div>
@@ -373,7 +372,6 @@ function PatientHome({ patient }) {
     <div className="react-page">
       <section className="react-hero react-hero--patient-home">
         <div className="react-hero__content">
-          <p className="react-eyebrow">{t("patientHome.eyebrow")}</p>
           <h1>{t("patientHome.greeting", { name: patient.display_name })}</h1>
           <p>{t("patientHome.body")}</p>
           <div className="react-actions react-hero__actions">
@@ -395,7 +393,6 @@ function PatientHome({ patient }) {
       <section className="react-panel" aria-labelledby="personal-summary-title">
         <div className="react-panel__header">
           <div className="react-panel__header-copy">
-            <p className="react-eyebrow">{t("patientHome.summary.eyebrow")}</p>
             <h2 id="personal-summary-title">{t("patientHome.summary.title")}</h2>
             <p>{t("patientHome.summary.body")}</p>
           </div>

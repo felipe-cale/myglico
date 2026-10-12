@@ -8,7 +8,7 @@ export default function LandingPage() {
 
   return (
     <div className="react-page">
-      <section className="react-hero">
+      <section className="react-hero react-hero--landing">
         <div className="react-hero__content">
           <p className="react-eyebrow">{t("landing.hero.eyebrow")}</p>
           <h1>{t("landing.hero.title")}</h1>

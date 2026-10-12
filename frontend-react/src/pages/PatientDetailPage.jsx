@@ -797,15 +797,13 @@ export default function PatientDetailPage() {
     : { top: 8, right: 12, left: 0, bottom: 0 };
   const pieInnerRadius = isCompactMobile ? 56 : 64;
   const pieOuterRadius = isCompactMobile ? 72 : 80;
-  const axisTickStyle = { fontSize: isCompactMobile ? 11 : 12 };
-  const hourlyAxisTickStyle = { fontSize: isCompactMobile ? 9 : 10 };
+  const axisTickStyle = { fontSize: 12 };
+  const hourlyAxisTickStyle = { fontSize: 12 };
+  const tooltipContentStyle = { fontSize: 14, borderRadius: 18, borderColor: "rgba(22, 124, 217, 0.14)" };
+  const tooltipLabelStyle = { fontSize: 14, fontWeight: 700 };
+  const trendYAxisDomain = [0, (dataMax) => Math.max(260, Math.ceil(dataMax / 20) * 20)];
   const hourlyAxisTicks = isCompactMobile
-    ? Array.from(
-        new Set([
-          ...HOURLY_TICKS.filter((hour) => hour % 3 === 0),
-          ...hourlyExtremes.filter((item) => item.lowCount > 0 || item.highCount > 0).map((item) => item.hour)
-        ])
-      ).sort((a, b) => a - b)
+    ? HOURLY_TICKS.filter((hour) => hour % 3 === 0)
     : HOURLY_TICKS;
   const trendLegendItems = [
     {
@@ -886,7 +884,6 @@ export default function PatientDetailPage() {
             ) : null}
             <span className="react-badge react-badge--blue">{t("patientDetail.hero.measurementsBadge", { count: summary.glucose_measurements })}</span>
           </div>
-          <p className="react-eyebrow">{isOwnPatientView ? t("patientDetail.hero.eyebrowSelf") : t("patientDetail.hero.eyebrow")}</p>
           <h1>{patient.display_name}</h1>
           <p>{isOwnPatientView ? t("patientDetail.hero.bodySelf") : t("patientDetail.hero.body")}</p>
           <div className="react-actions">
@@ -958,7 +955,6 @@ export default function PatientDetailPage() {
       <section className="react-panel react-panel--filter">
         <div className="react-filter-layout">
           <div className="react-filter-copy">
-            <p className="react-eyebrow">{t("patientDetail.filter.eyebrow")}</p>
             <h2>{t("patientDetail.filter.title")}</h2>
             <p>{t("patientDetail.filter.body")}</p>
           </div>
@@ -1039,7 +1035,6 @@ export default function PatientDetailPage() {
         <article className="react-panel react-panel--summary">
           <div className="react-panel__header">
             <div>
-              <p className="react-eyebrow">{t("patientDetail.distribution.eyebrow")}</p>
               <h2>{isDayMode && selectedDaySummary ? t("patientDetail.distribution.titleDay", { date: formatShortDate(selectedDaySummary.date) }) : t("patientDetail.distribution.titlePeriod")}</h2>
             </div>
           </div>
@@ -1059,7 +1054,7 @@ export default function PatientDetailPage() {
                         <Cell key={entry.name} fill={PIE_COLORS[index]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => `${formatNumber(value)}%`} />
+                    <Tooltip formatter={(value) => `${formatNumber(value)}%`} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -1086,7 +1081,6 @@ export default function PatientDetailPage() {
         <article className="react-panel react-panel--summary react-panel--drop-hours">
           <div className="react-panel__header">
             <div>
-              <p className="react-eyebrow">{t("patientDetail.extremeEvents.eyebrow")}</p>
               <h2>{t("patientDetail.extremeEvents.title")}</h2>
             </div>
           </div>
@@ -1101,11 +1095,11 @@ export default function PatientDetailPage() {
                   tickFormatter={(value) => (isCompactMobile ? `${value}` : `${value}h`)}
                   tick={hourlyAxisTickStyle}
                   minTickGap={0}
-                  height={isCompactMobile ? 28 : 32}
+                  height={32}
                 />
                 <YAxis allowDecimals={false} tick={axisTickStyle} width={isCompactMobile ? 24 : 32} />
-                <Tooltip formatter={(value) => t("patientDetail.extremeEvents.tooltipEvents", { count: value })} labelFormatter={(label) => `${String(label).padStart(2, "0")}h`} />
-                <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: isCompactMobile ? "11px" : "12px" }} />
+                <Tooltip formatter={(value) => t("patientDetail.extremeEvents.tooltipEvents", { count: value })} labelFormatter={(label) => `${String(label).padStart(2, "0")}h`} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
+                <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: "14px" }} />
                 <Bar dataKey="lowCount" name="< 70 mg/dL" fill={HYPO_COLOR} radius={[8, 8, 0, 0]} />
                 <Bar dataKey="highCount" name="> 250 mg/dL" fill={HIGH_RISK_COLOR} radius={[8, 8, 0, 0]} />
               </BarChart>
@@ -1118,7 +1112,6 @@ export default function PatientDetailPage() {
         <article className="react-panel react-patient-main">
           <div className="react-panel__header">
             <div>
-              <p className="react-eyebrow">{t("patientDetail.trend.eyebrow")}</p>
               <h2>{isDayMode ? t("patientDetail.trend.titleDay") : t("patientDetail.trend.titlePeriod")}</h2>
               <p>
                 {isDayMode && selectedDay
@@ -1160,8 +1153,8 @@ export default function PatientDetailPage() {
                 >
                   <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
                   <XAxis dataKey="label" tick={axisTickStyle} minTickGap={isCompactMobile ? 18 : 10} />
-                  <YAxis tickFormatter={(value) => `${value}`} tick={axisTickStyle} width={isCompactMobile ? 28 : 40} />
-                  <Tooltip formatter={(value) => `${formatNumber(value)} mg/dL`} labelFormatter={(_, payload) => (payload?.[0]?.payload?.date ? formatDate(payload[0].payload.date) : "")} />
+                  <YAxis tickFormatter={(value) => `${value}`} tick={axisTickStyle} width={isCompactMobile ? 28 : 40} domain={trendYAxisDomain} />
+                  <Tooltip formatter={(value) => `${formatNumber(value)} mg/dL`} labelFormatter={(_, payload) => (payload?.[0]?.payload?.date ? formatDate(payload[0].payload.date) : "")} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
                   <ReferenceLine y={70} stroke={HYPO_COLOR} strokeDasharray="5 5" />
                   <ReferenceLine y={180} stroke={HYPER_COLOR} strokeDasharray="5 5" />
                   <ReferenceLine y={250} stroke={HIGH_RISK_COLOR} strokeDasharray="5 5" />
@@ -1185,7 +1178,7 @@ export default function PatientDetailPage() {
                             cx={cx}
                             cy={cy}
                             r={isActive ? 6 : 4}
-                            fill={isActive ? "#1eab69" : "#ffffff"}
+                            fill={isActive ? "#167cd9" : "#ffffff"}
                             stroke={TREND_COLOR}
                             strokeWidth={isActive ? 3 : 2}
                             style={{ cursor: "pointer" }}
@@ -1201,7 +1194,7 @@ export default function PatientDetailPage() {
                 <LineChart data={selectedDayEvents} margin={dayChartMargin}>
                   <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
                   <XAxis dataKey="event_time" tick={axisTickStyle} minTickGap={isCompactMobile ? 16 : 10} />
-                  <YAxis tickFormatter={(value) => `${value}`} tick={axisTickStyle} width={isCompactMobile ? 28 : 40} />
+                  <YAxis tickFormatter={(value) => `${value}`} tick={axisTickStyle} width={isCompactMobile ? 28 : 40} domain={trendYAxisDomain} />
                   <Tooltip
                     formatter={(value) => `${formatNumber(value)} mg/dL`}
                     labelFormatter={(_, payload) =>
@@ -1209,7 +1202,8 @@ export default function PatientDetailPage() {
                         ? `${formatDate(payload[0].payload.event_date)} - ${payload[0].payload.event_time}`
                         : ""
                     }
-                    contentStyle={{ borderRadius: "18px", borderColor: "rgba(22, 124, 217, 0.14)" }}
+                    contentStyle={tooltipContentStyle}
+                    labelStyle={tooltipLabelStyle}
                   />
                   <ReferenceLine y={70} stroke={HYPO_COLOR} strokeDasharray="5 5" />
                   <ReferenceLine y={180} stroke={HYPER_COLOR} strokeDasharray="5 5" />
@@ -1255,7 +1249,7 @@ export default function PatientDetailPage() {
           <article className="react-panel react-panel--summary">
             <div className="react-panel__header">
               <div>
-                <p className="react-eyebrow">{isDayMode && selectedDaySummary ? t("patientDetail.sidebar.eyebrowDay") : t("patientDetail.sidebar.eyebrowPeriod")}</p>
+                {isDayMode && selectedDaySummary ? <p className="react-eyebrow">{t("patientDetail.sidebar.eyebrowDay")}</p> : null}
                 <h2>{isDayMode && selectedDaySummary ? formatDate(selectedDaySummary.date) : t("patientDetail.sidebar.titlePeriod")}</h2>
                 <p>
                   {isDayMode && selectedDaySummary
@@ -1305,7 +1299,6 @@ export default function PatientDetailPage() {
         <article className="react-panel react-panel--wide">
           <div className="react-panel__header">
             <div>
-              <p className="react-eyebrow">{t("patientDetail.dailyIndicators.eyebrow")}</p>
               <h2>{t("patientDetail.dailyIndicators.title")}</h2>
             </div>
           </div>
@@ -1359,10 +1352,10 @@ export default function PatientDetailPage() {
                 <thead>
                   <tr>
                     <th>{t("patientDetail.dailyIndicators.date")}</th>
-                    <th>{t("patientDetail.dailyIndicators.avg")}</th>
-                    <th>{t("patientDetail.dailyIndicators.pctHypo")}</th>
-                    <th>{t("patientDetail.dailyIndicators.pctInRange")}</th>
-                    <th>{t("patientDetail.dailyIndicators.pctHyper")}</th>
+                    <th className="is-num">{t("patientDetail.dailyIndicators.avg")}</th>
+                    <th className="is-num">{t("patientDetail.dailyIndicators.pctHypo")}</th>
+                    <th className="is-num">{t("patientDetail.dailyIndicators.pctInRange")}</th>
+                    <th className="is-num">{t("patientDetail.dailyIndicators.pctHyper")}</th>
                     <th>{t("patientDetail.dailyIndicators.anomaly")}</th>
                     <th>{t("patientDetail.dailyIndicators.profile")}</th>
                   </tr>
@@ -1375,11 +1368,17 @@ export default function PatientDetailPage() {
                       onClick={() => handleSelectDay(indicator.date)}
                     >
                       <td>{formatDate(indicator.date)}</td>
-                      <td>{indicator.avg_glucose != null ? `${formatNumber(indicator.avg_glucose)} mg/dL` : "-"}</td>
-                      <td>{formatNumber(indicator.pct_hypo, "%")}</td>
-                      <td>{formatNumber(indicator.pct_in_range, "%")}</td>
-                      <td>{formatNumber(indicator.pct_hyper, "%")}</td>
-                      <td>{indicator.analysis_pending ? t("common.dash") : indicator.anomaly_flag ? t("common.yes") : t("common.no")}</td>
+                      <td className="is-num">{indicator.avg_glucose != null ? `${formatNumber(indicator.avg_glucose)} mg/dL` : "-"}</td>
+                      <td className="is-num">{formatNumber(indicator.pct_hypo, "%")}</td>
+                      <td className="is-num">{formatNumber(indicator.pct_in_range, "%")}</td>
+                      <td className="is-num">{formatNumber(indicator.pct_hyper, "%")}</td>
+                      <td>
+                        {!indicator.analysis_pending && indicator.anomaly_flag ? (
+                          <span className="react-badge react-badge--atypical react-badge--compact">{t("patientDetail.dailyIndicators.badgeAtypical")}</span>
+                        ) : (
+                          t("common.dash")
+                        )}
+                      </td>
                       <td>
                         <div className="react-table-meta">
                           <ClusterProfileValue indicator={indicator} showGroup={!isOwnPatientView} />
@@ -1408,7 +1407,6 @@ export default function PatientDetailPage() {
         <article className="react-panel react-panel--wide">
           <div className="react-panel__header">
             <div>
-              <p className="react-eyebrow">{t("patientDetail.recentEvents.eyebrow")}</p>
               <h2>{t("patientDetail.recentEvents.title")}</h2>
             </div>
           </div>
@@ -1456,7 +1454,7 @@ export default function PatientDetailPage() {
                     <th>{t("patientDetail.recentEvents.when")}</th>
                     <th>{t("patientDetail.recentEvents.type")}</th>
                     <th>{t("patientDetail.recentEvents.subtype")}</th>
-                    <th>{t("patientDetail.recentEvents.value")}</th>
+                    <th className="is-num">{t("patientDetail.recentEvents.value")}</th>
                     <th>{t("patientDetail.recentEvents.context")}</th>
                   </tr>
                 </thead>
@@ -1471,7 +1469,7 @@ export default function PatientDetailPage() {
                         <td>{formatPatientEventDateTime(event)}</td>
                         <td title={event.event_type || ""}>{eventTypeLabel}</td>
                         <td title={event.event_subtype || ""}>{eventSubtypeLabel}</td>
-                        <td>
+                        <td className="is-num">
                           {event.glucose_mg_dl != null
                             ? `${formatNumber(event.glucose_mg_dl)} mg/dL`
                             : event.numeric_value != null

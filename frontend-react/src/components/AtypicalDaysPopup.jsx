@@ -164,7 +164,6 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
           >
             <div className="react-dialog__header">
               <div>
-                <p className="react-eyebrow">{t("cscw.promptEyebrow")}</p>
                 <h3 id="atypical-days-title" ref={headingRef} tabIndex={-1}>{t("cscw.popupTitle")}</h3>
               </div>
               <button type="button" className="react-dialog__close" onClick={close} aria-label={t("cscw.popupCloseAria")}>
