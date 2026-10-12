@@ -52,6 +52,26 @@ test.describe("Group 6 - messaging and closure", () => {
     // Ciphertext-at-rest for messages is asserted in tests/integration/test_crypto_and_secrets.py.
   });
 
+  test("the conversation scrolls to the newest message after sending", async ({ actor, browserSession }) => {
+    const patient = await actor("patientA");
+    const doctor = await actor("doctorA");
+    await linkActive(patient, doctor);
+    const inv = await openInvestigationAsPatient(patient, doctor, { initial_message: "m1 paciente" });
+    for (let sequence = 2; sequence <= 19; sequence += 1) {
+      expect((await api.postMessage(patient.request, inv.id, `m${sequence} paciente`)).status).toBe(201);
+    }
+
+    const ui = await conversationPage(browserSession, "doctorA", inv.id);
+    const { form, input } = composer(ui.page);
+    const messageList = ui.page.locator(".react-message-list");
+    await input.fill("m20 médico");
+    await form.getByRole("button", { name: tx("cscw.send") }).click();
+
+    await expect(ui.page.getByText("m20 médico", { exact: true })).toBeVisible();
+    await expect.poll(() => messageList.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+    await expect.poll(() => messageList.evaluate((element) => element.scrollTop + element.clientHeight >= element.scrollHeight - 2)).toBe(true);
+  });
+
   test("CSCW-CA-33 (Não aplicável) - author role always derives from the account's single role", async ({ actor }) => {
     // Product decision 2026-10-07: one role per account; there is no context switch to test.
     const patient = await actor("patientA");

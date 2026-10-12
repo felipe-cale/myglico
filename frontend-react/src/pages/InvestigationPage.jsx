@@ -23,18 +23,22 @@ export default function InvestigationPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [newMsg, setNewMsg] = useState("");
+  const [sending, setSending] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState("");
   const [closing, setClosing] = useState(false);
   const [observation, setObservation] = useState("");
   const [newMessageIds, setNewMessageIds] = useState(() => new Set());
+  const messageListRef = useRef(null);
   const lastReadSequence = useRef(0);
   const seenMessageIds = useRef(null);
   const followLatestRef = useRef(true);
+  const scrollAfterSendRef = useRef(false);
 
   const loadData = async () => {
     try {
-      const data = await fetchInvestigationDetail(id, { page, page_size: pageSize });
+      const requestedPage = Number.isInteger(page) && page > 0 ? page : 1;
+      const data = await fetchInvestigationDetail(id, { page: requestedPage, page_size: pageSize });
       const investigation = data.investigation || data;
       const items = data.messages || data.items || [];
       const ownRole = investigation.counterpart?.role === "doctor" ? "patient" : "doctor";
@@ -54,9 +58,11 @@ export default function InvestigationPage() {
       setInv(investigation);
       setMessages(items);
       if (data.pagination) {
-        setPagination(data.pagination);
-        if (followLatestRef.current && data.pagination.page !== data.pagination.pages) setPage(data.pagination.pages);
-        else if (data.pagination.page !== page) setPage(data.pagination.page);
+        const pages = data.pagination.pages ?? Math.max(1, Math.ceil(data.pagination.total / data.pagination.page_size));
+        const currentPage = data.pagination.page ?? requestedPage;
+        setPagination({ ...data.pagination, page: currentPage, pages });
+        if (followLatestRef.current && currentPage !== pages) setPage(pages);
+        else if (currentPage !== requestedPage) setPage(currentPage);
       }
       setLoadError(false);
     } catch(e) {
@@ -93,16 +99,32 @@ export default function InvestigationPage() {
     return () => cancelAnimationFrame(frame);
   }, [id, messages]);
 
+  useEffect(() => {
+    if (!scrollAfterSendRef.current || pagination.page !== pagination.pages) return;
+    scrollAfterSendRef.current = false;
+    const frame = requestAnimationFrame(() => {
+      const list = messageListRef.current;
+      if (list) list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [messages, pagination]);
+
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!newMsg.trim()) return;
+    const content = newMsg.trim();
+    if (!content || sending) return;
+    setSending(true);
     try {
-      await sendInvestigationMessage(id, { content: newMsg });
+      await sendInvestigationMessage(id, { content });
       setNewMsg("");
       setActionError("");
-      loadData();
+      followLatestRef.current = true;
+      scrollAfterSendRef.current = true;
+      await loadData();
     } catch(e) {
       setActionError(t("cscw.sendFailed"));
+    } finally {
+      setSending(false);
     }
   };
 
@@ -172,7 +194,7 @@ export default function InvestigationPage() {
             <h2 id="conversation-messages-title">{t("cscw.messagesTitle")}</h2>
           </div>
         </div>
-        <ol className="react-message-list" aria-label={t("cscw.messagesLabel")}>
+        <ol ref={messageListRef} className="react-message-list" aria-label={t("cscw.messagesLabel")}>
           {messages.map((m) => {
             const isNew = newMessageIds.has(m.id);
             const isOwn = m.author_role === ownRole;
@@ -222,8 +244,8 @@ export default function InvestigationPage() {
             </label>
             <div className="react-composer__actions">
               <small>{t("cscw.composerHint")}</small>
-              <button type="button" onClick={() => { setActionError(""); setClosing(true); }} className="react-button react-button--danger">{t("cscw.close")}</button>
-              <button type="submit" className="react-button">{t("cscw.send")}</button>
+              <button type="button" disabled={sending} onClick={() => { setActionError(""); setClosing(true); }} className="react-button react-button--danger">{t("cscw.close")}</button>
+              <button type="submit" disabled={sending || !newMsg.trim()} aria-busy={sending} className="react-button">{t("cscw.send")}</button>
             </div>
           </form>
         )}

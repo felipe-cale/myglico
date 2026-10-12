@@ -606,7 +606,10 @@ def api_investigation_detail(
             "content": decrypt_field(message.content_encrypted, table="investigation_messages", column="content", record_id=message.id),
             "created_at": message.created_at.isoformat(),
         } for message in messages],
-        "pagination": {"page": page, "page_size": page_size, "total": total},
+        "pagination": {
+            "page": page, "page_size": page_size, "total": total,
+            "pages": max(1, (total + page_size - 1) // page_size),
+        },
         "unread_count": unread_count,
     }
 
