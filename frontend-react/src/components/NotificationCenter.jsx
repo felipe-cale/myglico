@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchNotifications, readNotification } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import StateBlock from "./StateBlock";
+import Pagination from "./Pagination";
 
 function formatWhen(value, locale) {
   if (!value) return "";
@@ -34,13 +35,20 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState("idle");
   const [notifications, setNotifications] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [pagination, setPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
   const wrapperRef = useRef(null);
 
   const loadNotifications = async () => {
     setStatus((current) => (current === "ready" ? current : "loading"));
     try {
-      const data = await fetchNotifications({ unread_only: true });
+      const data = await fetchNotifications({ unread_only: true, page, page_size: pageSize });
       setNotifications(data.notifications || data || []);
+      if (data.pagination) {
+        setPagination(data.pagination);
+        if (data.pagination.page !== page) setPage(data.pagination.page);
+      }
       setStatus("ready");
     } catch {
       setStatus("error");
@@ -52,7 +60,7 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
       setStatus("loading");
       loadNotifications();
     }
-  }, [open]);
+  }, [open, page, pageSize]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -159,6 +167,18 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
               ))}
             </ul>
           )}
+          {status === "ready" && pagination.total > 0 ? (
+            <div className="react-notifications__pagination">
+              <Pagination
+                page={pagination.page}
+                pages={pagination.pages}
+                count={pagination.total}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

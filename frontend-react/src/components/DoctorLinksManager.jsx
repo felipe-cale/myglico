@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { searchDoctors, requestDoctorLink, fetchDoctorLinks, revokeDoctorLink, cancelDoctorLink, confirmDoctorLink, rejectDoctorLink } from "../api";
 import StateBlock from "./StateBlock";
 import ConfirmDialog from "./ConfirmDialog";
+import Pagination from "./Pagination";
 
 const STATUS_ORDER = { active: 0, pending: 1, revoked: 2, rejected: 3, cancelled: 4 };
 
@@ -51,28 +52,31 @@ function DoctorIdentity({ doctor }) {
   );
 }
 
-function useDoctorLinks() {
+function useDoctorLinks({ status: statusFilter = "", page = 1, pageSize = 10 } = {}) {
   const [links, setLinks] = useState([]);
   const [status, setStatus] = useState("loading");
+  const [pagination, setPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
   const reload = useCallback(async () => {
     try {
-      const data = await fetchDoctorLinks();
+      const params = { page, page_size: pageSize };
+      if (statusFilter) params.status = statusFilter;
+      const data = await fetchDoctorLinks(params);
       setLinks(data.links || data || []);
+      if (data.pagination) setPagination(data.pagination);
       setStatus("ready");
     } catch {
       setStatus("error");
     }
-  }, []);
+  }, [page, pageSize, statusFilter]);
   useEffect(() => {
     reload();
   }, [reload]);
-  return { links, status, reload };
+  return { links, status, pagination, reload };
 }
 
 export default function DoctorLinksManager() {
   const { t } = useTranslation();
   const location = useLocation();
-  const { links, status: linksStatus, reload } = useDoctorLinks();
   const [criteria, setCriteria] = useState({ short_id: "", crm: "", uf: "" });
   const [searchResult, setSearchResult] = useState(null);
   const [searching, setSearching] = useState(false);
@@ -82,6 +86,14 @@ export default function DoctorLinksManager() {
   const [revokeTarget, setRevokeTarget] = useState(null);
   const [revoking, setRevoking] = useState(false);
   const [revokeError, setRevokeError] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const { links, status: linksStatus, pagination, reload } = useDoctorLinks({ page, pageSize });
+  const targetLookupRef = useRef("");
+
+  useEffect(() => {
+    if (pagination.page !== page) setPage(pagination.page);
+  }, [pagination.page, page]);
 
   useEffect(() => {
     if (linksStatus === "ready" && links.length === 0 && !searchTouched) setShowSearch(true);
@@ -89,8 +101,17 @@ export default function DoctorLinksManager() {
 
   useEffect(() => {
     if (linksStatus !== "ready" || !location.hash.startsWith("#doctor-link-")) return;
-    requestAnimationFrame(() => document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({ behavior: "smooth", block: "center" }));
-  }, [linksStatus, location.hash, links]);
+    const targetId = decodeURIComponent(location.hash.slice("#doctor-link-".length));
+    if (document.getElementById(`doctor-link-${targetId}`)) {
+      requestAnimationFrame(() => document.getElementById(`doctor-link-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+      return;
+    }
+    if (targetLookupRef.current === targetId) return;
+    targetLookupRef.current = targetId;
+    fetchDoctorLinks({ link_id: targetId, page_size: pageSize })
+      .then((data) => { if (data.pagination?.page) setPage(data.pagination.page); })
+      .catch(() => {});
+  }, [linksStatus, location.hash, links, pageSize]);
 
   const toggleSearch = () => {
     setSearchTouched(true);
@@ -229,33 +250,38 @@ export default function DoctorLinksManager() {
       ) : sortedLinks.length === 0 ? (
         <StateBlock title={t("dashboard.noDoctors.title")} description={t("dashboard.noDoctors.description")} />
       ) : (
-        <ul className="react-link-list">
-          {sortedLinks.map((link) => (
-            <li key={link.id} id={`doctor-link-${link.id}`} className={`react-link-card${link.status === "active" || link.status === "pending" ? "" : " is-history"}`}>
-              <DoctorIdentity doctor={link.doctor} />
-              <div className="react-link-card__actions">
-                <StatusChip status={link.status} />
-                {link.status === "pending" && (
-                  <button type="button" className="react-button react-button--ghost react-button--compact" onClick={() => handleCancel(link)}>
-                    {t("dashboard.cancel")}
-                  </button>
-                )}
-                {link.status === "active" && (
-                  <button
-                    type="button"
-                    className="react-button react-button--danger react-button--compact"
-                    onClick={() => {
-                      setRevokeError("");
-                      setRevokeTarget(link);
-                    }}
-                  >
-                    {t("dashboard.revokeLink")}
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="react-link-list">
+            {sortedLinks.map((link) => (
+              <li key={link.id} id={`doctor-link-${link.id}`} className={`react-link-card${link.status === "active" || link.status === "pending" ? "" : " is-history"}`}>
+                <DoctorIdentity doctor={link.doctor} />
+                <div className="react-link-card__actions">
+                  <StatusChip status={link.status} />
+                  {link.status === "pending" && (
+                    <button type="button" className="react-button react-button--ghost react-button--compact" onClick={() => handleCancel(link)}>
+                      {t("dashboard.cancel")}
+                    </button>
+                  )}
+                  {link.status === "active" && (
+                    <button
+                      type="button"
+                      className="react-button react-button--danger react-button--compact"
+                      onClick={() => {
+                        setRevokeError("");
+                        setRevokeTarget(link);
+                      }}
+                    >
+                      {t("dashboard.revokeLink")}
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="react-panel__footer">
+            <Pagination page={pagination.page} pages={pagination.pages} count={pagination.total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />
+          </div>
+        </>
       )}
 
       <ConfirmDialog
@@ -277,15 +303,30 @@ export default function DoctorLinksManager() {
 export function PendingLinksPanel({ onChange }) {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const { links, status, reload } = useDoctorLinks();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const { links: pending, status, pagination, reload } = useDoctorLinks({ status: "pending", page, pageSize });
+  const targetLookupRef = useRef("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
-  const pending = links.filter((link) => link.status === "pending");
+
+  useEffect(() => {
+    if (pagination.page !== page) setPage(pagination.page);
+  }, [pagination.page, page]);
 
   useEffect(() => {
     if (status !== "ready" || !location.hash.startsWith("#pending-link-")) return;
-    requestAnimationFrame(() => document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({ behavior: "smooth", block: "center" }));
-  }, [status, location.hash, pending]);
+    const targetId = decodeURIComponent(location.hash.slice("#pending-link-".length));
+    if (document.getElementById(`pending-link-${targetId}`)) {
+      requestAnimationFrame(() => document.getElementById(`pending-link-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+      return;
+    }
+    if (targetLookupRef.current === targetId) return;
+    targetLookupRef.current = targetId;
+    fetchDoctorLinks({ status: "pending", link_id: targetId, page_size: pageSize })
+      .then((data) => { if (data.pagination?.page) setPage(data.pagination.page); })
+      .catch(() => {});
+  }, [status, location.hash, pending, pageSize]);
 
   const decide = async (link, action) => {
     setBusyId(link.id);
@@ -309,8 +350,8 @@ export function PendingLinksPanel({ onChange }) {
           <h2 id="pending-links-title">{t("doctorHome.pending.title")}</h2>
           <p>{t("doctorHome.pending.body")}</p>
         </div>
-        {pending.length > 0 ? (
-          <span className="react-badge react-badge--blue react-badge--compact">{t("doctorHome.pending.count", { count: pending.length })}</span>
+        {pagination.total > 0 ? (
+          <span className="react-badge react-badge--blue react-badge--compact">{t("doctorHome.pending.count", { count: pagination.total })}</span>
         ) : null}
       </div>
 
@@ -325,8 +366,9 @@ export function PendingLinksPanel({ onChange }) {
       ) : pending.length === 0 ? (
         <StateBlock title={t("doctorHome.pending.empty.title")} description={t("doctorHome.pending.empty.description")} />
       ) : (
-        <ul className="react-link-list">
-          {pending.map((link) => (
+        <>
+          <ul className="react-link-list">
+            {pending.map((link) => (
             <li key={link.id} id={`pending-link-${link.id}`} className="react-link-card">
               <div className="react-link-card__identity">
                 <strong>{link.patient?.display_name}</strong>
@@ -355,8 +397,12 @@ export function PendingLinksPanel({ onChange }) {
                 </button>
               </div>
             </li>
-          ))}
-        </ul>
+            ))}
+          </ul>
+          <div className="react-panel__footer">
+            <Pagination page={pagination.page} pages={pagination.pages} count={pagination.total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />
+          </div>
+        </>
       )}
     </section>
   );

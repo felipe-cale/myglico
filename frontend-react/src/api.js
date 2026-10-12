@@ -42,8 +42,9 @@ export function searchDoctors(params) {
   const q = new URLSearchParams(criteria).toString();
   return requestJson(`/api/doctors/search?${q}`);
 }
-export function fetchDoctorLinks() {
-  return requestJson("/api/doctor-links");
+export function fetchDoctorLinks(params = {}) {
+  const q = new URLSearchParams(params).toString();
+  return requestJson(`/api/doctor-links${q ? `?${q}` : ""}`);
 }
 export function requestDoctorLink(doctor_short_id) {
   return requestJson("/api/doctor-links", { method: "POST", body: JSON.stringify({ doctor_short_id }) });
@@ -88,8 +89,9 @@ export function fetchAtypicalDays(patientId, params = {}) {
   const q = new URLSearchParams(params).toString();
   return requestJson(`/api/patients/${patientId}/atypical-days?${q}`);
 }
-export function fetchAtypicalDayPrompts(patientId) {
-  return requestJson(`/api/patients/${patientId}/atypical-day-prompts`);
+export function fetchAtypicalDayPrompts(patientId, params = {}) {
+  const q = new URLSearchParams(params).toString();
+  return requestJson(`/api/patients/${patientId}/atypical-day-prompts${q ? `?${q}` : ""}`);
 }
 export function deferAtypicalDayPrompt(indicator_ids) {
   return requestJson("/api/atypical-day-prompts/defer", {
@@ -114,7 +116,7 @@ export function fetchUnreadSummary() {
 export function fetchDashboardSummary() {
   return requestJson("/api/dashboard");
 }
-export function fetchPatients({ page = 1, pageSize = 12, query = "", signal = "all" }) {
+export function fetchPatients({ page = 1, pageSize = 10, query = "", signal = "all" }) {
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("page_size", String(pageSize));
@@ -122,11 +124,17 @@ export function fetchPatients({ page = 1, pageSize = 12, query = "", signal = "a
   if (signal && signal !== "all") params.set("signal", signal);
   return requestJson(`/api/patients?${params.toString()}`);
 }
-export function fetchPatientDetail(patientId, { startDate, endDate, dates } = {}) {
+export function fetchPatientDetail(patientId, {
+  startDate, endDate, dates, indicatorPage = 1, indicatorPageSize = 10, eventPage = 1, eventPageSize = 10
+} = {}) {
   const params = new URLSearchParams();
   if (startDate) params.set("start_date", startDate);
   if (endDate) params.set("end_date", endDate);
   if (dates?.length) params.set("dates", dates.join(","));
+  params.set("indicator_page", String(indicatorPage));
+  params.set("indicator_page_size", String(indicatorPageSize));
+  params.set("event_page", String(eventPage));
+  params.set("event_page_size", String(eventPageSize));
   const suffix = params.toString() ? `?${params.toString()}` : "";
   return requestJson(`/api/patients/${patientId}${suffix}`);
 }

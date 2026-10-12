@@ -27,7 +27,10 @@
   },
   "pagination": {
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "perPage": "Per page",
+    "summary": "Page {{page}} of {{pages}} · {{count}} results",
+    "navigation": "Pagination navigation"
   },
   "signal": {
     "stable": "In-Range Profile",

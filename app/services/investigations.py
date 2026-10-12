@@ -210,8 +210,8 @@ def authorized_investigation(
 
 def investigation_list(
     db: Session, principal: SessionPrincipal, *, status: str | None = None,
-    counterpart_id: str | None = None,
-) -> list[Investigation]:
+    counterpart_id: str | None = None, page: int = 1, page_size: int = 10,
+) -> tuple[list[Investigation], int, int]:
     role, domain_id = _actor(principal)
     if role == "PATIENT":
         query = select(Investigation).where(Investigation.patient_id == domain_id)
@@ -227,7 +227,14 @@ def investigation_list(
         if status.upper() not in {"OPEN", "CLOSED"}:
             raise ValueError("status must be OPEN or CLOSED")
         query = query.where(Investigation.status == status.upper())
-    return list(db.scalars(query.order_by(Investigation.opened_at.desc())))
+    total = db.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
+    pages = max(1, (total + page_size - 1) // page_size)
+    current_page = min(max(page, 1), pages)
+    items = list(db.scalars(
+        query.order_by(Investigation.opened_at.desc(), Investigation.id)
+        .offset((current_page - 1) * page_size).limit(page_size)
+    ))
+    return items, total, current_page
 
 
 def unread_message_count(db: Session, principal: SessionPrincipal) -> int:

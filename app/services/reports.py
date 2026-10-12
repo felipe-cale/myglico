@@ -539,6 +539,8 @@ def get_patient_detail_context(
     start_date: date | None = None,
     end_date: date | None = None,
     exact_dates: list[date] | None = None,
+    *, indicator_page: int = 1, indicator_page_size: int = 10,
+    event_page: int = 1, event_page_size: int = 10,
 ) -> dict[str, object] | None:
     patient = db.get(Patient, patient_id)
     if patient is None:
@@ -618,7 +620,11 @@ def get_patient_detail_context(
         record_query = record_query.where(exact_filter)
         glucose_query = glucose_query.where(exact_filter)
 
-    recent_records = db.scalars(record_query.limit(20)).all()
+    recent_total = db.scalar(select(func.count()).select_from(record_query.order_by(None).subquery())) or 0
+    recent_pages = max(1, (recent_total + event_page_size - 1) // event_page_size)
+    current_event_page = min(max(event_page, 1), recent_pages)
+    recent_records = db.scalars(record_query.order_by(GlucoseRecord.measured_at.desc(), GlucoseRecord.id)
+        .offset((current_event_page - 1) * event_page_size).limit(event_page_size)).all()
     glucose_records = db.scalars(glucose_query).all()
     quality_issues = db.scalars(
         select(DataQualityIssue)
@@ -641,6 +647,10 @@ def get_patient_detail_context(
 
     cluster_profiles = _build_cluster_profile_map(indicators)
     daily_indicators_json = _serialize_daily_rows(daily_rows, cluster_profiles)
+    indicator_total = len(daily_indicators_json)
+    indicator_pages = max(1, (indicator_total + indicator_page_size - 1) // indicator_page_size)
+    current_indicator_page = min(max(indicator_page, 1), indicator_pages)
+    indicator_offset = (current_indicator_page - 1) * indicator_page_size
     freshness_status = "fresh"
     if any(getattr(metric, "freshness_status", "fresh") != "fresh" for metric in metrics):
         freshness_status = "updating"
@@ -679,8 +689,17 @@ def get_patient_detail_context(
         "hourly_highs_250": [{"hour": hour, "count": count} for hour, count in hourly_highs_250.items()],
         "cluster_profiles": cluster_profiles,
         "daily_indicators_json": daily_indicators_json,
+        "daily_indicators_page_json": daily_indicators_json[indicator_offset:indicator_offset + indicator_page_size],
+        "daily_indicators_pagination": {
+            "page": current_indicator_page, "page_size": indicator_page_size,
+            "total": indicator_total, "pages": indicator_pages,
+        },
         "glucose_events_json": [_serialize_record(record, patient.timezone) for record in glucose_records],
         "recent_events_json": [_serialize_record(record, patient.timezone) for record in recent_records],
+        "recent_events_pagination": {
+            "page": current_event_page, "page_size": event_page_size,
+            "total": recent_total, "pages": recent_pages,
+        },
         "line_chart_points": build_line_chart_points([row.get("avg_glucose") or 0 for row in daily_indicators_json]),
     }
 

@@ -27,7 +27,10 @@
   },
   "pagination": {
     "previous": "Anterior",
-    "next": "Próxima"
+    "next": "Próxima",
+    "perPage": "Por página",
+    "summary": "Página {{page}} de {{pages}} · {{count}} resultados",
+    "navigation": "Navegação da paginação"
   },
   "signal": {
     "stable": "Perfil em Faixa",

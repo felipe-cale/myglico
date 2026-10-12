@@ -20,6 +20,7 @@ import {
 import { fetchDoctorLinks, fetchPatientDetail, patientReportPdfUrl, revokeDoctorLink } from "../api";
 import StateBlock from "../components/StateBlock";
 import AtypicalDaysPopup from "../components/AtypicalDaysPopup";
+import Pagination from "../components/Pagination";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ManualGlucoseEntryForm from "../components/ManualGlucoseEntryForm";
 import { useAuth } from "../contexts/AuthContext";
@@ -293,6 +294,10 @@ export default function PatientDetailPage() {
     typeof window !== "undefined" ? window.matchMedia("(max-width: 640px)").matches : false
   );
   const [reloadToken, setReloadToken] = useState(0);
+  const [indicatorPage, setIndicatorPage] = useState(1);
+  const [indicatorPageSize, setIndicatorPageSize] = useState(10);
+  const [eventPage, setEventPage] = useState(1);
+  const [eventPageSize, setEventPageSize] = useState(10);
   const lastResolvedRequestRef = useRef("");
   const preservedRangeRef = useRef(readPreservedRange(patientId));
   const preservedPatientRef = useRef(patientId);
@@ -311,7 +316,7 @@ export default function PatientDetailPage() {
     if (!isDoctorView) return undefined;
     let active = true;
     setDoctorLink(null);
-    fetchDoctorLinks()
+    fetchDoctorLinks({ status: "active", patient_id: patientId, page: 1, page_size: 10 })
       .then((payload) => {
         if (!active) return;
         const links = payload.links || payload || [];
@@ -378,7 +383,7 @@ export default function PatientDetailPage() {
     }
   }, [patientId, requestedDatesParam]);
 
-  const requestKey = `${patientId}:${requestedStart || ""}:${requestedEnd || ""}:${requestedDatesParam}:${reloadToken}`;
+  const requestKey = `${patientId}:${requestedStart || ""}:${requestedEnd || ""}:${requestedDatesParam}:${reloadToken}:${indicatorPage}:${indicatorPageSize}:${eventPage}:${eventPageSize}`;
 
   useEffect(() => {
     if (data && lastResolvedRequestRef.current === requestKey) {
@@ -394,8 +399,8 @@ export default function PatientDetailPage() {
     setError(null);
     const hasExactDates = requestedDates.length > 0;
     const detailRequest = hasExactDates
-      ? { dates: requestedDates }
-      : { startDate: requestedStart, endDate: requestedEnd };
+      ? { dates: requestedDates, indicatorPage, indicatorPageSize, eventPage, eventPageSize }
+      : { startDate: requestedStart, endDate: requestedEnd, indicatorPage, indicatorPageSize, eventPage, eventPageSize };
     fetchPatientDetail(patientId, detailRequest)
       .then((payload) => {
         if (!active) {
@@ -405,9 +410,11 @@ export default function PatientDetailPage() {
         const periodStart = hasExactDates ? requestedStart || preservedRangeRef.current?.start : payload.filters.start_date;
         const periodEnd = hasExactDates ? requestedEnd || preservedRangeRef.current?.end : payload.filters.end_date;
         setData(payload);
+        if (payload.daily_indicators_pagination?.page !== indicatorPage) setIndicatorPage(payload.daily_indicators_pagination.page);
+        if (payload.recent_events_pagination?.page !== eventPage) setEventPage(payload.recent_events_pagination.page);
         setDraftStartDate(periodStart || "");
         setDraftEndDate(periodEnd || "");
-        lastResolvedRequestRef.current = `${patientId}:${periodStart || ""}:${periodEnd || ""}:${requestedDatesParam}:${reloadToken}`;
+        lastResolvedRequestRef.current = `${patientId}:${periodStart || ""}:${periodEnd || ""}:${requestedDatesParam}:${reloadToken}:${indicatorPage}:${indicatorPageSize}:${eventPage}:${eventPageSize}`;
 
         const next = new URLSearchParams();
         if (periodStart) {
@@ -438,7 +445,7 @@ export default function PatientDetailPage() {
     return () => {
       active = false;
     };
-  }, [patientId, requestedStart, requestedEnd, requestedDates, requestedDatesParam, requestKey, reloadToken, data, searchParams, setSearchParams]);
+  }, [patientId, requestedStart, requestedEnd, requestedDates, requestedDatesParam, requestKey, reloadToken, data, searchParams, setSearchParams, indicatorPage, indicatorPageSize, eventPage, eventPageSize]);
 
   const chartData = useMemo(() => {
     if (!data) {
@@ -767,6 +774,7 @@ export default function PatientDetailPage() {
   }
 
   const { patient, filters, recent_events: recentEvents } = data;
+  const dailyIndicatorsPage = data.daily_indicators_page || data.daily_indicators;
   const activeDistributionData = isDayMode && selectedDaySummary ? selectedDayDistribution : distributionData;
   const distributionChartHeight = isCompactMobile ? 182 : 206;
   const insightChartHeight = isCompactMobile ? 168 : 182;
@@ -1297,7 +1305,7 @@ export default function PatientDetailPage() {
           </div>
           {isCompactMobile ? (
             <div className="react-mobile-list" aria-label={t("patientDetail.dailyIndicators.eyebrow")}>
-              {data.daily_indicators.map((indicator) => (
+              {dailyIndicatorsPage.map((indicator) => (
                 <article
                   key={indicator.date}
                   className={`react-mobile-card react-mobile-card--interactive${indicator.date === selectedDay ? " is-selected" : ""}`}
@@ -1354,7 +1362,7 @@ export default function PatientDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.daily_indicators.map((indicator) => (
+                  {dailyIndicatorsPage.map((indicator) => (
                     <tr
                       key={indicator.date}
                       className={indicator.date === selectedDay ? "is-selected" : ""}
@@ -1375,6 +1383,18 @@ export default function PatientDetailPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          {data.daily_indicators_pagination?.total > 0 && (
+            <div className="react-panel__footer">
+              <Pagination
+                page={data.daily_indicators_pagination.page}
+                pages={data.daily_indicators_pagination.pages}
+                count={data.daily_indicators_pagination.total}
+                pageSize={indicatorPageSize}
+                onPageChange={(nextPage) => { silentReloadRef.current = true; setIndicatorPage(nextPage); }}
+                onPageSizeChange={(size) => { silentReloadRef.current = true; setIndicatorPageSize(size); setIndicatorPage(1); }}
+              />
             </div>
           )}
         </article>
@@ -1458,6 +1478,18 @@ export default function PatientDetailPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+          {data.recent_events_pagination?.total > 0 && (
+            <div className="react-panel__footer">
+              <Pagination
+                page={data.recent_events_pagination.page}
+                pages={data.recent_events_pagination.pages}
+                count={data.recent_events_pagination.total}
+                pageSize={eventPageSize}
+                onPageChange={(nextPage) => { silentReloadRef.current = true; setEventPage(nextPage); }}
+                onPageSizeChange={(size) => { silentReloadRef.current = true; setEventPageSize(size); setEventPage(1); }}
+              />
             </div>
           )}
         </article>

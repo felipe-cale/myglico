@@ -240,23 +240,58 @@ def transition_link(
     return link
 
 
-def list_links(db: Session, principal: SessionPrincipal) -> list[PatientDoctorLink]:
+def list_links(
+    db: Session, principal: SessionPrincipal, *, status: str | None = None,
+    page: int = 1, page_size: int = 10, link_id: str | None = None,
+    patient_id: str | None = None,
+) -> tuple[list[PatientDoctorLink], int, int]:
     if principal.patient is not None:
-        return list(db.scalars(select(PatientDoctorLink).where(
-            PatientDoctorLink.patient_id == principal.patient.id
-        ).order_by(PatientDoctorLink.requested_at.desc())))
-    if principal.doctor is not None:
-        return list(db.scalars(select(PatientDoctorLink).where(
-            PatientDoctorLink.doctor_id == principal.doctor.id
-        ).order_by(PatientDoctorLink.requested_at.desc())))
-    return []
+        if patient_id and patient_id != principal.patient.id:
+            return [], 0, 1
+        query = select(PatientDoctorLink).where(PatientDoctorLink.patient_id == principal.patient.id)
+    elif principal.doctor is not None:
+        query = select(PatientDoctorLink).where(PatientDoctorLink.doctor_id == principal.doctor.id)
+        if patient_id:
+            query = query.where(PatientDoctorLink.patient_id == patient_id)
+    else:
+        return [], 0, 1
+    if status:
+        query = query.where(PatientDoctorLink.status == status.upper())
+    total = db.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
+    pages = max(1, (total + page_size - 1) // page_size)
+    current_page = min(max(page, 1), pages)
+    if link_id:
+        target = db.scalar(query.where(PatientDoctorLink.id == link_id))
+        if target is None:
+            return [], total, current_page
+        preceding = db.scalar(select(func.count()).select_from(
+            query.where(
+                (PatientDoctorLink.requested_at > target.requested_at)
+                | ((PatientDoctorLink.requested_at == target.requested_at) & (PatientDoctorLink.id < target.id))
+            ).order_by(None).subquery()
+        )) or 0
+        current_page = preceding // page_size + 1
+    items = list(db.scalars(
+        query.order_by(PatientDoctorLink.requested_at.desc(), PatientDoctorLink.id)
+        .offset((current_page - 1) * page_size).limit(page_size)
+    ))
+    return items, total, current_page
 
 
-def notification_list(db: Session, account_id: str, unread_only: bool = False) -> tuple[list[Notification], int]:
+def notification_list(
+    db: Session, account_id: str, unread_only: bool = False, *, page: int = 1, page_size: int = 10,
+) -> tuple[list[Notification], int, int, int]:
     query = select(Notification).where(Notification.recipient_user_account_id == account_id)
-    count = db.scalar(select(func.count(Notification.id)).where(
+    unread_count = db.scalar(select(func.count(Notification.id)).where(
         Notification.recipient_user_account_id == account_id, Notification.read_at.is_(None)
     )) or 0
     if unread_only:
         query = query.where(Notification.read_at.is_(None))
-    return list(db.scalars(query.order_by(Notification.created_at.desc()))), count
+    total = db.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
+    pages = max(1, (total + page_size - 1) // page_size)
+    current_page = min(max(page, 1), pages)
+    items = list(db.scalars(
+        query.order_by(Notification.created_at.desc(), Notification.id)
+        .offset((current_page - 1) * page_size).limit(page_size)
+    ))
+    return items, unread_count, total, current_page

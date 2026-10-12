@@ -456,6 +456,41 @@ input {
   gap: 0.75rem;
 }
 
+.react-pagination-wrap {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.react-pagination__size {
+  display: grid;
+  grid-template-columns: auto 5.5rem;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--react-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.react-pagination__summary {
+  color: var(--react-muted);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.react-pagination__size select {
+  min-height: 2.5rem;
+  width: 100%;
+  padding: 0 1.8rem 0 0.65rem;
+  border: 1px solid var(--react-border);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--react-text);
+}
+
 .react-badge,
 .react-button,
 .react-chip,
@@ -2711,6 +2746,15 @@ input {
   padding: 0;
   display: grid;
   gap: 0.6rem;
+}
+
+.react-notifications__pagination .react-pagination-wrap {
+  display: grid;
+  justify-content: stretch;
+}
+
+.react-notifications__pagination .react-pagination {
+  justify-content: space-between;
 }
 
 .react-notifications__item {

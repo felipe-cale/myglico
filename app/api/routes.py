@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from enum import IntEnum
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -49,6 +50,12 @@ from app.services.reports import (
 
 
 router = APIRouter()
+
+
+class PageSize(IntEnum):
+    TEN = 10
+    TWENTY_FIVE = 25
+    FIFTY = 50
 
 
 def _enforce_rate_limit(request: Request, scope: str, identity: str) -> None:
@@ -357,12 +364,28 @@ def api_doctor_link_request(
 
 @router.get("/api/doctor-links")
 def api_doctor_links(
+    status: str | None = Query(default=None),
+    link_id: str | None = Query(default=None, max_length=36),
+    patient_id: str | None = Query(default=None, max_length=36),
+    page: int = Query(default=1, ge=1),
+    page_size: PageSize = Query(default=PageSize.TEN),
     principal: SessionPrincipal = Depends(require_session),
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
     context = "doctor" if principal.doctor is not None and principal.patient is None else "patient"
-    links = list_links(db, principal)
-    return {"links": [_doctor_link_payload(link, context_role=context) for link in links]}
+    if status and status.upper() not in {"PENDING", "ACTIVE", "REVOKED", "REJECTED", "CANCELLED"}:
+        raise HTTPException(status_code=400, detail="Invalid association status.")
+    links, total, current_page = list_links(
+        db, principal, status=status, page=page, page_size=page_size, link_id=link_id,
+        patient_id=patient_id,
+    )
+    return {
+        "links": [_doctor_link_payload(link, context_role=context) for link in links],
+        "pagination": {
+            "page": current_page, "page_size": page_size, "total": total,
+            "pages": max(1, (total + page_size - 1) // page_size),
+        },
+    }
 
 
 def _mutate_link(
@@ -416,22 +439,29 @@ def api_doctor_link_revoke(
 @router.get("/api/notifications")
 def api_notifications(
     unread_only: bool = Query(default=False),
+    page: int = Query(default=1, ge=1),
+    page_size: PageSize = Query(default=PageSize.TEN),
     principal: SessionPrincipal = Depends(require_session), db: Session = Depends(get_db),
 ) -> dict[str, object]:
-    notifications, unread_count = notification_list(db, principal.account.id, unread_only)
+    notifications, unread_count, total, current_page = notification_list(
+        db, principal.account.id, unread_only, page=page, page_size=page_size,
+    )
     return {"notifications": [{
         "id": item.id, "notification_type": item.notification_type,
         "payload": item.payload, "causation_event_id": item.causation_event_id,
         "read_at": item.read_at.isoformat() if item.read_at else None,
         "created_at": item.created_at.isoformat(),
-    } for item in notifications], "unread_count": unread_count}
+    } for item in notifications], "unread_count": unread_count, "pagination": {
+        "page": current_page, "page_size": page_size, "total": total,
+        "pages": max(1, (total + page_size - 1) // page_size),
+    }}
 
 
 @router.get("/api/notifications/unread-summary")
 def api_notification_unread_summary(
     principal: SessionPrincipal = Depends(require_session), db: Session = Depends(get_db),
 ) -> dict[str, int]:
-    _notifications, notification_count = notification_list(db, principal.account.id, unread_only=True)
+    _notifications, notification_count, _total, _page = notification_list(db, principal.account.id, unread_only=True)
     return {"notifications_unread": notification_count,
             "messages_unread": unread_message_count(db, principal)}
 
@@ -533,14 +563,25 @@ def api_investigation_open(
 def api_investigation_list(
     status: str | None = Query(default=None),
     counterpart_id: str | None = Query(default=None, max_length=36),
+    page: int = Query(default=1, ge=1),
+    page_size: PageSize = Query(default=PageSize.TEN),
     principal: SessionPrincipal = Depends(require_session), db: Session = Depends(get_db),
 ) -> dict[str, object]:
     role = "PATIENT" if principal.patient is not None else "DOCTOR"
     try:
-        items = investigation_list(db, principal, status=status, counterpart_id=counterpart_id)
+        items, total, current_page = investigation_list(
+            db, principal, status=status, counterpart_id=counterpart_id,
+            page=page, page_size=page_size,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"investigations": [_investigation_summary(db, item, role) for item in items]}
+    return {
+        "investigations": [_investigation_summary(db, item, role) for item in items],
+        "pagination": {
+            "page": current_page, "page_size": page_size, "total": total,
+            "pages": max(1, (total + page_size - 1) // page_size),
+        },
+    }
 
 
 @router.get("/api/investigations/{investigation_id}")
@@ -629,35 +670,55 @@ def api_investigation_close(
 
 @router.get("/api/patients/{patient_id}/atypical-day-prompts")
 def api_atypical_day_prompts(
-    patient_id: str, principal: SessionPrincipal = Depends(require_session), db: Session = Depends(get_db),
+    patient_id: str, page: int = Query(default=1, ge=1),
+    page_size: PageSize = Query(default=PageSize.TEN),
+    indicator_id: str | None = Query(default=None, max_length=36),
+    principal: SessionPrincipal = Depends(require_session), db: Session = Depends(get_db),
 ) -> dict[str, object]:
     if principal.patient is None or principal.patient.id != patient_id:
         raise HTTPException(status_code=404, detail="Patient not found.")
     from app.models.entities import AtypicalDayPrompt
 
-    prompts = db.scalars(select(AtypicalDayPrompt).where(
+    query = select(AtypicalDayPrompt).where(
         AtypicalDayPrompt.patient_id == patient_id,
-    ).order_by(AtypicalDayPrompt.indicator_date.desc())).all()
-    if not prompts:
-        return {"prompts": []}
-    by_status: dict[str, list[AtypicalDayPrompt]] = {}
-    for item in prompts:
-        by_status.setdefault(item.status, []).append(item)
-    batches = []
-    for status, items in by_status.items():
-        ordered = sorted(items, key=lambda item: item.indicator_date)
-        dates = [item.indicator_date.isoformat() for item in ordered]
-        indicator_ids = [item.daily_indicator_id for item in ordered]
-        batches.append({
-            "batch_id": f"{patient_id}:{status.lower()}",
-            "prompt_ids": [item.id for item in ordered],
-            "indicator_ids": indicator_ids,
-            "indicator_id": indicator_ids[0],
-            "dates": dates,
-            "date": dates[0],
-            "status": status.lower(),
-        })
-    return {"prompts": batches}
+        AtypicalDayPrompt.status == "CREATED",
+    )
+    total = db.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
+    pages = max(1, (total + page_size - 1) // page_size)
+    current_page = min(page, pages)
+    if indicator_id:
+        target = db.scalar(select(AtypicalDayPrompt).where(
+            AtypicalDayPrompt.patient_id == patient_id,
+            AtypicalDayPrompt.status == "CREATED",
+            AtypicalDayPrompt.daily_indicator_id == indicator_id,
+        ))
+        if target:
+            preceding = db.scalar(select(func.count(AtypicalDayPrompt.id)).where(
+                AtypicalDayPrompt.patient_id == patient_id,
+                AtypicalDayPrompt.status == "CREATED",
+                (AtypicalDayPrompt.indicator_date > target.indicator_date)
+                | ((AtypicalDayPrompt.indicator_date == target.indicator_date) & (AtypicalDayPrompt.id < target.id)),
+            )) or 0
+            current_page = preceding // page_size + 1
+    prompts = list(db.scalars(
+        query.order_by(AtypicalDayPrompt.indicator_date.desc(), AtypicalDayPrompt.id)
+        .offset((current_page - 1) * page_size).limit(page_size)
+    ))
+    ordered = list(reversed(prompts))
+    dates = [item.indicator_date.isoformat() for item in ordered]
+    indicator_ids = [item.daily_indicator_id for item in ordered]
+    batches = [{
+        "batch_id": f"{patient_id}:created:{current_page}",
+        "prompt_ids": [item.id for item in ordered],
+        "indicator_ids": indicator_ids,
+        "indicator_id": indicator_ids[0] if indicator_ids else None,
+        "dates": dates,
+        "date": dates[0] if dates else None,
+        "status": "created",
+    }] if ordered else []
+    return {"prompts": batches, "pagination": {
+        "page": current_page, "page_size": page_size, "total": total, "pages": pages,
+    }}
 
 
 @router.get("/api/patients/{patient_id}/atypical-days")
@@ -665,6 +726,8 @@ def api_atypical_days(
     patient_id: str,
     start_date: date | None = Query(default=None), end_date: date | None = Query(default=None),
     dates: str | None = Query(default=None, max_length=4000),
+    page: int = Query(default=1, ge=1),
+    page_size: PageSize = Query(default=PageSize.TEN),
     principal: SessionPrincipal = Depends(require_session), db: Session = Depends(get_db),
 ) -> dict[str, object]:
     if dates is None and start_date and end_date and start_date > end_date:
@@ -717,7 +780,7 @@ def api_atypical_days(
     ).order_by(AnalysisRun.finished_at.desc(), AnalysisRun.created_at.desc()).limit(1))
     if latest_run is None:
         db.commit()
-        return {"days": []}
+        return {"days": [], "pagination": {"page": 1, "page_size": page_size, "total": 0, "pages": 1}}
     query = select(DailyIndicator).where(
         DailyIndicator.analysis_run_id == latest_run.id,
         DailyIndicator.patient_id == patient_id,
@@ -729,7 +792,13 @@ def api_atypical_days(
         query = query.where(DailyIndicator.indicator_date >= start_date)
     if exact_dates is None and end_date:
         query = query.where(DailyIndicator.indicator_date <= end_date)
-    indicators = db.scalars(query.order_by(DailyIndicator.indicator_date.desc())).all()
+    total = db.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
+    pages = max(1, (total + page_size - 1) // page_size)
+    current_page = min(page, pages)
+    indicators = db.scalars(
+        query.order_by(DailyIndicator.indicator_date.desc(), DailyIndicator.id)
+        .offset((current_page - 1) * page_size).limit(page_size)
+    ).all()
     active_link_id = None
     if principal.doctor is not None and (principal.patient is None or principal.patient.id != patient_id):
         active_link_id = db.scalar(select(PatientDoctorLink.id).where(
@@ -755,7 +824,9 @@ def api_atypical_days(
             "has_investigation": db.scalar(investigation_query.limit(1)) is not None,
         })
     db.commit()
-    return {"days": results}
+    return {"days": results, "pagination": {
+        "page": current_page, "page_size": page_size, "total": total, "pages": pages,
+    }}
 
 
 @router.get("/api/patients/{patient_id}/provenance")
@@ -880,7 +951,7 @@ def _require_patient_access(db: Session, patient_id: str, principal: SessionPrin
 @router.get("/api/patients")
 def api_patients(
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=12, ge=1, le=50),
+    page_size: PageSize = Query(default=PageSize.TEN),
     q: str | None = Query(default=None),
     signal: str | None = Query(default=None),
     principal: SessionPrincipal = Depends(require_session),
@@ -911,6 +982,10 @@ def api_patient_detail(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     dates: str | None = Query(default=None, max_length=4000),
+    indicator_page: int = Query(default=1, ge=1),
+    indicator_page_size: PageSize = Query(default=PageSize.TEN),
+    event_page: int = Query(default=1, ge=1),
+    event_page_size: PageSize = Query(default=PageSize.TEN),
     principal: SessionPrincipal = Depends(require_session),
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
@@ -929,6 +1004,8 @@ def api_patient_detail(
         exact_dates = list(dict.fromkeys(parsed_dates))
     context = get_patient_detail_context(
         db, patient_id, start_date=start_date, end_date=end_date, exact_dates=exact_dates,
+        indicator_page=indicator_page, indicator_page_size=indicator_page_size,
+        event_page=event_page, event_page_size=event_page_size,
     )
     if context is None:
         raise HTTPException(status_code=404, detail="Patient not found.")
@@ -944,8 +1021,11 @@ def api_patient_detail(
         "analytics_status": context["analytics_status"],
         "summary": context["summary"],
         "daily_indicators": context["daily_indicators_json"],
+        "daily_indicators_page": context["daily_indicators_page_json"],
+        "daily_indicators_pagination": context["daily_indicators_pagination"],
         "glucose_events": context["glucose_events_json"],
         "recent_events": context["recent_events_json"],
+        "recent_events_pagination": context["recent_events_pagination"],
         "hourly_lows": context["hourly_lows"],
         "hourly_highs_250": context["hourly_highs_250"],
     }

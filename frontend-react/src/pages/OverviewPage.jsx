@@ -123,6 +123,8 @@ function DoctorHome() {
   const [reloadToken, setReloadToken] = useState(0);
 
   const currentPage = Number(searchParams.get("page") || "1");
+  const requestedPageSize = Number(searchParams.get("page_size") || "10");
+  const currentPageSize = [10, 25, 50].includes(requestedPageSize) ? requestedPageSize : 10;
   const currentQuery = searchParams.get("q") || "";
   const currentSignal = searchParams.get("signal") || "all";
   const [searchValue, setSearchValue] = useState(currentQuery);
@@ -178,7 +180,7 @@ function DoctorHome() {
     let active = true;
     setLoadingPatients(true);
     setPatientsError(null);
-    fetchPatients({ page: currentPage, pageSize: 12, query: currentQuery, signal: currentSignal })
+    fetchPatients({ page: currentPage, pageSize: currentPageSize, query: currentQuery, signal: currentSignal })
       .then((data) => {
         if (active) {
           setPatients(data);
@@ -197,11 +199,18 @@ function DoctorHome() {
     return () => {
       active = false;
     };
-  }, [currentPage, currentQuery, currentSignal, reloadToken]);
+  }, [currentPage, currentPageSize, currentQuery, currentSignal, reloadToken]);
 
   function handlePageChange(page) {
     const next = new URLSearchParams(searchParams);
     next.set("page", String(page));
+    setSearchParams(next);
+  }
+
+  function handlePageSizeChange(pageSize) {
+    const next = new URLSearchParams(searchParams);
+    next.set("page_size", String(pageSize));
+    next.set("page", "1");
     setSearchParams(next);
   }
 
@@ -378,10 +387,7 @@ function DoctorHome() {
             </div>
             {visiblePatients.length ? (
               <div className="react-panel__footer">
-                <span>
-                  {t("overview.patients.footerCount", { page: patients.page, pages: patients.pages, count: patients.count })}
-                </span>
-                <Pagination page={patients.page} pages={patients.pages} onPageChange={handlePageChange} />
+                <Pagination page={patients.page} pages={patients.pages} count={patients.count} pageSize={currentPageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
               </div>
             ) : (
               <StateBlock title={t("overview.patients.emptyFilter.title")} description={t("overview.patients.emptyFilter.description")} />

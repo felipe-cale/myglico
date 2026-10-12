@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { useAuth } from "../contexts/AuthContext";
 import InvestigationOrigin from "./InvestigationOrigin";
 import StateBlock from "./StateBlock";
+import Pagination from "./Pagination";
 
 function formatDate(value, locale) {
   if (!value) return "";
@@ -35,11 +36,17 @@ export default function InvestigationsList() {
   const atypicalSelectRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [investigations, setInvestigations] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [unreadById, setUnreadById] = useState({});
   const [listStatus, setListStatus] = useState("loading");
   const [showNew, setShowNew] = useState(false);
   const [links, setLinks] = useState([]);
   const [atypicalDays, setAtypicalDays] = useState([]);
+  const [atypicalPagination, setAtypicalPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
+  const [atypicalPage, setAtypicalPage] = useState(1);
+  const [atypicalPageSize, setAtypicalPageSize] = useState(10);
   const [selectedAtypicalIds, setSelectedAtypicalIds] = useState([]);
 
   const [selectedLink, setSelectedLink] = useState("");
@@ -53,23 +60,27 @@ export default function InvestigationsList() {
 
   const loadData = async () => {
     try {
-      const inv = await fetchInvestigations();
+      const inv = await fetchInvestigations({ page, page_size: pageSize });
       const items = inv.investigations || inv || [];
       setInvestigations(items);
+      if (inv.pagination) {
+        setPagination(inv.pagination);
+        if (inv.pagination.page !== page) setPage(inv.pagination.page);
+      }
       setListStatus("ready");
       loadUnreadCounts(items).then(setUnreadById);
     } catch {
       setListStatus("error");
     }
     try {
-      const lks = await fetchDoctorLinks();
+      const lks = await fetchDoctorLinks({ status: "active", page: 1, page_size: 50 });
       setLinks((lks.links || lks || []).filter((link) => link.status === "active"));
     } catch {
       setLinks([]);
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [page, pageSize]);
 
   useEffect(() => {
     if (atypicalDayEventId) setShowNew(true);
@@ -90,16 +101,23 @@ export default function InvestigationsList() {
     const patientId = isPatient ? session?.patient?.id : selectedAssociation?.patient_id;
     if (!patientId) {
       setAtypicalDays([]);
+      setAtypicalPagination({ page: 1, page_size: atypicalPageSize, total: 0, pages: 1 });
       return;
     }
     let active = true;
-    fetchAtypicalDays(patientId).then((data) => {
-      if (active) setAtypicalDays(data?.days || []);
+    fetchAtypicalDays(patientId, { page: atypicalPage, page_size: atypicalPageSize }).then((data) => {
+      if (active) {
+        setAtypicalDays(data?.days || []);
+        if (data?.pagination) {
+          setAtypicalPagination(data.pagination);
+          if (data.pagination.page !== atypicalPage) setAtypicalPage(data.pagination.page);
+        }
+      }
     }).catch(() => {
       if (active) setAtypicalDays([]);
     });
     return () => { active = false; };
-  }, [isPatient, links, selectedLink, session?.patient?.id]);
+  }, [atypicalPage, atypicalPageSize, isPatient, links, selectedLink, session?.patient?.id]);
 
   useEffect(() => {
     if (location.hash === "#investigations") {
@@ -252,6 +270,16 @@ export default function InvestigationsList() {
                           ))}
                         </ul>
                       )}
+                      {atypicalPagination.total > 0 && (
+                        <Pagination
+                          page={atypicalPagination.page}
+                          pages={atypicalPagination.pages}
+                          count={atypicalPagination.total}
+                          pageSize={atypicalPageSize}
+                          onPageChange={setAtypicalPage}
+                          onPageSizeChange={(size) => { setAtypicalPageSize(size); setAtypicalPage(1); }}
+                        />
+                      )}
                     </div>
                   </details>
               </fieldset>
@@ -284,8 +312,9 @@ export default function InvestigationsList() {
       ) : investigations.length === 0 ? (
         <StateBlock title={t(isPatient ? "cscw.emptyTitlePatient" : "cscw.emptyTitleDoctor")} description={isPatient ? t("cscw.emptyPatient") : t("cscw.emptyDoctor")} />
       ) : (
-        <ul className="react-investigation-grid">
-          {investigations.map(inv => {
+        <>
+          <ul className="react-investigation-grid">
+            {investigations.map(inv => {
             const unread = unreadById[inv.id];
             return (
               <li key={inv.id} className={`react-investigation-card${unread ? " has-unread" : ""}`}>
@@ -318,8 +347,19 @@ export default function InvestigationsList() {
                 </Link>
               </li>
             );
-          })}
-        </ul>
+            })}
+          </ul>
+          <div className="react-panel__footer">
+            <Pagination
+              page={pagination.page}
+              pages={pagination.pages}
+              count={pagination.total}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            />
+          </div>
+        </>
       )}
     </section>
   );

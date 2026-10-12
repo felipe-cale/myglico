@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchAtypicalDays } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import StateBlock from "./StateBlock";
+import Pagination from "./Pagination";
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
@@ -21,6 +22,9 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
   const isPatient = Boolean(session?.patient?.id);
   const [open, setOpen] = useState(false);
   const [days, setDays] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [status, setStatus] = useState("idle");
   const [selectedDates, setSelectedDates] = useState(() => new Set(appliedDates));
   const [rangeStart, setRangeStart] = useState("");
@@ -37,14 +41,20 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
       const params = {};
       if (rangeStart) params.start_date = rangeStart;
       if (rangeEnd) params.end_date = rangeEnd;
+      params.page = page;
+      params.page_size = pageSize;
       const data = await fetchAtypicalDays(patientId, params);
       setDays(data?.days || []);
+      if (data?.pagination) {
+        setPagination(data.pagination);
+        if (data.pagination.page !== page) setPage(data.pagination.page);
+      }
       setStatus("ready");
     } catch (error) {
       setDays([]);
       setStatus("error");
     }
-  }, [patientId, rangeStart, rangeEnd, invalidRange]);
+  }, [patientId, rangeStart, rangeEnd, invalidRange, page, pageSize]);
 
   useEffect(() => {
     if (open) loadData();
@@ -59,16 +69,17 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
     setSelectedDates(new Set(appliedDates));
     setRangeStart(activeStart || "");
     setRangeEnd(activeEnd || "");
+    setPage(1);
     setOpen(true);
   };
 
   const hasRange = Boolean(rangeStart || rangeEnd);
   const isActivePeriod = hasRange && rangeStart === (activeStart || "") && rangeEnd === (activeEnd || "");
   const scopeText = !hasRange
-    ? t("cscw.popupScopeAll", { count: days.length })
+    ? t("cscw.popupScopeAll", { count: pagination.total })
     : isActivePeriod
-      ? t("cscw.popupScopeActive", { count: days.length, start: formatDay(rangeStart, i18n.language), end: formatDay(rangeEnd, i18n.language) })
-      : t("cscw.popupScopeCustom", { count: days.length, start: formatDay(rangeStart, i18n.language) || "…", end: formatDay(rangeEnd, i18n.language) || "…" });
+      ? t("cscw.popupScopeActive", { count: pagination.total, start: formatDay(rangeStart, i18n.language), end: formatDay(rangeEnd, i18n.language) })
+      : t("cscw.popupScopeCustom", { count: pagination.total, start: formatDay(rangeStart, i18n.language) || "…", end: formatDay(rangeEnd, i18n.language) || "…" });
 
   useEffect(() => {
     if (!open) return undefined;
@@ -170,11 +181,11 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
               >
                 <label className="react-field">
                   <span>{t("patientDetail.filter.startDate")}</span>
-                  <input type="date" value={rangeStart} onChange={(event) => setRangeStart(event.target.value)} />
+                  <input type="date" value={rangeStart} onChange={(event) => { setRangeStart(event.target.value); setPage(1); }} />
                 </label>
                 <label className="react-field">
                   <span>{t("patientDetail.filter.endDate")}</span>
-                  <input type="date" value={rangeEnd} onChange={(event) => setRangeEnd(event.target.value)} />
+                  <input type="date" value={rangeEnd} onChange={(event) => { setRangeEnd(event.target.value); setPage(1); }} />
                 </label>
                 {invalidRange && <small className="react-form-message is-error" role="alert">{t("patientDetail.filter.invalidRange")}</small>}
               </form>
@@ -183,12 +194,12 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
                 {status === "ready" && <p data-testid="atypical-scope">{scopeText}</p>}
                 <div className="react-actions">
                   {hasRange && (
-                    <button type="button" className="react-chip" onClick={() => { setRangeStart(""); setRangeEnd(""); }}>
+                    <button type="button" className="react-chip" onClick={() => { setRangeStart(""); setRangeEnd(""); setPage(1); }}>
                       {t("cscw.popupShowAll")}
                     </button>
                   )}
                   {!isActivePeriod && activeStart && activeEnd && (
-                    <button type="button" className="react-chip" onClick={() => { setRangeStart(activeStart); setRangeEnd(activeEnd); }}>
+                    <button type="button" className="react-chip" onClick={() => { setRangeStart(activeStart); setRangeEnd(activeEnd); setPage(1); }}>
                       {t("cscw.popupUseActive")}
                     </button>
                   )}
@@ -230,8 +241,9 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
                 <StateBlock title={t("cscw.popupEmpty")} description={t("cscw.popupEmptyHint")} />
               )}
               {status === "ready" && days.length > 0 && (
-                <ul className="react-atypical-list">
-                  {days.map((d) => (
+                <>
+                  <ul className="react-atypical-list">
+                    {days.map((d) => (
                     <li key={d.indicator_id || d.date} className="react-atypical-item">
                       <label className="react-atypical-item__select">
                         <input type="checkbox" checked={selectedDates.has(d.date)} onChange={() => handleToggle(d.date)} />
@@ -250,8 +262,17 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
                         </button>
                       </div>
                     </li>
-                  ))}
-                </ul>
+                    ))}
+                  </ul>
+                  <Pagination
+                    page={pagination.page}
+                    pages={pagination.pages}
+                    count={pagination.total}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+                  />
+                </>
               )}
 
               <div className="react-actions react-dialog__actions">

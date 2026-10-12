@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import InvestigationOrigin from "../components/InvestigationOrigin";
 import ConfirmDialog from "../components/ConfirmDialog";
 import StateBlock from "../components/StateBlock";
+import Pagination from "../components/Pagination";
 import { fetchInvestigationDetail, sendInvestigationMessage, closeInvestigation, readInvestigation } from "../api";
 
 function formatDateTime(value, locale) {
@@ -18,6 +19,9 @@ export default function InvestigationPage() {
   const { t, i18n } = useTranslation();
   const [inv, setInv] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [newMsg, setNewMsg] = useState("");
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -26,10 +30,11 @@ export default function InvestigationPage() {
   const [newMessageIds, setNewMessageIds] = useState(() => new Set());
   const lastReadSequence = useRef(0);
   const seenMessageIds = useRef(null);
+  const followLatestRef = useRef(true);
 
   const loadData = async () => {
     try {
-      const data = await fetchInvestigationDetail(id);
+      const data = await fetchInvestigationDetail(id, { page, page_size: pageSize });
       const investigation = data.investigation || data;
       const items = data.messages || data.items || [];
       const ownRole = investigation.counterpart?.role === "doctor" ? "patient" : "doctor";
@@ -48,6 +53,11 @@ export default function InvestigationPage() {
       }
       setInv(investigation);
       setMessages(items);
+      if (data.pagination) {
+        setPagination(data.pagination);
+        if (followLatestRef.current && data.pagination.page !== data.pagination.pages) setPage(data.pagination.pages);
+        else if (data.pagination.page !== page) setPage(data.pagination.page);
+      }
       setLoadError(false);
     } catch(e) {
       setLoadError(true);
@@ -57,11 +67,17 @@ export default function InvestigationPage() {
   useEffect(() => {
     seenMessageIds.current = null;
     lastReadSequence.current = 0;
+    followLatestRef.current = true;
+    setPage(1);
+    setPageSize(10);
     setInv(null);
+  }, [id]);
+
+  useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 10000); // Polling for messages
     return () => clearInterval(interval);
-  }, [id]);
+  }, [id, page, pageSize]);
 
   useEffect(() => {
     const sequence = messages.at(-1)?.sequence || 0;
@@ -172,6 +188,18 @@ export default function InvestigationPage() {
             );
           })}
         </ol>
+        {pagination.total > 0 && (
+          <div className="react-panel__footer">
+            <Pagination
+              page={pagination.page}
+              pages={pagination.pages}
+              count={pagination.total}
+              pageSize={pageSize}
+              onPageChange={(nextPage) => { followLatestRef.current = false; setPage(nextPage); }}
+              onPageSizeChange={(size) => { followLatestRef.current = false; setPageSize(size); setPage(1); }}
+            />
+          </div>
+        )}
 
         {actionError && !closing && <p className="react-form-message is-error" role="alert">{actionError}</p>}
 

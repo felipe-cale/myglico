@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetchAtypicalDayPrompts, deferAtypicalDayPrompt } from "../api";
 import { useAuth } from "../contexts/AuthContext";
+import Pagination from "./Pagination";
 
 function formatPromptDate(value, locale) {
   if (!value) return "";
@@ -17,37 +18,58 @@ export default function ProactivePrompt() {
   const navigate = useNavigate();
   const location = useLocation();
   const [prompts, setPrompts] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [refresh, setRefresh] = useState(0);
   const [expandedPrompt, setExpandedPrompt] = useState(null);
+  const targetPromptLookupRef = useRef("");
 
   useEffect(() => {
     if (session?.patient?.id) {
-      fetchAtypicalDayPrompts(session.patient.id)
+      fetchAtypicalDayPrompts(session.patient.id, { page, page_size: pageSize })
         .then(data => {
           const items = data.prompts || data || [];
           setPrompts(items.filter((item) => item.status === "created"));
+          if (data.pagination) {
+            setPagination(data.pagination);
+            if (data.pagination.page !== page) setPage(data.pagination.page);
+          }
         })
         .catch(() => {});
     }
-  }, [session]);
+  }, [session?.patient?.id, page, pageSize, refresh]);
 
   useEffect(() => {
     const match = location.hash.match(/^#atypical-day-(.+)$/);
     if (!match) return;
     const indicatorId = decodeURIComponent(match[1]);
     const prompt = prompts.find((item) => item.indicator_ids?.includes(indicatorId) || item.indicator_id === indicatorId);
-    if (!prompt) return;
+    if (!prompt) {
+      if (targetPromptLookupRef.current !== indicatorId && session?.patient?.id) {
+        targetPromptLookupRef.current = indicatorId;
+        fetchAtypicalDayPrompts(session.patient.id, { indicator_id: indicatorId, page_size: pageSize })
+          .then((data) => {
+            if (data.pagination?.page) setPage(data.pagination.page);
+          })
+          .catch(() => {});
+      }
+      return;
+    }
+    targetPromptLookupRef.current = "";
     if (expandedPrompt !== prompt.batch_id) {
       setExpandedPrompt(prompt.batch_id);
       return;
     }
     requestAnimationFrame(() => document.getElementById(`atypical-day-${indicatorId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
-  }, [location.hash, prompts, expandedPrompt]);
+  }, [location.hash, prompts, expandedPrompt, session?.patient?.id]);
 
   const handleDefer = async (prompt) => {
     try {
       const indicatorIds = prompt.indicator_ids?.length ? prompt.indicator_ids : [prompt.indicator_id];
       await deferAtypicalDayPrompt(indicatorIds);
-      setPrompts(prompts.filter(p => p.batch_id !== prompt.batch_id));
+      setPrompts((current) => current.filter(p => p.batch_id !== prompt.batch_id));
+      setRefresh((current) => current + 1);
     } catch(e) {}
   };
 
@@ -101,6 +123,16 @@ export default function ProactivePrompt() {
           </li>
         ))}
       </ul>
+      <div className="react-panel__footer">
+        <Pagination
+          page={pagination.page}
+          pages={pagination.pages}
+          count={pagination.total}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+        />
+      </div>
     </section>
   );
 }
