@@ -147,12 +147,12 @@ export default function AppShell({ children }) {
           {renderNavigation("react-drawer__link")}
         </nav>
         <div className="react-drawer__actions">
+          <LanguageSwitcher />
           {authenticated ? (
-            <button type="button" className="react-drawer__link react-drawer__link--button" onClick={handleLogout}>
+            <button type="button" className="react-button react-button--quiet react-drawer__logout" onClick={handleLogout}>
               {t("auth.logout")}
             </button>
           ) : null}
-          <LanguageSwitcher />
         </div>
       </aside>
       <div className="react-shell__container">
@@ -196,10 +196,7 @@ export default function AppShell({ children }) {
         </header>
         <main className="react-main">{children}</main>
         <footer className="react-footer">
-          <div>
-            <strong>MyGlico</strong>
-            <p>{t("appShell.footerText")}</p>
-          </div>
+          <p>{t("appShell.footerDisclaimer")}</p>
         </footer>
       </div>
     </div>

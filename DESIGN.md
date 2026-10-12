@@ -411,7 +411,24 @@ Pills with bold 14 px labels, gentle lift on hover.
 A rounded topbar (28 px) holding the brand mark and pill nav links in muted
 ink (label role); the active link takes the gradient with white text.
 Counters attach as compact badges. Below 900 px the links move into a
-drawer.
+drawer and the brand tagline is hidden; in the drawer, logout is a quiet
+text button below the language switcher. The footer is a single meta-role
+line stating that MyGlico does not diagnose.
+
+### Lists, Popovers and Conversation
+- **Overlays are opaque:** the drawer and the notifications popover use a
+  solid white (or white → morning mist) fill; translucent glass is for
+  panels over the page background only.
+- **Notification rows are flat:** no per-row card; a hairline between rows,
+  12 px vertical padding, `[dot] [label / time] [mark read]` with the text
+  button keeping a 44 px hit area. Consecutive notifications about the same
+  conversation collapse into one row with a count.
+- **Conversation:** the title is the page `h1` (headline role) under a
+  "Back" text link; the danger "Close" sits in the header, never beside
+  "Send". The message list is a bare scroll area (no well); pagination sits
+  above it because older pages come first. Own messages take a flat blue
+  tint. Below 640 px the composer sticks to the bottom of the viewport with a
+  top hairline.
 
 ### Charts
 Recharts with 12 px axis ticks, 14 px legends and tooltips. Trend charts start

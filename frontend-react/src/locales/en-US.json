@@ -24,7 +24,8 @@
       "overview": "Overview",
       "myPanel": "My dashboard"
     },
-    "footerText": "An experience designed to follow patients, recognize meaningful changes, and support decisions with more context."
+    "footerText": "An experience designed to follow patients, recognize meaningful changes, and support decisions with more context.",
+    "footerDisclaimer": "MyGlico does not diagnose. Clinical decisions belong to your doctor."
   },
   "pagination": {
     "page": "Page {{page}}",
@@ -666,6 +667,7 @@
   "notifications": {
     "title": "Notifications",
     "markRead": "Mark as read",
+    "markReadAria": "Mark as read: {{label}}, {{time}}",
     "types": {
       "association_requested": "New association request",
       "association_confirmed": "Association confirmed",
@@ -687,7 +689,9 @@
     "retryMore": "Try loading again",
     "error": "We could not load the notifications.",
     "unread_one": "{{count}} unread",
-    "unread_other": "{{count}} unread"
+    "unread_other": "{{count}} unread",
+    "groupCount_one": "{{count}} new",
+    "groupCount_other": "{{count}} new"
   },
   "patientHome": {
     "eyebrow": "My account",

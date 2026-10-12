@@ -296,7 +296,7 @@ small {
   z-index: 40;
   width: min(86vw, 22rem);
   padding: var(--space-4);
-  background: rgba(255, 255, 255, 0.98);
+  background: #fff;
   border-right: 1px solid var(--react-border);
   box-shadow: 0 20px 48px rgba(16, 59, 97, 0.18);
   transform: translateX(-100%);
@@ -392,8 +392,7 @@ small {
   background: var(--react-action-gradient);
 }
 
-.react-nav__link--button,
-.react-drawer__link--button {
+.react-nav__link--button {
   border: 0;
   background: transparent;
   font: inherit;
@@ -405,11 +404,9 @@ small {
   font-size: var(--type-label);
 }
 
-.react-drawer__link--button {
-  width: 100%;
-  text-align: left;
-  background: rgba(248, 252, 255, 0.92);
-  border: 1px solid rgba(22, 124, 217, 0.08);
+.react-drawer__logout {
+  justify-self: start;
+  margin: var(--space-2) 0 0 calc(-1 * var(--space-4));
 }
 
 .react-nav__link.is-active .react-badge--count,
@@ -604,9 +601,18 @@ small {
 }
 
 .react-hero h1,
+.react-panel h1,
 .react-panel h2 {
   margin: 0;
   font-family: var(--font-display);
+}
+
+/* Page title living inside a panel (auth cards, conversation header): headline role. */
+.react-panel h1 {
+  font-size: var(--type-headline);
+  line-height: var(--type-headline-lh);
+  letter-spacing: var(--type-headline-ls);
+  overflow-wrap: anywhere;
 }
 
 .react-hero h1 {
@@ -2287,22 +2293,17 @@ small {
 }
 
 .react-footer {
-  justify-content: space-between;
-  gap: var(--space-4);
+  justify-content: center;
   margin-top: var(--space-4);
   padding: var(--space-4) var(--space-1) var(--space-2);
   color: var(--react-muted);
 }
 
-.react-footer strong {
-  display: block;
-  margin-bottom: var(--space-1);
-  color: var(--react-text);
-}
-
 .react-footer p {
   margin: 0;
-  max-width: 48ch;
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+  text-align: center;
 }
 
 /* Status chips */
@@ -2485,7 +2486,7 @@ small {
   padding: var(--space-4);
   border-radius: 24px;
   border: 1px solid var(--react-border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(244, 251, 254, 0.97));
+  background: linear-gradient(180deg, #fff, var(--react-bg));
   box-shadow: var(--react-shadow);
 }
 
@@ -2514,8 +2515,6 @@ small {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: var(--space-2);
 }
 
 .react-notifications__feed-end {
@@ -2531,25 +2530,25 @@ small {
   text-align: center;
 }
 
+/* Flat rows separated by hairlines: [dot] [label / time] [mark read]. */
 .react-notifications__item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-1) var(--space-3);
-  align-items: start;
-  padding: var(--space-3) var(--space-4);
-  border-radius: 18px;
-  border: 1px solid rgba(22, 124, 217, 0.1);
-  background: #fff;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) 0;
 }
 
-.react-notifications__item .react-button {
-  grid-column: 2;
-  justify-self: start;
+.react-notifications__item + .react-notifications__item {
+  border-top: 1px solid var(--react-border);
 }
 
 .react-notifications__open {
   display: grid;
-  grid-column: 2;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: 2.75rem;
+  align-content: center;
   padding: 0;
   border: 0;
   background: transparent;
@@ -2572,34 +2571,86 @@ small {
   border-radius: 5px;
 }
 
-.react-notifications__copy {
-  display: grid;
-  gap: var(--space-1);
-}
-
 .react-notifications__dot {
   width: 0.55rem;
   height: 0.55rem;
-  margin-top: var(--space-2);
   border-radius: 999px;
   background: var(--react-action-gradient);
 }
 
 .react-notifications__label {
   display: block;
-  margin: 0;
+  font-size: var(--type-label);
+  line-height: var(--type-label-lh);
   font-weight: 700;
   color: var(--react-text);
 }
 
-.react-notifications__copy small {
+.react-notifications__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
   color: var(--react-muted);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
   font-variant-numeric: tabular-nums;
+}
+
+.react-notifications__count-meta {
+  font-weight: 600;
+  color: var(--react-blue-deep);
+}
+
+.react-notifications__read {
+  padding-inline: var(--space-2);
+  white-space: nowrap;
 }
 
 /* Landing and auth */
 .react-hero__actions {
   margin-top: var(--space-6);
+}
+
+.react-hero .react-hero__note {
+  margin: var(--space-3) 0 0;
+  color: var(--react-green-deep);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+  font-weight: 600;
+}
+
+.react-hero__visual img {
+  height: auto;
+}
+
+.react-audiences {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: var(--space-2) var(--space-8);
+}
+
+.react-audiences__block {
+  padding-block: var(--space-4);
+}
+
+.react-audiences__block + .react-audiences__block {
+  padding-left: var(--space-8);
+  margin-left: var(--space-8);
+  border-left: 1px solid var(--react-border);
+}
+
+.react-audiences h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--type-title);
+  line-height: var(--type-title-lh);
+  letter-spacing: var(--type-title-ls);
+}
+
+.react-audiences p {
+  max-width: 60ch;
+  margin: var(--space-2) 0 0;
+  color: var(--react-muted);
 }
 
 .react-auth {
@@ -3223,9 +3274,47 @@ small {
   overflow-wrap: anywhere;
 }
 
+.react-conversation__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+}
+
+.react-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.75rem;
+  margin-left: calc(-1 * var(--space-1));
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  color: var(--react-blue-deep);
+  font-size: var(--type-label);
+  line-height: var(--type-label-lh);
+  font-weight: 700;
+}
+
+.react-back-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.react-back-link:focus-visible {
+  outline: 2px solid rgba(22, 124, 217, 0.55);
+  outline-offset: 2px;
+}
+
 .react-conversation__chips {
   margin-top: var(--space-4);
   gap: var(--space-2);
+}
+
+.react-conversation__pager {
+  margin-top: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--react-border);
 }
 
 .react-conversation__header .react-origin--previous {
@@ -3244,15 +3333,12 @@ small {
 .react-message-list {
   list-style: none;
   margin: var(--space-4) 0 0;
-  padding: var(--space-4);
+  padding: var(--space-1) 2px;
   display: grid;
   gap: var(--space-3);
-  max-height: 28rem;
+  max-height: min(60dvh, 36rem);
   overflow-y: auto;
   overflow-x: hidden;
-  border-radius: 22px;
-  border: 1px solid var(--react-border);
-  background: rgba(244, 251, 254, 0.7);
 }
 
 .react-message {
@@ -3267,6 +3353,7 @@ small {
 
 .react-message.is-own {
   justify-self: end;
+  border-color: transparent;
   border-radius: 18px 18px 6px 18px;
   background: rgba(22, 124, 217, 0.08);
 }
@@ -3294,8 +3381,8 @@ small {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--type-body-sm);
-  line-height: var(--type-body-sm-lh);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
 }
 
 .react-message__meta small {
@@ -3307,6 +3394,8 @@ small {
   display: grid;
   gap: var(--space-3);
   margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--react-border);
 }
 
 .react-composer__actions {
@@ -3475,8 +3564,7 @@ small {
   }
 
   .react-panel__header,
-  .react-panel__footer,
-  .react-footer {
+  .react-panel__footer {
     flex-direction: column;
     align-items: stretch;
   }
@@ -3491,8 +3579,19 @@ small {
   }
 
   .react-brand small {
-    display: block;
-    max-width: 22ch;
+    display: none;
+  }
+
+  .react-audiences {
+    grid-template-columns: 1fr;
+    padding-inline: var(--space-5);
+  }
+
+  .react-audiences__block + .react-audiences__block {
+    padding-left: 0;
+    margin-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--react-border);
   }
 
   .react-topbar__content,
@@ -3614,17 +3713,11 @@ small {
     display: none;
   }
 
-  .react-badges--overview {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .react-badges--overview .react-badge {
-    white-space: nowrap;
-  }
-
-  .react-badges--overview > :first-child {
-    grid-column: 1 / -1;
+  .react-hero--landing .react-hero__visual img {
+    display: block;
+    width: 100%;
+    max-width: 220px;
+    margin-inline: auto;
   }
 
   .react-grid--metrics,
@@ -3981,25 +4074,31 @@ small {
     flex: 1 1 100%;
   }
 
-  /* Conversation */
-  .react-message-list {
-    padding: var(--space-3);
-  }
-
+  /* Conversation: the composer stays reachable at the bottom while reading. */
   .react-message {
     max-width: 92%;
   }
 
-  .react-composer__actions small {
-    flex-basis: 100%;
+  .react-composer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: var(--space-4) calc(-1 * var(--space-5)) calc(-1 * var(--space-5));
+    padding: var(--space-3) var(--space-5) max(var(--space-4), env(safe-area-inset-bottom));
+    background: #fff;
+  }
+
+  /* clip (not hidden) keeps the panel corners without creating a scroll container for the sticky composer. */
+  .react-conversation__body {
+    overflow: clip;
+  }
+
+  .react-composer__hint {
+    display: none;
   }
 
   .react-composer__actions .react-button {
     flex: 1 1 0;
-  }
-
-  .react-conversation__header .react-panel__header > .react-button {
-    align-self: flex-start;
   }
 }
 

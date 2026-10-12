@@ -24,7 +24,8 @@
       "overview": "Visión general",
       "myPanel": "Mi panel"
     },
-    "footerText": "Una experiencia pensada para seguir a las personas, reconocer cambios relevantes y apoyar decisiones con más contexto."
+    "footerText": "Una experiencia pensada para seguir a las personas, reconocer cambios relevantes y apoyar decisiones con más contexto.",
+    "footerDisclaimer": "MyGlico no hace diagnósticos. Las decisiones clínicas son de tu médico."
   },
   "pagination": {
     "page": "Página {{page}}",
@@ -666,6 +667,7 @@
   "notifications": {
     "title": "Notificaciones",
     "markRead": "Marcar como leída",
+    "markReadAria": "Marcar como leída: {{label}}, {{time}}",
     "types": {
       "association_requested": "Nueva solicitud de vínculo",
       "association_confirmed": "Vínculo confirmado",
@@ -687,7 +689,9 @@
     "retryMore": "Intentar cargar de nuevo",
     "error": "No fue posible cargar las notificaciones.",
     "unread_one": "{{count}} sin leer",
-    "unread_other": "{{count}} sin leer"
+    "unread_other": "{{count}} sin leer",
+    "groupCount_one": "{{count}} nueva",
+    "groupCount_other": "{{count}} nuevas"
   },
   "patientHome": {
     "eyebrow": "Mi cuenta",

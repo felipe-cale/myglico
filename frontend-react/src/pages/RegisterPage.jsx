@@ -63,7 +63,7 @@ export default function RegisterPage() {
       <section className="react-panel react-auth__card react-auth__card--register">
         <div className="react-panel__header">
           <div className="react-panel__header-copy">
-            <h2>{t("auth.register")}</h2>
+            <h1>{t("auth.register")}</h1>
             <p>{t("auth.registerBody")}</p>
           </div>
         </div>

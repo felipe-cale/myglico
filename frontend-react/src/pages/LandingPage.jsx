@@ -13,11 +13,7 @@ export default function LandingPage() {
           <p className="react-eyebrow">{t("landing.hero.eyebrow")}</p>
           <h1>{t("landing.hero.title")}</h1>
           <p>{t("landing.hero.body")}</p>
-          <div className="react-badges react-badges--overview">
-            <span className="react-badge react-badge--brand">{t("landing.hero.badgeControl")}</span>
-            <span className="react-badge react-badge--green">{t("landing.hero.badgePatient")}</span>
-            <span className="react-badge react-badge--blue">{t("landing.hero.badgeDoctor")}</span>
-          </div>
+          <p className="react-hero__note">{t("landing.hero.badgeControl")}</p>
           <div className="react-actions react-hero__actions">
             <Link to="/register" className="react-button">
               {t("auth.register")}
@@ -28,21 +24,22 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="react-hero__visual">
-          <img src={assetUrl("img/myglico-logo.png")} alt={t("overview.hero.imageAlt")} />
+          <img
+            src={assetUrl("img/myglico-logo.png")}
+            alt={t("overview.hero.imageAlt")}
+            width="1536"
+            height="1024"
+            loading="lazy"
+          />
         </div>
       </section>
 
-      <section className="react-grid react-grid--detail">
+      <section className="react-audiences">
         {["patient", "doctor"].map((audience) => (
-          <article key={audience} className="react-panel">
-            <div className="react-panel__header">
-              <div className="react-panel__header-copy">
-                <p className="react-eyebrow">{t(`landing.${audience}.eyebrow`)}</p>
-                <h2>{t(`landing.${audience}.title`)}</h2>
-                <p>{t(`landing.${audience}.body`)}</p>
-              </div>
-            </div>
-          </article>
+          <div key={audience} className="react-audiences__block">
+            <h2>{t(`landing.${audience}.title`)}</h2>
+            <p>{t(`landing.${audience}.body`)}</p>
+          </div>
         ))}
       </section>
     </div>

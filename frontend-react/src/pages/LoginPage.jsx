@@ -32,7 +32,7 @@ export default function LoginPage() {
       <section className="react-panel react-auth__card">
         <div className="react-panel__header">
           <div className="react-panel__header-copy">
-            <h2>{t("auth.login")}</h2>
+            <h1>{t("auth.login")}</h1>
             <p>{t("auth.loginBody")}</p>
           </div>
         </div>

@@ -14,6 +14,14 @@ function formatDateTime(value, locale) {
   return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(parsed);
 }
 
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+      <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function InvestigationPage() {
   const { id } = useParams();
   const { t, i18n } = useTranslation();
@@ -173,15 +181,28 @@ export default function InvestigationPage() {
   return (
     <div className="react-page react-conversation">
       <section className="react-panel react-conversation__header">
-        <div className="react-panel__header">
-          <div className="react-panel__header-copy">
-            <p className="react-eyebrow">{t(isPatient ? "cscw.conversationEyebrowPatient" : "cscw.conversationEyebrowDoctor")}</p>
-            <h2>{inv.title}</h2>
-            {counterpartName && (
-              <p>{t(inv.counterpart?.role === "doctor" ? "cscw.counterpartDoctor" : "cscw.counterpartPatient")}: <strong>{counterpartName}</strong></p>
-            )}
-          </div>
-          <Link to="/dashboard#investigations" className="react-button react-button--ghost">{t("common.back")}</Link>
+        <div className="react-conversation__topline">
+          <Link to="/dashboard#investigations" className="react-back-link">
+            <BackIcon />
+            {t("common.back")}
+          </Link>
+          {inv.status === "open" ? (
+            <button
+              type="button"
+              disabled={sending}
+              onClick={() => { setActionError(""); setClosing(true); }}
+              className="react-button react-button--danger react-button--compact"
+            >
+              {t("cscw.close")}
+            </button>
+          ) : null}
+        </div>
+        <div className="react-panel__header-copy">
+          <p className="react-eyebrow">{t(isPatient ? "cscw.conversationEyebrowPatient" : "cscw.conversationEyebrowDoctor")}</p>
+          <h1>{inv.title}</h1>
+          {counterpartName && (
+            <p>{t(inv.counterpart?.role === "doctor" ? "cscw.counterpartDoctor" : "cscw.counterpartPatient")}: <strong>{counterpartName}</strong></p>
+          )}
         </div>
         <div className="react-chip-row react-conversation__chips">
           <span className={`react-status-chip react-status-chip--${inv.status}`}>{t(`cscw.status.${inv.status}`, { defaultValue: inv.status })}</span>
@@ -204,6 +225,18 @@ export default function InvestigationPage() {
             <h2 id="conversation-messages-title">{t("cscw.messagesTitle")}</h2>
           </div>
         </div>
+        {(pagination.pages > 1 || pagination.total > 10) && (
+          <div className="react-conversation__pager">
+            <Pagination
+              page={pagination.page}
+              pages={pagination.pages}
+              count={pagination.total}
+              pageSize={pageSize}
+              onPageChange={(nextPage) => { followLatestRef.current = false; setPage(nextPage); }}
+              onPageSizeChange={(size) => { followLatestRef.current = false; setPageSize(size); setPage(1); }}
+            />
+          </div>
+        )}
         <ol ref={messageListRef} className="react-message-list" aria-label={t("cscw.messagesLabel")}>
           {messages.map((m) => {
             const isNew = newMessageIds.has(m.id);
@@ -220,18 +253,6 @@ export default function InvestigationPage() {
             );
           })}
         </ol>
-        {pagination.total > 0 && (
-          <div className="react-panel__footer">
-            <Pagination
-              page={pagination.page}
-              pages={pagination.pages}
-              count={pagination.total}
-              pageSize={pageSize}
-              onPageChange={(nextPage) => { followLatestRef.current = false; setPage(nextPage); }}
-              onPageSizeChange={(size) => { followLatestRef.current = false; setPageSize(size); setPage(1); }}
-            />
-          </div>
-        )}
 
         {actionError && !closing && <p className="react-form-message is-error" role="alert">{actionError}</p>}
 
@@ -253,8 +274,7 @@ export default function InvestigationPage() {
               />
             </label>
             <div className="react-composer__actions">
-              <small>{t("cscw.composerHint")}</small>
-              <button type="button" disabled={sending} onClick={() => { setActionError(""); setClosing(true); }} className="react-button react-button--danger">{t("cscw.close")}</button>
+              <small className="react-composer__hint">{t("cscw.composerHint")}</small>
               <button type="submit" disabled={sending || !newMsg.trim()} aria-busy={sending} className="react-button">{t("cscw.send")}</button>
             </div>
           </form>

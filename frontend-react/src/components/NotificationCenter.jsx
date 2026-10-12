@@ -27,6 +27,21 @@ function BellIcon() {
   );
 }
 
+// Consecutive notifications about the same investigation collapse into one row.
+function groupNotifications(items) {
+  const groups = [];
+  for (const item of items) {
+    const investigationId = item.payload?.investigation_id;
+    const last = groups.at(-1);
+    if (investigationId && last && last.investigationId === investigationId) {
+      last.items.push(item);
+    } else {
+      groups.push({ key: item.id, investigationId, items: [item] });
+    }
+  }
+  return groups;
+}
+
 export default function NotificationCenter({ unreadCount = 0, onChange }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -122,23 +137,29 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
     };
   }, [open]);
 
-  const handleRead = async (id) => {
-    try {
-      await readNotification(id);
-      setNotifications((current) => current.filter((item) => item.id !== id));
-      onChange?.();
-    } catch {
-      setStatus("error");
-    }
+  // Resolves to the ids the server accepted, so a partial failure only keeps the rows that are still unread.
+  const readAll = async (items) => {
+    const results = await Promise.allSettled(items.map((item) => readNotification(item.id)));
+    return {
+      readIds: new Set(items.filter((_, index) => results[index].status === "fulfilled").map((item) => item.id)),
+      failed: results.some((result) => result.status === "rejected"),
+    };
   };
 
-  const handleOpen = async (notification) => {
-    try {
-      await readNotification(notification.id);
+  const handleRead = async (group) => {
+    const { readIds, failed } = await readAll(group.items);
+    if (readIds.size) {
+      setNotifications((current) => current.filter((item) => !readIds.has(item.id)));
       onChange?.();
-    } catch {
-      // Opening the destination should still work if marking read fails.
     }
+    if (failed) setStatus("error");
+  };
+
+  const handleOpen = async (group) => {
+    const notification = group.items[0];
+    // Opening the destination should still work if marking read fails.
+    const { readIds } = await readAll(group.items);
+    if (readIds.size) onChange?.();
     setOpen(false);
     const payload = notification.payload || {};
     if (payload.investigation_id) {
@@ -201,20 +222,34 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
             <StateBlock title={t("notifications.emptyTitle")} description={t("notifications.emptyDescription")} />
           ) : (
             <ul className="react-notifications__list">
-              {notifications.map((n) => (
-                <li key={n.id} className="react-notifications__item">
-                  <span className="react-notifications__dot" aria-hidden="true" />
-                  <button type="button" className="react-notifications__open" onClick={() => handleOpen(n)}>
-                    <span className="react-notifications__copy">
-                    <span className="react-notifications__label">{t(`notifications.types.${n.notification_type}${session?.patient?.id && n.notification_type.startsWith("investigation_") ? "_patient" : ""}`, { defaultValue: n.notification_type })}</span>
-                    {n.created_at ? <small>{formatWhen(n.created_at, i18n.language)}</small> : null}
-                    </span>
-                  </button>
-                  <button type="button" className="react-button react-button--ghost react-button--compact" onClick={() => handleRead(n.id)}>
-                    {t("notifications.markRead")}
-                  </button>
-                </li>
-              ))}
+              {groupNotifications(notifications).map((group) => {
+                const n = group.items[0];
+                const label = t(`notifications.types.${n.notification_type}${session?.patient?.id && n.notification_type.startsWith("investigation_") ? "_patient" : ""}`, { defaultValue: n.notification_type });
+                const when = formatWhen(n.created_at, i18n.language);
+                const countText = group.items.length > 1 ? t("notifications.groupCount", { count: group.items.length }) : "";
+                return (
+                  <li key={group.key} className="react-notifications__item">
+                    <span className="react-notifications__dot" aria-hidden="true" />
+                    <button type="button" className="react-notifications__open" onClick={() => handleOpen(group)}>
+                      <span className="react-notifications__label">{label}</span>
+                      {when || countText ? (
+                        <span className="react-notifications__meta">
+                          {when ? <time dateTime={n.created_at}>{when}</time> : null}
+                          {countText ? <span className="react-notifications__count-meta">{countText}</span> : null}
+                        </span>
+                      ) : null}
+                    </button>
+                    <button
+                      type="button"
+                      className="react-button react-button--text react-notifications__read"
+                      aria-label={t("notifications.markReadAria", { label: countText ? `${label} (${countText})` : label, time: when })}
+                      onClick={() => handleRead(group)}
+                    >
+                      {t("notifications.markRead")}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {status === "ready" && hasMore ? (
