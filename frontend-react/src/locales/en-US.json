@@ -699,6 +699,7 @@
     "newBody": "Choose who to talk to, add a subject and write the first message.",
     "associateDays": "Linked atypical days (optional)",
     "associateDaysHint": "With no selection, the clarification has no atypical day linked. Select one or more days to give the conversation context.",
+    "associateDaysHintDoctor": "With no selection, the investigation has no atypical day linked. Select one or more days to give the conversation context.",
     "notRelatedAtypical": "Not linked to an atypical day",
     "relatedAtypicalCount_one": "{{count}} atypical day linked",
     "relatedAtypicalCount_other": "{{count}} atypical days linked",

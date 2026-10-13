@@ -699,6 +699,7 @@
     "newBody": "Escolha com quem conversar, dê um assunto e escreva a primeira mensagem.",
     "associateDays": "Dias atípicos associados (opcional)",
     "associateDaysHint": "Sem seleção, o esclarecimento fica sem dia atípico relacionado. Marque um ou mais dias para dar contexto à conversa.",
+    "associateDaysHintDoctor": "Sem seleção, o questionamento fica sem dia atípico relacionado. Marque um ou mais dias para dar contexto à conversa.",
     "notRelatedAtypical": "Não relacionado a dia atípico",
     "relatedAtypicalCount_one": "{{count}} dia atípico relacionado",
     "relatedAtypicalCount_other": "{{count}} dias atípicos relacionados",

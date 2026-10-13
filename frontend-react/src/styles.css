@@ -1697,29 +1697,27 @@ small {
   backdrop-filter: blur(4px);
 }
 
+/* Dialogs: header and actions stay put; only the body scrolls, inside the rounded panel. */
 .react-dialog {
+  display: flex;
+  flex-direction: column;
   width: min(100%, 34rem);
-  max-height: min(85vh, 46rem);
-  overflow: auto;
-  padding: var(--space-5);
+  max-height: min(88dvh, 46rem);
+  overflow: hidden;
+  padding: 0;
   border-radius: 26px;
   border: 1px solid rgba(22, 124, 217, 0.14);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(244, 251, 254, 0.97));
+  background: #fff;
   box-shadow: 0 24px 58px rgba(12, 34, 56, 0.22);
 }
 
 .react-dialog__header {
-  position: sticky;
-  top: calc(-1 * var(--space-5));
-  z-index: 2;
+  flex: 0 0 auto;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-  margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) 0;
-  padding: var(--space-5) var(--space-5) var(--space-3);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(244, 251, 254, 0.97));
-  border-radius: 26px 26px 0 0;
+  padding: var(--space-5) var(--space-5) var(--space-4);
   border-bottom: 1px solid var(--react-border);
 }
 
@@ -1744,8 +1742,25 @@ small {
 }
 
 .react-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
+  align-content: start;
   gap: var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+.react-dialog__body .react-dialog__actions,
+.react-dialog__body .react-form__actions {
+  position: sticky;
+  bottom: calc(-1 * var(--space-5));
+  z-index: 1;
+  margin: 0 calc(-1 * var(--space-5)) calc(-1 * var(--space-5));
+  padding: var(--space-3) var(--space-5) var(--space-5);
+  border-top: 1px solid var(--react-border);
+  background: #fff;
 }
 
 .react-dialog__body > p,
@@ -1779,10 +1794,6 @@ small {
   gap: var(--space-2);
 }
 
-.react-dialog--confirm .react-dialog__body,
-.react-dialog--atypical .react-dialog__body {
-  padding-top: var(--space-4);
-}
 
 .react-footer {
   justify-content: center;
@@ -4240,4 +4251,66 @@ small {
 .react-dialog__actions .react-action-hint {
   flex: 1 1 100%;
   text-align: right;
+}
+
+.react-dialog--investigation {
+  width: min(100%, 42rem);
+}
+
+.react-dialog--investigation .react-dialog__header p {
+  margin: var(--space-1) 0 0;
+  color: var(--react-muted);
+  font-size: var(--type-body-sm);
+}
+
+.react-dialog--investigation .react-form--investigation {
+  padding: 0;
+  border: 0;
+}
+
+/* Inner scroll areas use a thin scrollbar from the palette instead of the browser default. */
+.react-dialog__body,
+.react-message-list,
+.react-atypical-select__options,
+.react-notifications__panel,
+.react-day-strip,
+.react-table-shell {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(22, 124, 217, 0.32) transparent;
+}
+
+.react-dialog__body::-webkit-scrollbar,
+.react-message-list::-webkit-scrollbar,
+.react-atypical-select__options::-webkit-scrollbar,
+.react-notifications__panel::-webkit-scrollbar,
+.react-day-strip::-webkit-scrollbar,
+.react-table-shell::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.react-dialog__body::-webkit-scrollbar-thumb,
+.react-message-list::-webkit-scrollbar-thumb,
+.react-atypical-select__options::-webkit-scrollbar-thumb,
+.react-notifications__panel::-webkit-scrollbar-thumb,
+.react-day-strip::-webkit-scrollbar-thumb,
+.react-table-shell::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(22, 124, 217, 0.32);
+}
+
+.react-dialog__body::-webkit-scrollbar-track,
+.react-message-list::-webkit-scrollbar-track,
+.react-atypical-select__options::-webkit-scrollbar-track,
+.react-notifications__panel::-webkit-scrollbar-track,
+.react-day-strip::-webkit-scrollbar-track,
+.react-table-shell::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Inside a dialog the day picker grows with its content; the dialog body is the only scroller. */
+.react-dialog .react-atypical-select__options {
+  max-height: none;
+  overflow: visible;
+  box-shadow: none;
 }

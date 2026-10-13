@@ -539,9 +539,14 @@ of it becomes instant (no translate, no slide, no chart animation, `auto`
 scrolling) while every state change still happens.
 
 ### Dialogs
-Centered panel over a dimmed backdrop, with header (subtitle `h3`), body
-sections and an actions row; confirmation dialogs pair a ghost cancel with
-the action.
+Centered opaque white panel over a dimmed backdrop: a fixed header (subtitle
+`h3`, optional one-line description, 44 px close), a body that is the only
+scroller (thin palette scrollbar, never the browser default against the
+rounded edge) and a sticky actions row with a top hairline. Nested pickers
+inside a dialog grow with their content instead of scrolling on their own.
+Confirmation dialogs pair a ghost cancel with the action. Creation flows that
+interrupt a list (new conversation) open as a dialog, not inline in a narrow
+column.
 
 ## Do's and Don'ts
 

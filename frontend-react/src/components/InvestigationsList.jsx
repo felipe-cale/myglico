@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { fetchInvestigations, fetchInvestigationDetail, createInvestigation, fetchDoctorLinks, fetchAtypicalDays } from "../api";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -8,6 +9,8 @@ import StateBlock from "./StateBlock";
 import Pagination from "./Pagination";
 import { ArrowRightIcon } from "./Icons";
 import { preferredScrollBehavior } from "../hooks/usePrefersReducedMotion";
+import useFocusTrap from "../hooks/useFocusTrap";
+import CloseIcon from "./CloseIcon";
 
 function formatDate(value, locale) {
   if (!value) return "";
@@ -40,6 +43,8 @@ export default function InvestigationsList() {
   const location = useLocation();
   const sectionRef = useRef(null);
   const atypicalSelectRef = useRef(null);
+  const dialogRef = useRef(null);
+  const linkSelectRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [investigations, setInvestigations] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
@@ -149,6 +154,8 @@ export default function InvestigationsList() {
     const closeOnEscape = (event) => {
       if (event.key === "Escape" && atypicalSelectRef.current?.open) {
         atypicalSelectRef.current.open = false;
+        // Close only the day picker, not the dialog around it.
+        event.stopImmediatePropagation();
       }
     };
     document.addEventListener("pointerdown", closeOnOutsidePointer);
@@ -197,6 +204,8 @@ export default function InvestigationsList() {
     setSearchParams(nextParams, { replace: true });
   };
 
+  useFocusTrap(showNew, dialogRef, { initialFocusRef: linkSelectRef, onEscape: handleCancelCreate });
+
   const ownRole = isPatient ? "patient" : "doctor";
   const awaitsViewer = (inv) => inv.status === "open" && inv.awaiting_role === ownRole;
   const openedTime = (inv) => {
@@ -222,21 +231,38 @@ export default function InvestigationsList() {
         </div>
         <button
           type="button"
-          onClick={() => setShowNew(!showNew)}
-          className={`react-button${showNew || hasInvestigations || listStatus !== "ready" ? " react-button--ghost" : ""}`}
-          aria-expanded={showNew}
+          onClick={() => setShowNew(true)}
+          className={`react-button${hasInvestigations || listStatus !== "ready" ? " react-button--ghost" : ""}`}
+          aria-haspopup="dialog"
         >
           {t(isPatient ? "cscw.newPatient" : "cscw.newDoctor")}
         </button>
       </div>
 
-      {showNew && (
-        <div className="react-subpanel">
-          <div className="react-subpanel__copy">
-            <h3>{t(isPatient ? "cscw.newTitlePatient" : "cscw.newTitleDoctor")}</h3>
-            <p>{t("cscw.newBody")}</p>
-            {selectedAtypicalIds.length > 0 && <span className="react-badge react-badge--blue react-badge--compact">{t("cscw.selectedAtypicalCount", { count: selectedAtypicalIds.length })}</span>}
+      {showNew && createPortal(
+        <div
+          className="react-dialog-backdrop"
+          role="presentation"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) handleCancelCreate(); }}
+        >
+        <div
+          ref={dialogRef}
+          className="react-dialog react-dialog--investigation"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="new-investigation-title"
+          aria-describedby="new-investigation-body"
+        >
+          <div className="react-dialog__header">
+            <div>
+              <h3 id="new-investigation-title">{t(isPatient ? "cscw.newTitlePatient" : "cscw.newTitleDoctor")}</h3>
+              <p id="new-investigation-body">{t("cscw.newBody")}</p>
+            </div>
+            <button type="button" className="react-dialog__close" onClick={handleCancelCreate} aria-label={t("common.closeDialog")}>
+              <CloseIcon />
+            </button>
           </div>
+          <div className="react-dialog__body">
           {links.length === 0 ? (
             <div role="status">
               <StateBlock title={isPatient ? t("cscw.noActiveLinkPatient") : t("cscw.noActiveLinkDoctor")} tone="info" />
@@ -246,7 +272,7 @@ export default function InvestigationsList() {
               <div className="react-form__row">
                 <label className="react-select-field">
                   <span>{t("cscw.association")}</span>
-                    <select value={selectedLink} onChange={e => handleLinkChange(e.target.value)} required>
+                    <select ref={linkSelectRef} value={selectedLink} onChange={e => handleLinkChange(e.target.value)} required>
                     <option value="">{t("cscw.selectAssociation")}</option>
                     {links.map(l => (
                       <option key={l.id} value={l.id}>
@@ -262,7 +288,7 @@ export default function InvestigationsList() {
               </div>
               <fieldset className="react-atypical-association">
                   <legend>{t("cscw.associateDays")}</legend>
-                  <p>{t("cscw.associateDaysHint")}</p>
+                  <p>{t(isPatient ? "cscw.associateDaysHint" : "cscw.associateDaysHintDoctor")}</p>
                   <details ref={atypicalSelectRef} className="react-atypical-select">
                     <summary>
                       <span>{selectedAtypicalIds.length
@@ -325,9 +351,13 @@ export default function InvestigationsList() {
               </div>
             </form>
           )}
+          {error && <p className="react-form-message is-error" role="alert">{error}</p>}
+          </div>
         </div>
+        </div>,
+        document.body
       )}
-      {error && <p className="react-form-message is-error" role="alert">{error}</p>}
+      {!showNew && error && <p className="react-form-message is-error" role="alert">{error}</p>}
 
       {listStatus === "loading" ? (
         <div role="status">
