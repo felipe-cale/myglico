@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 // Counts user-facing requests in flight and keeps their controllers so the
 // overlay can cancel them; background polling opts out of both.
 let pending = 0;
@@ -31,4 +33,12 @@ export function subscribeLoading(listener) {
 
 export function pendingRequests() {
   return pending;
+}
+
+// Holds the overlay while a non-request wait is on screen (lazy page code, session check).
+export function useLoadingHold() {
+  useEffect(() => {
+    beginRequest();
+    return () => endRequest();
+  }, []);
 }
