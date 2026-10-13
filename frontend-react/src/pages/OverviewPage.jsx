@@ -25,33 +25,24 @@ function formatNumber(value, suffix = "", locale = "pt-BR") {
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value) + suffix;
 }
 
-// Same thresholds as the backend filter (reports._patient_signal), but each one is shown on its own:
-// a patient can carry both signals, so the row never contradicts its own numbers.
+// One profile per patient, the same one the backend filter uses (reports._patient_signal): the
+// hyperglycemic criteria take precedence over the 10% hypo threshold.
 const HYPO_SIGNAL_PCT = 10;
-const HYPER_SIGNAL_PCT = 65;
-const HYPER_SIGNAL_AVG = 185;
+const SIGNAL_TONES = { attention: "warning", oscillation: "alert", stable: "stable" };
 
-function getPatientSignals(patient, t) {
-  const signals = [];
-  if ((patient.pct_hypo ?? 0) >= HYPO_SIGNAL_PCT) {
-    signals.push({ key: "hypo", label: t("signal.chips.hypo"), tone: "alert" });
-  }
-  if ((patient.pct_hyper ?? 0) >= HYPER_SIGNAL_PCT || (patient.avg_glucose ?? 0) >= HYPER_SIGNAL_AVG) {
-    signals.push({ key: "hyper", label: t("signal.chips.hyper"), tone: "warning" });
-  }
-  if (!signals.length) {
-    signals.push({ key: "inRange", label: t("signal.chips.inRange"), tone: "stable" });
-  }
-  return signals;
-}
-
-function PatientSignals({ patient }) {
+function PatientSignals({ patient, compact = false }) {
   const { t } = useTranslation();
+  const code = SIGNAL_TONES[patient.signal_code] ? patient.signal_code : "stable";
+  const label = t(`signal.${code}`);
+  // A hyperglycemic patient may also cross the hypo threshold; say so instead of showing a second profile.
+  const alsoLow = code === "attention" && (patient.pct_hypo ?? 0) >= HYPO_SIGNAL_PCT;
+  const note = alsoLow ? t("signal.alsoLowNote") : "";
   return (
     <span className="react-signal-chips">
-      {getPatientSignals(patient, t).map((signal) => (
-        <span key={signal.key} className={`react-signal-chip react-signal-chip--${signal.tone}`}>{signal.label}</span>
-      ))}
+      <span className={`react-signal-chip react-signal-chip--${SIGNAL_TONES[code]}`} title={note ? `${label}. ${note}` : label}>
+        {compact ? t(`signal.short.${code}`) : label}
+      </span>
+      {note ? <span className="react-visually-hidden">{note}</span> : null}
     </span>
   );
 }
@@ -418,7 +409,7 @@ function DoctorHome() {
                                 {copyButton(patient)}
                               </span>
                             </td>
-                            <td><PatientSignals patient={patient} /></td>
+                            <td><PatientSignals patient={patient} compact /></td>
                             <td className="is-num">{formatNumber(patient.days_observed, "", i18n.language)}</td>
                             <td className="is-num">{avgLabel(patient)}</td>
                             <td className="is-num">{formatNumber(patient.pct_hypo, "%", i18n.language)}</td>

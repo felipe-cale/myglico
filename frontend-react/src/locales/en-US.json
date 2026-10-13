@@ -41,14 +41,15 @@
     "navigation": "Pagination navigation"
   },
   "signal": {
-    "stable": "In range",
-    "attention": "Mostly high",
-    "oscillation": "Frequent lows (not mostly high)",
-    "chips": {
-      "hypo": "Frequent lows",
-      "hyper": "Mostly high",
-      "inRange": "In range"
-    }
+    "stable": "In-Range Profile",
+    "attention": "Hyperglycemic Profile",
+    "oscillation": "Hypoglycemic Profile",
+    "short": {
+      "stable": "In range",
+      "attention": "Hyperglycemic",
+      "oscillation": "Hypoglycemic"
+    },
+    "alsoLowNote": "Also has 10% or more of readings below 70 mg/dL."
   },
   "clusterProfile": {
     "group": "Group {{n}}",
@@ -155,9 +156,9 @@
       "eyebrow": "Patients monitored",
       "title": "Patients",
       "body": "Search by name or code and open the panel of anyone you follow.",
-      "filterLabel": "Filter by signal",
-      "filterAriaLabel": "Filter patients by signal",
-      "helpButtonAriaLabel": "Explain the signals and the filter",
+      "filterLabel": "Filter by profile",
+      "filterAriaLabel": "Filter patients by profile",
+      "helpButtonAriaLabel": "Explain filter profiles",
       "searchPlaceholder": "Search by name or code",
       "searchAriaLabel": "Search patient",
       "loading": {
@@ -187,14 +188,14 @@
       },
       "daysObserved_one": "{{count}} day with readings available",
       "daysObserved_other": "{{count}} days with readings available",
-      "helpButtonLabel": "How signals are defined",
+      "helpButtonLabel": "How profiles are defined",
       "openPanelShort": "Open dashboard",
       "openPanelAria": "Open dashboard for {{name}}",
       "rowSummary": "{{avg}} mg/dL · {{low}} low · {{high}} high",
       "columns": {
         "patient": "Patient",
         "code": "Code",
-        "profile": "Signals",
+        "profile": "Profile",
         "days": "Days",
         "avg": "Average (mg/dL)",
         "low": "% low",
@@ -204,72 +205,71 @@
     },
     "profileHelp": {
       "eyebrow": "Filter help",
-      "closeAriaLabel": "Close the signals explanation",
+      "closeAriaLabel": "Close profile explanation",
       "all": {
-        "title": "Signals and filter",
-        "intro": "Signals summarize each patient's analysed period using fixed thresholds. They organize the list and do not replace clinical assessment.",
+        "title": "Filter profiles",
+        "intro": "The profiles below organize the list by the predominant glucose pattern in the analyzed period. They work as a visual triage and do not replace clinical assessment.",
         "sections": [
           {
-            "title": "In range",
-            "body": "Shown when neither signal is reached. In the metrics, the reference range is 70 to 180 mg/dL for general readings, 80 to 130 mg/dL before meals and below 180 mg/dL after meals."
+            "title": "In-Range Profile",
+            "body": "Groups patients who did not reach the hyperglycemic or hypoglycemic profile thresholds. In the app's metrics, the reference range considers 70 to 180 mg/dL for general readings, 80 to 130 mg/dL for pre-meal readings, and values below 180 mg/dL for post-meal readings."
           },
           {
-            "title": "Mostly high",
-            "body": "Shown when the period's average is 185 mg/dL or higher, or when time in high is 65% or higher. Time in high counts readings at or above 130 mg/dL before meals and at or above 180 mg/dL after meals or without a specific context."
+            "title": "Hyperglycemic Profile",
+            "body": "Applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher. Time in high considers readings at or above 130 mg/dL in pre-meal measurements and at or above 180 mg/dL in post-meal measurements or without specific context."
           },
           {
-            "title": "Frequent lows",
-            "body": "Shown when time in low is 10% or higher in the period. Time in low counts readings below 70 mg/dL."
+            "title": "Hypoglycemic Profile",
+            "body": "Applied when time in low is 10% or higher in the period. Time in low considers readings below 70 mg/dL."
           },
           {
-            "title": "When both signals show",
-            "body": "The row shows both signals. In the filter the patient goes to “Mostly high”; the “Frequent lows (not mostly high)” group only holds patients with 10% or more time in low and no other signal."
+            "title": "When both criteria are met",
+            "body": "The Hyperglycemic profile takes precedence: the patient is placed there and, in the list, the profile notes that they also spend 10% or more of readings below 70 mg/dL."
           }
         ]
       },
       "stable": {
-        "title": "In range",
-        "intro": "This filter shows patients with neither signal in the analysed period.",
+        "title": "In-Range Profile",
+        "intro": "This filter shows patients who stayed outside the hyperglycemic and hypoglycemic profile criteria in the current screening.",
         "sections": [
           {
-            "title": "Range considered",
-            "body": "In the metrics, the reference range is 70 to 180 mg/dL for general readings, 80 to 130 mg/dL before meals and below 180 mg/dL after meals."
+            "title": "Reference range",
+            "body": "The reference used in the metrics considers 70 to 180 mg/dL for general readings, 80 to 130 mg/dL for pre-meal readings, and values below 180 mg/dL for post-meal readings."
           },
           {
-            "title": "How the filter places a patient here",
-            "body": "A patient lands in this group when the period's average stays below 185 mg/dL, time in high below 65% and time in low below 10%."
+            "title": "How the filter applies here",
+            "body": "The patient stays in this group when the period's average glucose is below 185 mg/dL and time in low is below 10%."
           }
         ]
       },
       "attention": {
-        "title": "Mostly high",
-        "intro": "This filter shows patients whose readings were mostly high in the analysed period.",
+        "title": "Hyperglycemic Profile",
+        "intro": "This filter highlights patients with a predominance of elevated readings in the analyzed period.",
         "sections": [
           {
-            "title": "Signal threshold",
-            "body": "The signal shows when the period's average is 185 mg/dL or higher, or when time in high is 65% or higher. Patients who also have frequent lows stay in this group and show both signals in the list."
+            "title": "Classification threshold",
+            "body": "The profile is applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher."
           },
           {
             "title": "What counts as high",
-            "body": "Time in high counts readings at or above 130 mg/dL before meals and at or above 180 mg/dL after meals or without a specific context."
+            "body": "Time in high considers readings at or above 130 mg/dL in pre-meal measurements and at or above 180 mg/dL in post-meal measurements or without specific context."
           }
         ]
       },
       "oscillation": {
-        "title": "Frequent lows (not mostly high)",
-        "intro": "This filter shows patients with 10% or more time in low who do not have the mostly-high signal.",
+        "title": "Hypoglycemic Profile",
+        "intro": "This filter highlights patients with a more significant recurrence of low readings in the period.",
         "sections": [
           {
-            "title": "Signal threshold",
-            "body": "The signal shows when time in low is 10% or higher in the period. Patients who are also mostly high appear under the “Mostly high” filter, with both signals in the list."
+            "title": "Classification threshold",
+            "body": "The profile is applied when time in low is 10% or higher in the period."
           },
           {
             "title": "What counts as low",
-            "body": "Time in low counts readings below 70 mg/dL."
+            "body": "Time in low considers readings below 70 mg/dL."
           }
         ]
-      },
-      "signalsNote": "In the list each signal stands on its own: a patient can show “Frequent lows” and “Mostly high” at the same time. The filter puts each patient in a single group; with both signals, they go to “Mostly high”."
+      }
     }
   },
   "manualEntry": {

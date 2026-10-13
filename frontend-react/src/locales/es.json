@@ -41,14 +41,15 @@
     "navigation": "Navegación de paginación"
   },
   "signal": {
-    "stable": "En rango",
-    "attention": "Hiper predominante",
-    "oscillation": "Hipo frecuente (sin hiper predominante)",
-    "chips": {
-      "hypo": "Hipo frecuente",
-      "hyper": "Hiper predominante",
-      "inRange": "En rango"
-    }
+    "stable": "Perfil en Rango",
+    "attention": "Perfil Hiperglucémico",
+    "oscillation": "Perfil Hipoglucémico",
+    "short": {
+      "stable": "En rango",
+      "attention": "Hiperglucémico",
+      "oscillation": "Hipoglucémico"
+    },
+    "alsoLowNote": "También tiene 10% o más de las lecturas por debajo de 70 mg/dL."
   },
   "clusterProfile": {
     "group": "Grupo {{n}}",
@@ -155,9 +156,9 @@
       "eyebrow": "Pacientes en seguimiento",
       "title": "Pacientes",
       "body": "Busque por nombre o código y abra el panel de quien usted acompaña.",
-      "filterLabel": "Filtrar por señal",
-      "filterAriaLabel": "Filtrar pacientes por señal",
-      "helpButtonAriaLabel": "Explicar las señales y el filtro",
+      "filterLabel": "Filtrar por perfil",
+      "filterAriaLabel": "Filtrar pacientes por perfil",
+      "helpButtonAriaLabel": "Explicar perfiles del filtro",
       "searchPlaceholder": "Buscar por nombre o código",
       "searchAriaLabel": "Buscar paciente",
       "loading": {
@@ -187,14 +188,14 @@
       },
       "daysObserved_one": "{{count}} día con lecturas disponibles",
       "daysObserved_other": "{{count}} días con lecturas disponibles",
-      "helpButtonLabel": "Cómo se definen las señales",
+      "helpButtonLabel": "Cómo se definen los perfiles",
       "openPanelShort": "Abrir panel",
       "openPanelAria": "Abrir panel de {{name}}",
       "rowSummary": "{{avg}} mg/dL · {{low}} baja · {{high}} alta",
       "columns": {
         "patient": "Paciente",
         "code": "Código",
-        "profile": "Señales",
+        "profile": "Perfil",
         "days": "Días",
         "avg": "Media (mg/dL)",
         "low": "% baja",
@@ -204,72 +205,71 @@
     },
     "profileHelp": {
       "eyebrow": "Ayuda del filtro",
-      "closeAriaLabel": "Cerrar la explicación de las señales",
+      "closeAriaLabel": "Cerrar explicación de los perfiles",
       "all": {
-        "title": "Señales y filtro",
-        "intro": "Las señales resumen el período analizado de cada paciente con umbrales fijos. Organizan la lista y no sustituyen la evaluación clínica.",
+        "title": "Perfiles de filtro",
+        "intro": "Los perfiles siguientes organizan la lista según el patrón glucémico predominante en el período analizado. Funcionan como una selección visual y no sustituyen la evaluación clínica.",
         "sections": [
           {
-            "title": "En rango",
-            "body": "Aparece cuando no se alcanza ninguna de las dos señales. En las métricas, el rango de referencia es de 70 a 180 mg/dL en las lecturas generales, de 80 a 130 mg/dL antes de las comidas y por debajo de 180 mg/dL después de las comidas."
+            "title": "Perfil en Rango",
+            "body": "Agrupa a los pacientes que no alcanzaron los umbrales de perfil hiperglucémico ni hipoglucémico. En las métricas de la aplicación, el rango de referencia considera 70 a 180 mg/dL en lecturas generales, 80 a 130 mg/dL en lecturas previas a la comida y valores por debajo de 180 mg/dL en lecturas posteriores a la comida."
           },
           {
-            "title": "Hiper predominante",
-            "body": "Aparece cuando la media del período es mayor o igual a 185 mg/dL o cuando el tiempo en alto es mayor o igual al 65%. El tiempo en alto cuenta lecturas iguales o superiores a 130 mg/dL antes de las comidas e iguales o superiores a 180 mg/dL después de las comidas o sin contexto específico."
+            "title": "Perfil Hiperglucémico",
+            "body": "Se aplica cuando la media glucémica del período es mayor o igual a 185 mg/dL o cuando el tiempo en alto es mayor o igual al 65%. El tiempo en alto considera lecturas iguales o superiores a 130 mg/dL en mediciones previas a la comida e iguales o superiores a 180 mg/dL en mediciones posteriores a la comida o sin contexto específico."
           },
           {
-            "title": "Hipo frecuente",
-            "body": "Aparece cuando el tiempo en bajo es mayor o igual al 10% en el período. El tiempo en bajo cuenta lecturas por debajo de 70 mg/dL."
+            "title": "Perfil Hipoglucémico",
+            "body": "Se aplica cuando el tiempo en bajo es mayor o igual al 10% en el período. El tiempo en bajo considera lecturas por debajo de 70 mg/dL."
           },
           {
-            "title": "Cuando aparecen las dos señales",
-            "body": "La fila muestra las dos señales. En el filtro, el paciente entra en “Hiper predominante”; el grupo “Hipo frecuente (sin hiper predominante)” reúne solo a quienes tienen un 10% o más de tiempo en bajo sin la otra señal."
+            "title": "Cuando se cumplen ambos criterios",
+            "body": "El Perfil Hiperglucémico tiene prioridad: el paciente queda en él y, en la lista, el perfil indica que también tiene 10% o más de lecturas por debajo de 70 mg/dL."
           }
         ]
       },
       "stable": {
-        "title": "En rango",
-        "intro": "Este filtro muestra pacientes sin ninguna de las dos señales en el período analizado.",
+        "title": "Perfil en Rango",
+        "intro": "Este filtro muestra pacientes que permanecieron fuera de los criterios de perfil hiperglucémico e hipoglucémico en la selección actual.",
         "sections": [
           {
             "title": "Rango considerado",
-            "body": "En las métricas, el rango de referencia es de 70 a 180 mg/dL en las lecturas generales, de 80 a 130 mg/dL antes de las comidas y por debajo de 180 mg/dL después de las comidas."
+            "body": "La referencia usada en las métricas considera 70 a 180 mg/dL en lecturas generales, 80 a 130 mg/dL en lecturas previas a la comida y valores por debajo de 180 mg/dL en lecturas posteriores a la comida."
           },
           {
-            "title": "Cómo entra un paciente aquí",
-            "body": "El paciente entra en este grupo cuando la media del período queda por debajo de 185 mg/dL, el tiempo en alto por debajo del 65% y el tiempo en bajo por debajo del 10%."
+            "title": "Cómo entra aquí el filtro",
+            "body": "El paciente permanece en este grupo cuando la media glucémica del período está por debajo de 185 mg/dL y el tiempo en bajo está por debajo del 10%."
           }
         ]
       },
       "attention": {
-        "title": "Hiper predominante",
-        "intro": "Este filtro muestra pacientes con predominio de lecturas altas en el período analizado.",
+        "title": "Perfil Hiperglucémico",
+        "intro": "Este filtro destaca a los pacientes con predominio de lecturas elevadas en el período analizado.",
         "sections": [
           {
-            "title": "Umbral de la señal",
-            "body": "La señal aparece cuando la media del período es mayor o igual a 185 mg/dL o cuando el tiempo en alto es mayor o igual al 65%. Quien también tiene hipo frecuente queda en este grupo y muestra las dos señales en la lista."
+            "title": "Umbral de clasificación",
+            "body": "El perfil se aplica cuando la media glucémica del período es mayor o igual a 185 mg/dL o cuando el tiempo en alto es mayor o igual al 65%."
           },
           {
             "title": "Qué cuenta como alto",
-            "body": "El tiempo en alto cuenta lecturas iguales o superiores a 130 mg/dL antes de las comidas e iguales o superiores a 180 mg/dL después de las comidas o sin contexto específico."
+            "body": "El tiempo en alto considera lecturas iguales o superiores a 130 mg/dL en mediciones previas a la comida e iguales o superiores a 180 mg/dL en mediciones posteriores a la comida o sin contexto específico."
           }
         ]
       },
       "oscillation": {
-        "title": "Hipo frecuente (sin hiper predominante)",
-        "intro": "Este filtro muestra pacientes con un 10% o más de tiempo en bajo que no tienen la señal de hiper predominante.",
+        "title": "Perfil Hipoglucémico",
+        "intro": "Este filtro destaca a los pacientes con una recurrencia más relevante de lecturas bajas en el período.",
         "sections": [
           {
-            "title": "Umbral de la señal",
-            "body": "La señal aparece cuando el tiempo en bajo es mayor o igual al 10% en el período. Quien también tiene hiper predominante aparece en el filtro “Hiper predominante”, con las dos señales en la lista."
+            "title": "Umbral de clasificación",
+            "body": "El perfil se aplica cuando el tiempo en bajo es mayor o igual al 10% en el período."
           },
           {
             "title": "Qué cuenta como bajo",
-            "body": "El tiempo en bajo cuenta lecturas por debajo de 70 mg/dL."
+            "body": "El tiempo en bajo considera lecturas por debajo de 70 mg/dL."
           }
         ]
-      },
-      "signalsNote": "En la lista cada señal aparece por sí sola: un paciente puede mostrar “Hipo frecuente” e “Hiper predominante” a la vez. El filtro ubica a cada paciente en un único grupo; con las dos señales, entra en “Hiper predominante”."
+      }
     }
   },
   "manualEntry": {

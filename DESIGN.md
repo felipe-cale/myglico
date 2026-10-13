@@ -240,17 +240,17 @@ One mapping everywhere (charts, legends, chips):
 `glyco-low` (rose, text `rose-alert-text`) below 70 mg/dL, `glyco-in-range`
 (steady green, text `steady-green-deep`) 70–180, `glyco-high` (amber, text
 `amber-attention-text`) above 180, `glyco-very-high` (`#d1700f`, fills and the 250 line)
-above 250. Patient signal chips follow it: "Hiper predominante" → amber,
-"Hipo frequente" → rose, "Em faixa" → green.
+above 250. Patient profile chips follow it: "Hiperglicêmico" → amber,
+"Hipoglicêmico" → rose, "Em faixa" → green.
 
-**Signals, not labels.** The doctor's patient list shows factual signals, never
-one exclusive profile label that could contradict the row's own numbers:
-"Hipo frequente" (time below 70 ≥ 10%) and "Hiper predominante" (time high ≥ 65%
-or average ≥ 185 mg/dL) are independent chips that can coexist; "Em faixa" only
-when neither applies. The filter keeps the API's single `signal_code` (hyper takes
-precedence), so its options are named for that ("Hipo frequente (sem hiper
-predominante)") and the help dialog says that a row can show both signals and
-where the filter puts it.
+**One profile per patient.** The doctor's patient list shows exactly one
+profile, the API's `signal_code`, the same one the filter uses: Hiperglicêmico
+(time high ≥ 65% or average ≥ 185 mg/dL) takes precedence over Hipoglicêmico
+(time below 70 ≥ 10%); Em faixa otherwise. The profiles are fixed thresholds on
+the period, not the K-means clusters (those group a patient's days into the
+"Perfil do dia" column). When a hyperglycemic patient also crosses the hypo
+threshold, the chip's tooltip and accessible text say so ("Also has 10% or more
+of readings below 70 mg/dL"); never a second profile chip.
 
 **Range reference, no verdict.** The patient's latest reading carries one chip
 stating its position against 70–180 mg/dL ("Dentro da faixa 70–180 mg/dL",
