@@ -102,6 +102,8 @@
   --state-pending-text: var(--react-slate);
   --state-pending-border: rgba(82, 100, 122, 0.4);
   --state-atypical-bg: rgba(244, 169, 61, 0.16);
+  --state-in-range-bg: rgba(30, 171, 105, 0.1);
+  --state-in-range-border: rgba(30, 171, 105, 0.3);
   --state-atypical-text: var(--react-amber-text);
   --state-selected-bg: var(--tint-blue-10);
   --state-selected-border: var(--tint-blue-55);
@@ -2008,6 +2010,16 @@ small {
   font-weight: 600;
 }
 
+.react-form-message.is-success {
+  border: 1px solid var(--state-in-range-border);
+  background: var(--state-in-range-bg);
+  color: var(--react-green-deep);
+}
+
+.react-dialog .react-form-message {
+  margin: 0;
+}
+
 .react-form-message.is-error {
   border: 1px solid rgba(227, 93, 115, 0.3);
   background: rgba(227, 93, 115, 0.08);
@@ -3749,30 +3761,7 @@ small {
   line-height: var(--type-meta-lh);
 }
 
-/* Manual entry: a collapsed header row that opens a flat form. */
-.react-manual-entry {
-  scroll-margin-top: var(--space-4);
-}
-
-.react-manual-entry__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3) var(--space-4);
-}
-
-.react-manual-entry__body {
-  display: grid;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
-}
-
-.react-panel .react-manual-entry__intro {
-  margin: 0;
-  max-width: 60ch;
-}
-
+/* Manual entry dialog: date/time and value first, optional details behind a disclosure. */
 .react-manual-entry-form {
   display: grid;
   gap: var(--space-4);
@@ -3804,25 +3793,6 @@ small {
   display: grid;
   gap: var(--space-4);
   margin-top: var(--space-3);
-}
-
-.react-manual-entry-form__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-}
-
-.react-manual-entry-form__feedback {
-  color: var(--react-rose-text);
-  font-size: var(--type-label);
-  line-height: var(--type-label-lh);
-  font-weight: 700;
-}
-
-.react-manual-entry-form__feedback.is-success {
-  color: var(--react-green-deep);
 }
 
 /* Access: the doctor's revoke action closes the page, away from the reading path. */
@@ -4108,10 +4078,6 @@ small {
 
   .react-manual-entry-form__row {
     grid-template-columns: 1fr;
-  }
-
-  .react-manual-entry-form__actions .react-button {
-    width: 100%;
   }
 
   .react-page--patient-detail .react-chart {
@@ -4536,4 +4502,18 @@ small {
   .react-loading__digits circle {
     opacity: 1;
   }
+}
+
+.react-dialog--manual-entry {
+  width: min(100%, 38rem);
+}
+
+.react-dialog--manual-entry .react-dialog__header p {
+  margin: var(--space-1) 0 0;
+  color: var(--react-muted);
+  font-size: var(--type-body-sm);
+}
+
+.react-detail-header__saved:empty {
+  display: none;
 }

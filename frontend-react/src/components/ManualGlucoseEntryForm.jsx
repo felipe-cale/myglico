@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { createManualGlucoseRecord } from "../api";
 import { ChevronDownIcon } from "./Icons";
+import CloseIcon from "./CloseIcon";
+import useFocusTrap from "../hooks/useFocusTrap";
+import useBodyScrollLock from "../hooks/useBodyScrollLock";
 
 const CONTEXT_OPTIONS = [
   "pre_breakfast",
@@ -24,11 +28,29 @@ function emptyForm() {
   return { measuredAt: currentLocalDateTime(), glucose: "", context: "", customContext: "", notes: "" };
 }
 
-export default function ManualGlucoseEntryForm({ patientId, onCreated, open = false, onToggle }) {
+// A modal so the patient can log a reading from the page header without scrolling to the end of the page.
+export default function ManualGlucoseEntryForm({ patientId, onCreated, open = false, onClose }) {
   const { t } = useTranslation();
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const dialogRef = useRef(null);
+  const glucoseRef = useRef(null);
+
+  const close = () => {
+    if (submitting) return;
+    setForm(emptyForm());
+    setFeedback(null);
+    onClose?.();
+  };
+
+  // Each opening starts from "now", so the time field is already right for a fresh reading.
+  useEffect(() => {
+    if (open) setForm(emptyForm());
+  }, [open]);
+
+  useFocusTrap(open, dialogRef, { initialFocusRef: glucoseRef, onEscape: close });
+  useBodyScrollLock(open);
 
   const hasOptionalDetails = Boolean(form.context || form.customContext || form.notes);
   const updateField = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
@@ -61,8 +83,9 @@ export default function ManualGlucoseEntryForm({ patientId, onCreated, open = fa
         notes: form.notes.trim() || null
       });
       setForm(emptyForm());
-      setFeedback({ tone: "success", message: t("manualEntry.success") });
+      setFeedback(null);
       onCreated?.(result.glucose_record);
+      onClose?.();
     } catch (reason) {
       setFeedback({ tone: "error", message: t("manualEntry.errors.saveFailed") });
     } finally {
@@ -70,24 +93,33 @@ export default function ManualGlucoseEntryForm({ patientId, onCreated, open = fa
     }
   }
 
-  return (
-    <section id="new-reading" className="react-panel react-manual-entry" aria-labelledby="new-reading-title">
-      <div className="react-manual-entry__header">
-        <h2 id="new-reading-title">{t("manualEntry.title")}</h2>
-        <button
-          type="button"
-          className="react-button react-button--ghost react-button--compact react-disclosure-toggle"
-          aria-expanded={open}
-          aria-controls="new-reading-body"
-          onClick={onToggle}
-        >
-          <span>{open ? t("manualEntry.toggleClose") : t("manualEntry.toggle")}</span>
-          <ChevronDownIcon />
-        </button>
-      </div>
-      {open ? (
-        <div id="new-reading-body" className="react-manual-entry__body">
-          <p className="react-manual-entry__intro">{t("manualEntry.body")}</p>
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      className="react-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}
+    >
+      <div
+        id="new-reading"
+        ref={dialogRef}
+        className="react-dialog react-dialog--manual-entry"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-reading-title"
+        aria-describedby="new-reading-intro"
+      >
+        <div className="react-dialog__header">
+          <div>
+            <h3 id="new-reading-title">{t("manualEntry.title")}</h3>
+            <p id="new-reading-intro">{t("manualEntry.body")}</p>
+          </div>
+          <button type="button" className="react-dialog__close" onClick={close} aria-label={t("common.closeDialog")}>
+            <CloseIcon />
+          </button>
+        </div>
+        <div className="react-dialog__body">
           <form className="react-manual-entry-form" onSubmit={handleSubmit} noValidate>
             <div className="react-manual-entry-form__row">
               <label className="react-field">
@@ -97,6 +129,7 @@ export default function ManualGlucoseEntryForm({ patientId, onCreated, open = fa
               <label className="react-field">
                 <span>{t("manualEntry.glucose")}</span>
                 <input
+                  ref={glucoseRef}
                   type="number"
                   inputMode="decimal"
                   min="1"
@@ -150,22 +183,23 @@ export default function ManualGlucoseEntryForm({ patientId, onCreated, open = fa
                 </label>
               </div>
             </details>
-            <div className="react-manual-entry-form__actions">
+            {feedback ? (
+              <p className={`react-form-message is-${feedback.tone}`} role="alert">
+                {feedback.message}
+              </p>
+            ) : null}
+            <div className="react-form__actions">
+              <button type="button" className="react-button react-button--ghost" onClick={close} disabled={submitting}>
+                {t("dashboard.cancel")}
+              </button>
               <button type="submit" className="react-button" disabled={submitting}>
                 {submitting ? t("manualEntry.submitting") : t("manualEntry.submit")}
               </button>
-              {feedback ? (
-                <small
-                  className={`react-manual-entry-form__feedback is-${feedback.tone}`}
-                  role={feedback.tone === "error" ? "alert" : "status"}
-                >
-                  {feedback.message}
-                </small>
-              ) : null}
             </div>
           </form>
         </div>
-      ) : null}
-    </section>
+      </div>
+    </div>,
+    document.body
   );
 }

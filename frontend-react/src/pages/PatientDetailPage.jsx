@@ -403,10 +403,9 @@ export default function PatientDetailPage() {
   const reducedMotion = usePrefersReducedMotion();
   const [periodFormOverride, setPeriodFormOverride] = useState(null);
   const [manualOpen, setManualOpen] = useState(() => location.hash === "#new-reading");
-  const [entryFocusRequest, setEntryFocusRequest] = useState(0);
+  const [entrySaved, setEntrySaved] = useState(false);
   // The period sync below rewrites the URL (replace) and drops the hash, so the "#new-reading" intent is kept here.
   const pendingNewReadingRef = useRef(location.hash === "#new-reading");
-  const handledFocusRef = useRef(0);
   const [reloadToken, setReloadToken] = useState(0);
   const [indicatorPage, setIndicatorPage] = useState(1);
   const [indicatorPageSize, setIndicatorPageSize] = useState(10);
@@ -692,7 +691,7 @@ export default function PatientDetailPage() {
     }
   }, [selectedDay, availableDayDates, loading]);
 
-  // A "#new-reading" link opens the entry form once per navigation, then scrolls to it and focuses its first field.
+  // A "#new-reading" link opens the entry dialog once per navigation, after the panel data arrives.
   useEffect(() => {
     if (location.hash === "#new-reading") pendingNewReadingRef.current = true;
   }, [location.hash, location.key]);
@@ -701,17 +700,13 @@ export default function PatientDetailPage() {
     if (!data || !pendingNewReadingRef.current) return;
     pendingNewReadingRef.current = false;
     setManualOpen(true);
-    setEntryFocusRequest((current) => current + 1);
   }, [data, location.hash, location.key]);
 
   useEffect(() => {
-    if (!entryFocusRequest || !manualOpen || loading || handledFocusRef.current === entryFocusRequest) return;
-    const target = document.getElementById("new-reading");
-    if (!target) return;
-    handledFocusRef.current = entryFocusRequest;
-    target.scrollIntoView({ block: "start" });
-    target.querySelector("input")?.focus({ preventScroll: true });
-  }, [entryFocusRequest, manualOpen, loading]);
+    if (!entrySaved) return undefined;
+    const timer = setTimeout(() => setEntrySaved(false), 6000);
+    return () => clearTimeout(timer);
+  }, [entrySaved]);
 
   useEffect(() => {
     if (!availableDayDates.length) {
@@ -842,6 +837,7 @@ export default function PatientDetailPage() {
   }
 
   function handleManualRecordCreated(record) {
+    setEntrySaved(true);
     const measuredDate = record?.measured_at?.slice(0, 10);
     const { start_date: currentStart, end_date: currentEnd } = data?.filters ?? {};
     silentReloadRef.current = true;
@@ -983,8 +979,8 @@ export default function PatientDetailPage() {
   }
 
   function openManualEntry() {
+    setEntrySaved(false);
     setManualOpen(true);
-    setEntryFocusRequest((current) => current + 1);
   }
 
   const preservedRange = preservedRangeRef.current;
@@ -1185,6 +1181,9 @@ export default function PatientDetailPage() {
             </a>
           </div>
         </div>
+        <p className="react-form-message is-success react-detail-header__saved" role="status">
+          {entrySaved ? t("manualEntry.success") : ""}
+        </p>
       </header>
 
       <section className="react-panel react-period-bar" aria-label={t("patientDetail.hero.periodAnalyzed")}>
@@ -1737,7 +1736,7 @@ export default function PatientDetailPage() {
           patientId={patient.id}
           onCreated={handleManualRecordCreated}
           open={manualOpen}
-          onToggle={() => setManualOpen((current) => !current)}
+          onClose={() => setManualOpen(false)}
         />
       ) : null}
 

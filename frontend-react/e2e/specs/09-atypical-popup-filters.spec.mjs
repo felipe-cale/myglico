@@ -50,11 +50,12 @@ async function expandPeriodForm(page) {
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 }
 
-// The manual entry form is collapsed to its header row until it is opened.
+// The manual entry opens as a dialog from the page header action.
 async function openManualEntry(page) {
-  const toggle = page.locator("#new-reading").getByRole("button", { name: tx("manualEntry.toggle") });
-  await toggle.click();
-  await expect(page.locator("#new-reading").getByRole("button", { name: tx("manualEntry.toggleClose") })).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: tx("patientDetail.hero.newReading") }).click();
+  const dialog = page.getByRole("dialog", { name: t("manualEntry.title") });
+  await expect(dialog).toBeVisible();
+  return dialog;
 }
 
 // Inside the popup the period inputs sit behind its own "Alterar período" disclosure.
@@ -260,15 +261,15 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
   test("CSCW-CA-26 - the real manual form preserves both sides of local midnight", async ({ actor, browserSession }) => {
     const patient = await actor("patientA");
     const ui = await openDetail(browserSession, "patientA", patient.patientId);
-    await openManualEntry(ui.page);
-    const form = ui.page.locator(".react-manual-entry-form");
-    const dateInput = form.locator('input[type="datetime-local"]');
-    const glucoseInput = form.locator('input[type="number"]');
     for (const localTime of ["2026-10-08T00:30", "2026-10-08T23:30"]) {
-      await dateInput.fill(localTime);
-      await glucoseInput.fill("123");
+      const dialog = await openManualEntry(ui.page);
+      const form = dialog.locator(".react-manual-entry-form");
+      await form.locator('input[type="datetime-local"]').fill(localTime);
+      await form.locator('input[type="number"]').fill("123");
       await form.getByRole("button", { name: tx("manualEntry.submit") }).click();
-      await expect(form.getByRole("status")).toBeVisible();
+      // Saving closes the dialog and confirms the reading on the page.
+      await expect(dialog).toHaveCount(0);
+      await expect(ui.page.getByRole("status").filter({ hasText: t("manualEntry.success") })).toBeVisible();
     }
     const sameDay = (await api.patientDetail(patient.request, patient.patientId, { dates: "2026-10-08" })).body;
     expect(sameDay.glucose_events.filter((event) => event.event_date === "2026-10-08").map((event) => event.event_time))

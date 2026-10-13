@@ -373,7 +373,8 @@ rows below 900 px.
 doctor at 1440 px:
 1. Page header: "Back" text link above the name `h1`, a meta line
    ("data-07 · 97 leituras"; the source file is doctor-only) and the actions.
-   Patient: "Registrar leitura" (primary, opens and focuses the entry form) +
+   Patient: "Registrar leitura" (primary, opens the entry dialog with focus on
+   the glucose value; date/time defaults to now) +
    "Baixar relatório" (ghost); doctor: "Baixar relatório" (primary).
 2. Period bar (`.react-period-bar`): one panel with the range in data-md
    ("Período: 01/04/1989 – 30/04/1989"), meta lines for the window kind and
@@ -392,8 +393,10 @@ doctor at 1440 px:
 5. Data panels (daily indicators, recent records): tables on desktop; below
    640 px each collapses into a closed disclosure ("Evolução diária (30
    dias)") with divider rows.
-6. Patient: the manual entry panel, collapsed to its header row. Doctor: the
-   "Acesso a este paciente" section with the danger text "Revogar associação".
+6. Doctor: the "Acesso a este paciente" section with the danger text
+   "Revogar associação". The patient's manual entry is a dialog (opened by the
+   header action or a `#new-reading` link); saving closes it and confirms
+   "Leitura registrada" under the page header.
 When the window has no analysed day (only pending days or none), one state
 block ("Ainda não há dias analisados neste período", primary "Ver todo o
 histórico", plus the atypical-days button) replaces the summary and charts;
@@ -519,8 +522,8 @@ line stating that MyGlico does not diagnose.
 - **Disclosures** (`.react-disclosure`, `.react-disclosure-toggle`): secondary
   content opens on demand behind a `<details>` summary or an
   `aria-expanded` button with a chevron that turns 180°. Uses: the period date
-  form, the manual entry form (opened by `#new-reading` or the header CTA),
-  its optional fields ("Mais detalhes (opcional)"), and phone data panels,
+  form, the manual entry dialog's optional fields ("Mais detalhes
+  (opcional)"), and phone data panels,
   whose summary carries the `h2` with a count.
 - **Key figures** (`.react-figure`): label (label role), value (data-xl,
   unit in meta), helper (meta); no card. An interactive figure (atypical
