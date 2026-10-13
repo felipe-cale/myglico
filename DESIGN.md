@@ -519,11 +519,24 @@ the reference values read as labels and 250 never collides with the top.
 The time-in-range legend uses divider rows, with dot colors from the
 `--glyco-*` tokens. Reference lines use the glycemic range colors; the selected
 point is a solid trust-blue dot.
+A day curve with fewer than 6 readings is drawn as straight segments
+(`type="linear"`), never smoothed, so the chart does not suggest values nobody
+measured. Legend text is always `--react-text`; color lives in the swatch only.
+Series animate only when the user has not asked for reduced motion.
 
 ### State Blocks
 Empty, loading and error states share one block: icon tile plus copy on a
-dashed hairline card (24 px). Variants tint the icon (danger rose/amber,
-info cyan/blue).
+dashed hairline card (24 px). The tile always carries a drawn SVG glyph that
+matches its tone (info, danger, neutral), never an empty square. The patient
+detail never opens on an empty window when analysed days exist: the default
+period falls back to the latest analysed 30 days and the period bar says how
+many newer days still wait for analysis. Pending rows show "–", not 0%.
+
+### Motion
+Motion is short (150–220 ms) and functional: hover lift, drawer slide, chart
+entry, smooth scroll to an anchor. Under `prefers-reduced-motion: reduce` all
+of it becomes instant (no translate, no slide, no chart animation, `auto`
+scrolling) while every state change still happens.
 
 ### Dialogs
 Centered panel over a dimmed backdrop, with header (subtitle `h3`), body
@@ -552,6 +565,9 @@ the action.
 - **Don't** set text below 12 px or invent font sizes outside the roles.
 - **Don't** use the gradient for toggles or selection.
 - **Don't** use emoji as icons.
+- **Don't** smooth a curve across sparse readings or ship an animation that
+  ignores reduced motion.
+- **Don't** leave a disabled primary action without saying what is missing.
 - **Don't** fill large areas with amber or rose.
 - **Don't** hardcode colors outside the `:root` tokens; alert text uses
   `--react-rose-text` and `--react-amber-text`.

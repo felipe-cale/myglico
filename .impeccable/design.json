@@ -186,6 +186,11 @@
         "name": "control-ease",
         "value": "160ms ease",
         "purpose": "Lift, shadow and border transitions on controls."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "All motion becomes instant (no translate, slide, chart animation, smooth scroll); state changes remain."
       }
     ],
     "breakpoints": [
@@ -439,7 +444,9 @@
       "Don't fill large areas with amber or rose.",
       "Don't hardcode colors outside the :root tokens; alert text uses --react-rose-text and --react-amber-text.",
       "Don't put white text on the light brand trust-blue/steady-green fills; use the action gradient.",
-      "Don't wrap list items in cards or nest boxes inside rows; revoke is a danger text button, not a bordered pill."
+      "Don't wrap list items in cards or nest boxes inside rows; revoke is a danger text button, not a bordered pill.",
+      "Don't smooth a curve across sparse readings or ship an animation that ignores reduced motion.",
+      "Don't leave a disabled primary action without saying what is missing."
     ]
   }
 }

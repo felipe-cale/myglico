@@ -23,9 +23,10 @@ import AtypicalDaysPopup from "../components/AtypicalDaysPopup";
 import Pagination from "../components/Pagination";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ManualGlucoseEntryForm from "../components/ManualGlucoseEntryForm";
-import { ArrowLeftIcon, ChevronDownIcon } from "../components/Icons";
+import { ArrowLeftIcon, CalendarIcon, ChartLineIcon, ChevronDownIcon } from "../components/Icons";
 import { useAuth } from "../contexts/AuthContext";
 import useMediaQuery from "../hooks/useMediaQuery";
+import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 
 // Recharts paints SVG attributes, so the glycemic tokens (--glyco-*) are mirrored here.
 const PIE_COLORS = ["#e35d73", "#1eab69", "#f4a93d"];
@@ -36,6 +37,9 @@ const TREND_COLOR = "#167cd9";
 const HYPO_COLOR = "#e35d73";
 const HYPER_COLOR = "#f4a93d";
 const HIGH_RISK_COLOR = "#8a5300";
+const LEGEND_TEXT_COLOR = "#17304a";
+// Below this many readings a smoothed curve would invent values between measurements.
+const SMOOTH_CURVE_MIN_READINGS = 6;
 
 function formatNumberBase(value, suffix = "", locale = "pt-BR") {
   if (value === null || value === undefined) {
@@ -82,10 +86,7 @@ function getClusterProfileLabel(indicator, t) {
   if (indicator?.cluster_profile_label) {
     return indicator.cluster_profile_label;
   }
-  if (indicator?.cluster_label !== null && indicator?.cluster_label !== undefined) {
-    return t("clusterProfile.group", { n: indicator.cluster_label });
-  }
-  return "-";
+  return t("common.dash");
 }
 
 function getClusterProfileDescription(indicator, t) {
@@ -170,18 +171,13 @@ function PendingAnalysisChip() {
   return <span className="react-badge react-badge--pending react-badge--compact">{t("patientDetail.dailyIndicators.badgePending")}</span>;
 }
 
-function ClusterProfileValue({ indicator, compact = false, showGroup = true }) {
+function ClusterProfileValue({ indicator, compact = false }) {
   const { t } = useTranslation();
   if (indicator?.analysis_pending) {
     return <PendingAnalysisChip />;
   }
   const profileLabel = getClusterProfileLabel(indicator, t);
   const profileDescription = getClusterProfileDescription(indicator, t);
-  const hasProfile = Boolean(indicator?.cluster_profile_code || indicator?.cluster_profile_label);
-  const groupLabel =
-    showGroup && hasProfile && indicator?.cluster_label !== null && indicator?.cluster_label !== undefined
-      ? t("clusterProfile.group", { n: indicator.cluster_label })
-      : null;
 
   return (
     <span className={`react-cluster-profile${compact ? " is-compact" : ""}`}>
@@ -189,7 +185,6 @@ function ClusterProfileValue({ indicator, compact = false, showGroup = true }) {
         <span className="react-cluster-profile__label">{profileLabel}</span>
         <InfoTooltip content={profileDescription} label={t("common.explain", { label: profileLabel })} />
       </span>
-      {groupLabel ? <small>{groupLabel}</small> : null}
     </span>
   );
 }
@@ -242,9 +237,13 @@ function AtypicalDaysTrigger({ label, value, helper, actionHint, onClick, button
 
 const DEFAULT_WINDOW_DAYS = 30;
 
-// Mirrors the backend default (reports._resolve_date_window): the last 30 days up to the latest available date.
+// Mirrors the backend default (reports._resolve_default_window): the last 30 days up to the latest available date,
+// or up to the latest analysed day when the newest days still await analysis (default_* report that window).
 function isDefaultDetailWindow(filters) {
   const { start_date: start, end_date: end, available_start_date: availableStart, available_end_date: availableEnd } = filters ?? {};
+  if (filters?.default_start_date && filters?.default_end_date) {
+    return start === filters.default_start_date && end === filters.default_end_date;
+  }
   if (!start || !end || !availableEnd || end !== availableEnd) return false;
   const windowStart = new Date(`${availableEnd}T00:00:00Z`);
   windowStart.setUTCDate(windowStart.getUTCDate() - (DEFAULT_WINDOW_DAYS - 1));
@@ -315,6 +314,7 @@ export default function PatientDetailPage() {
   const [viewMode, setViewMode] = useState("period");
   const [selectedDay, setSelectedDay] = useState("");
   const isCompactMobile = useMediaQuery("(max-width: 640px)");
+  const reducedMotion = usePrefersReducedMotion();
   const [periodFormOverride, setPeriodFormOverride] = useState(null);
   const [manualOpen, setManualOpen] = useState(() => location.hash === "#new-reading");
   const [entryFocusRequest, setEntryFocusRequest] = useState(0);
@@ -642,6 +642,25 @@ export default function PatientDetailPage() {
     }
   }
 
+  function showRecentReadings() {
+    const latestPending = data?.filters?.latest_pending_date;
+    if (!latestPending) return;
+    const windowStart = new Date(`${latestPending}T00:00:00Z`);
+    windowStart.setUTCDate(windowStart.getUTCDate() - (DEFAULT_WINDOW_DAYS - 1));
+    let startDate = windowStart.toISOString().slice(0, 10);
+    const availableStart = data?.filters?.available_start_date;
+    if (availableStart && startDate < availableStart) startDate = availableStart;
+    const next = new URLSearchParams(searchParams);
+    next.delete("dates");
+    next.set("start_date", startDate);
+    next.set("end_date", latestPending);
+    setPreservedRange(null);
+    lastResolvedRequestRef.current = "";
+    setSelectedDay("");
+    setViewMode("period");
+    setSearchParams(next);
+  }
+
   function showFullHistory() {
     const availableStart = data?.filters?.available_start_date;
     const availableEnd = data?.filters?.available_end_date;
@@ -758,9 +777,12 @@ export default function PatientDetailPage() {
   const hourlyAxisTicks = isCompactMobile
     ? HOURLY_TICKS.filter((hour) => hour % 3 === 0)
     : HOURLY_TICKS;
+  const isSparseDay = isDayMode && selectedDayEvents.length > 0 && selectedDayEvents.length < SMOOTH_CURVE_MIN_READINGS;
   const trendLegendItems = [
     {
-      label: isDayMode ? t("patientDetail.trend.legendDayCurve") : t("patientDetail.trend.legendDailyAvg"),
+      label: isDayMode
+        ? t("patientDetail.trend.legendDayCurveCount", { count: selectedDayEvents.length })
+        : t("patientDetail.trend.legendDailyAvg"),
       color: TREND_COLOR,
       dashed: false,
     },
@@ -798,6 +820,8 @@ export default function PatientDetailPage() {
   const coveringRange = requestedDates.length && preservedRange ? rangeCoveringDates(preservedRange, requestedDates) : null;
   const periodAdjustment = coveringRange?.adjusted ? coveringRange : null;
   const isDefaultWindow = isDefaultDetailWindow(filters);
+  const isAnalysedFallbackWindow = isDefaultWindow && Boolean(filters.window_fallback);
+  const pendingOutsideWindow = requestedDates.length ? 0 : filters.pending_outside_window ?? 0;
   const periodDays = filters.start_date && filters.end_date
     ? Math.round((Date.parse(`${filters.end_date}T00:00:00Z`) - Date.parse(`${filters.start_date}T00:00:00Z`)) / 86400000) + 1
     : 0;
@@ -820,7 +844,7 @@ export default function PatientDetailPage() {
     lang: locale
   });
   const metaParts = [
-    !isOwnPatientView && patient.source_file ? patient.source_file : null,
+    !isOwnPatientView && patient.source_file ? t("patientDetail.hero.sourceFile", { file: patient.source_file }) : null,
     t("patientDetail.hero.measurementsBadge", { count: summary.glucose_measurements })
   ].filter(Boolean);
   const atypicalLabel = t("patientDetail.stats.anomalyDays.label");
@@ -923,7 +947,7 @@ export default function PatientDetailPage() {
                 </p>
                 <div className="react-detail-row__profile">
                   <span>{t("patientDetail.dailyIndicators.profile")}</span>
-                  <ClusterProfileValue indicator={indicator} compact showGroup={false} />
+                  <ClusterProfileValue indicator={indicator} compact />
                 </div>
               </>
             )}
@@ -1001,9 +1025,13 @@ export default function PatientDetailPage() {
                   {t("patientDetail.periodBar.range", { start: formatDate(filters.start_date), end: formatDate(filters.end_date) })}
                 </h2>
                 <p>
-                  {isDefaultWindow
-                    ? t("patientDetail.hero.defaultWindow")
-                    : t("patientDetail.hero.customWindow", { count: periodDays })}
+                  {isAnalysedFallbackWindow
+                    ? t("patientDetail.hero.latestAnalysedWindow")
+                    : isDefaultWindow
+                      ? t("patientDetail.hero.defaultWindow")
+                      : isFullHistory
+                        ? t("patientDetail.hero.fullHistory")
+                        : t("patientDetail.hero.customWindow", { count: periodDays })}
                 </p>
               </>
             )}
@@ -1061,10 +1089,15 @@ export default function PatientDetailPage() {
                 type="submit"
                 className="react-button"
                 disabled={loading || !hasPendingFilterChange || hasInvalidRange}
+                aria-describedby={hasInvalidRange || !hasPendingFilterChange ? "period-form-hint" : undefined}
               >
                 {t("patientDetail.filter.apply")}
               </button>
-              {hasInvalidRange ? <small>{t("patientDetail.filter.invalidRange")}</small> : null}
+              {hasInvalidRange ? (
+                <small id="period-form-hint">{t("patientDetail.filter.invalidRange")}</small>
+              ) : !hasPendingFilterChange ? (
+                <small id="period-form-hint" className="react-action-hint">{t("patientDetail.filter.applyHint")}</small>
+              ) : null}
             </div>
           </form>
         ) : null}
@@ -1105,11 +1138,21 @@ export default function PatientDetailPage() {
             {t("patientDetail.hero.pendingAnalysisNote", { count: pendingAnalysisDays })}
           </p>
         ) : null}
+        {pendingOutsideWindow > 0 ? (
+          <p className="react-pending-note" role="note" data-testid="pending-outside-window">
+            <span>{t("patientDetail.hero.pendingOutsideNote", { count: pendingOutsideWindow })}</span>
+            {filters.latest_pending_date ? (
+              <button type="button" className="react-button react-button--text" onClick={showRecentReadings}>
+                {t("patientDetail.hero.viewRecentReadings")}
+              </button>
+            ) : null}
+          </p>
+        ) : null}
       </section>
 
       {showEmptyWindow ? (
         <section className="react-empty-window">
-          <StateBlock title={t("patientDetail.emptyWindow.title")} description={t("patientDetail.emptyWindow.description")}>
+          <StateBlock icon={<CalendarIcon />} title={t("patientDetail.emptyWindow.title")} description={t("patientDetail.emptyWindow.description")}>
             <div className="react-actions react-empty-window__actions">
               {canShowFullHistory ? (
                 <button type="button" className="react-button" onClick={showFullHistory}>
@@ -1215,6 +1258,7 @@ export default function PatientDetailPage() {
                     ? t("patientDetail.trend.bodyDay", { date: formatDate(selectedDay) })
                     : t("patientDetail.trend.bodyPeriod")}
                 </p>
+                {isSparseDay ? <p className="react-trend__note">{t("patientDetail.trend.sparseDayNote")}</p> : null}
               </div>
               {selectedDay ? (
                 <div className="react-segmented" role="group" aria-label={t("patientDetail.trend.viewModeLabel")}>
@@ -1253,6 +1297,7 @@ export default function PatientDetailPage() {
                       name={t("patientDetail.trend.seriesAverage")}
                       stroke={TREND_COLOR}
                       strokeWidth={3}
+                      isAnimationActive={!reducedMotion}
                       activeDot={{ r: 7, onClick: (_, __, event) => event?.stopPropagation?.() }}
                       dot={(props) => {
                         const { cx, cy, payload, index } = props;
@@ -1297,11 +1342,20 @@ export default function PatientDetailPage() {
                     <ReferenceLine y={70} stroke={HYPO_COLOR} strokeDasharray="5 5" />
                     <ReferenceLine y={180} stroke={HYPER_COLOR} strokeDasharray="5 5" />
                     <ReferenceLine y={250} stroke={HIGH_RISK_COLOR} strokeDasharray="5 5" />
-                    <Line type="monotone" dataKey="glucose_mg_dl" name={t("patientDetail.trend.seriesGlucose")} stroke={TREND_COLOR} strokeWidth={3} dot={{ r: 4 }} />
+                    <Line
+                      type={isSparseDay ? "linear" : "monotone"}
+                      dataKey="glucose_mg_dl"
+                      name={t("patientDetail.trend.seriesGlucose")}
+                      stroke={TREND_COLOR}
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                      isAnimationActive={!reducedMotion}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
                 <StateBlock
+                  icon={<ChartLineIcon />}
                   title={t("patientDetail.trend.insufficientData.title")}
                   description={t("patientDetail.trend.insufficientData.description")}
                 />
@@ -1356,9 +1410,14 @@ export default function PatientDetailPage() {
                   />
                   <YAxis allowDecimals={false} tick={axisTickStyle} width={isCompactMobile ? 24 : 32} />
                   <Tooltip formatter={(value) => t("patientDetail.extremeEvents.tooltipEvents", { count: value })} labelFormatter={(label) => `${String(label).padStart(2, "0")}h`} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
-                  <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: "14px" }} />
-                  <Bar dataKey="lowCount" name="< 70 mg/dL" fill={HYPO_COLOR} radius={[8, 8, 0, 0]} />
-                  <Bar dataKey="highCount" name="> 250 mg/dL" fill={HIGH_RISK_COLOR} radius={[8, 8, 0, 0]} />
+                  <Legend
+                    verticalAlign="top"
+                    height={32}
+                    wrapperStyle={{ fontSize: "14px" }}
+                    formatter={(value) => <span style={{ color: LEGEND_TEXT_COLOR }}>{value}</span>}
+                  />
+                  <Bar dataKey="lowCount" name="< 70 mg/dL" fill={HYPO_COLOR} radius={[8, 8, 0, 0]} isAnimationActive={!reducedMotion} />
+                  <Bar dataKey="highCount" name="> 250 mg/dL" fill={HIGH_RISK_COLOR} radius={[8, 8, 0, 0]} isAnimationActive={!reducedMotion} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1405,10 +1464,10 @@ export default function PatientDetailPage() {
                         onClick={() => handleSelectDay(indicator.date)}
                       >
                         <td>{formatDate(indicator.date)}</td>
-                        <td className="is-num">{indicator.avg_glucose != null ? `${formatNumber(indicator.avg_glucose)} mg/dL` : "-"}</td>
-                        <td className="is-num">{formatNumber(indicator.pct_hypo, "%")}</td>
-                        <td className="is-num">{formatNumber(indicator.pct_in_range, "%")}</td>
-                        <td className="is-num">{formatNumber(indicator.pct_hyper, "%")}</td>
+                        <td className="is-num">{!indicator.analysis_pending && indicator.avg_glucose != null ? `${formatNumber(indicator.avg_glucose)} mg/dL` : t("common.dash")}</td>
+                        <td className="is-num">{indicator.analysis_pending ? t("common.dash") : formatNumber(indicator.pct_hypo, "%")}</td>
+                        <td className="is-num">{indicator.analysis_pending ? t("common.dash") : formatNumber(indicator.pct_in_range, "%")}</td>
+                        <td className="is-num">{indicator.analysis_pending ? t("common.dash") : formatNumber(indicator.pct_hyper, "%")}</td>
                         <td>
                           {!indicator.analysis_pending && indicator.anomaly_flag ? (
                             <span className="react-badge react-badge--atypical react-badge--compact">{t("patientDetail.dailyIndicators.badgeAtypical")}</span>
@@ -1418,7 +1477,7 @@ export default function PatientDetailPage() {
                         </td>
                         <td>
                           <div className="react-table-meta">
-                            <ClusterProfileValue indicator={indicator} showGroup={!isOwnPatientView} />
+                            <ClusterProfileValue indicator={indicator} />
                           </div>
                         </td>
                       </tr>

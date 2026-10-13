@@ -143,13 +143,13 @@ export default function RegisterPage() {
                 checked={privacyAccepted}
                 onChange={e => setPrivacyAccepted(e.target.checked)}
                 aria-describedby="privacy-notice-text"
-                required
+                aria-required="true"
               />
               <span>{t("auth.privacyAccept")}</span>
             </label>
           </div>
 
-          <button type="submit" className="react-button react-button--block" disabled={!privacyAccepted || submitting}>
+          <button type="submit" className="react-button react-button--block" disabled={submitting} aria-busy={submitting}>
             {t("auth.submitRegister")}
           </button>
         </form>

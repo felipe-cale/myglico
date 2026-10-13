@@ -49,7 +49,7 @@
     "group": "Grupo {{n}}",
     "hipo_frequente": {
       "label": "Perfil con hipoglucemia frecuente",
-      "description": "Días con más lecturas por debajo de 70 mg/dL."
+      "description": "Días con más lecturas por debajo de 70 mg/dL. Este perfil tiene precedencia sobre los demás."
     },
     "hiper_predominante": {
       "label": "Perfil hiperglucémico predominante",
@@ -215,6 +215,10 @@
           {
             "title": "Perfil Hipoglucémico",
             "body": "Se aplica cuando el tiempo en bajo es mayor o igual al 10% en el período. El tiempo en bajo considera lecturas por debajo de 70 mg/dL."
+          },
+          {
+            "title": "Cuando se aplican ambos umbrales",
+            "body": "Si el paciente alcanza a la vez el umbral hiperglucémico y el hipoglucémico, la lista muestra el Perfil Hiperglucémico. Revisa el tiempo por debajo de 70 mg/dL en el panel del paciente."
           }
         ]
       },
@@ -238,7 +242,7 @@
         "sections": [
           {
             "title": "Umbral de clasificación",
-            "body": "El perfil se aplica cuando la media glucémica del período es mayor o igual a 185 mg/dL o cuando el tiempo en alto es mayor o igual al 65%."
+            "body": "El perfil se aplica cuando la media glucémica del período es mayor o igual a 185 mg/dL o cuando el tiempo en alto es mayor o igual al 65%. Este perfil tiene precedencia sobre el Perfil Hipoglucémico."
           },
           {
             "title": "Qué cuenta como alto",
@@ -252,7 +256,7 @@
         "sections": [
           {
             "title": "Umbral de clasificación",
-            "body": "El perfil se aplica cuando el tiempo en bajo es mayor o igual al 10% en el período."
+            "body": "El perfil se aplica cuando el tiempo en bajo es mayor o igual al 10% en el período. Si también se cumple el criterio hiperglucémico, prevalece el Perfil Hiperglucémico."
           },
           {
             "title": "Qué cuenta como bajo",
@@ -318,7 +322,13 @@
       "viewAllHistory": "Ver todo el historial",
       "pendingAnalysisNote_one": "{{count}} día con lecturas recientes aún espera el análisis. Sus indicadores aparecen después del próximo procesamiento.",
       "pendingAnalysisNote_other": "{{count}} días con lecturas recientes aún esperan el análisis. Sus indicadores aparecen después del próximo procesamiento.",
-      "newReading": "Registrar lectura"
+      "newReading": "Registrar lectura",
+      "fullHistory": "Todo el historial disponible.",
+      "latestAnalysedWindow": "Ventana predeterminada que termina en el día analizado más reciente.",
+      "pendingOutsideNote_one": "{{count}} día más reciente espera el análisis y queda fuera de este período.",
+      "pendingOutsideNote_other": "{{count}} días más recientes esperan el análisis y quedan fuera de este período.",
+      "viewRecentReadings": "Ver lecturas recientes",
+      "sourceFile": "Fuente: UCI {{file}}"
     },
     "filter": {
       "eyebrow": "Período",
@@ -329,7 +339,8 @@
       "apply": "Filtrar",
       "invalidRange": "La fecha inicial no puede ser posterior a la fecha final.",
       "periodAdjusted": "Período ajustado para incluir el/los día(s) seleccionado(s) {{dates}}: de {{originalStart}} – {{originalEnd}} a {{start}} – {{end}}. Al limpiar la selección de días, vuelve el período original.",
-      "toggle": "Cambiar período"
+      "toggle": "Cambiar período",
+      "applyHint": "Cambia una de las fechas para filtrar."
     },
     "distribution": {
       "eyebrow": "Distribución",
@@ -370,7 +381,10 @@
       },
       "dayStripAriaLabel": "Días disponibles en el período",
       "chartLegendAriaLabel": "Leyenda del gráfico glucémico",
-      "viewModeLabel": "Vista del gráfico"
+      "viewModeLabel": "Vista del gráfico",
+      "legendDayCurveCount_one": "Curva glucémica · {{count}} lectura",
+      "legendDayCurveCount_other": "Curva glucémica · {{count}} lecturas",
+      "sparseDayNote": "Pocas lecturas en este día: los puntos se unen con rectas y no hay mediciones entre ellos."
     },
     "sidebar": {
       "eyebrowDay": "Foco diario",
@@ -709,7 +723,10 @@
     "awaitingYou": "Esperando tu respuesta",
     "promptEyebrow": "Día atípico",
     "promptTitle": "¿Quieres conversar sobre esto?",
-    "popupEmptyHint": "Ajusta el período o consulta todo el historial."
+    "popupEmptyHint": "Ajusta el período o consulta todo el historial.",
+    "popupApplyHint": "Selecciona al menos un día para aplicar el filtro.",
+    "sendEmptyHint": "Escribe un mensaje para enviar.",
+    "closeHint": "Ciérrala cuando la duda esté resuelta. Después, nadie puede enviar mensajes nuevos."
   },
   "notifications": {
     "title": "Notificaciones",

@@ -35,3 +35,39 @@ export function HelpIcon({ size = 18 }) {
     </Svg>
   );
 }
+
+export function CalendarIcon({ size = 22 }) {
+  return (
+    <Svg size={size}>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M8 3v4M16 3v4M4 10h16" />
+    </Svg>
+  );
+}
+
+export function ChartLineIcon({ size = 22 }) {
+  return <Svg size={size}><path d="M4 4v16h16" /><path d="M7 15l4-4 3 3 5-6" /></Svg>;
+}
+
+export function InboxIcon({ size = 22 }) {
+  return (
+    <Svg size={size}>
+      <path d="M4 13l2.5-7h11L20 13v6H4z" />
+      <path d="M4 13h4.5l1 2h5l1-2H20" />
+    </Svg>
+  );
+}
+
+export function ClockIcon({ size = 22 }) {
+  return <Svg size={size}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Svg>;
+}
+
+export function AlertIcon({ size = 22 }) {
+  return (
+    <Svg size={size}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5v5" />
+      <path d="M12 16.2h.01" />
+    </Svg>
+  );
+}

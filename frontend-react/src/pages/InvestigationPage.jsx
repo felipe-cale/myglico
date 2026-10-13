@@ -5,6 +5,8 @@ import InvestigationOrigin from "../components/InvestigationOrigin";
 import ConfirmDialog from "../components/ConfirmDialog";
 import StateBlock from "../components/StateBlock";
 import Pagination from "../components/Pagination";
+import { ArrowLeftIcon } from "../components/Icons";
+import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import { fetchInvestigationDetail, sendInvestigationMessage, closeInvestigation, readInvestigation } from "../api";
 
 function formatDateTime(value, locale) {
@@ -14,17 +16,10 @@ function formatDateTime(value, locale) {
   return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(parsed);
 }
 
-function BackIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
-      <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export default function InvestigationPage() {
   const { id } = useParams();
   const { t, i18n } = useTranslation();
+  const reducedMotion = usePrefersReducedMotion();
   const [inv, setInv] = useState(null);
   const [messages, setMessages] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
@@ -123,10 +118,10 @@ export default function InvestigationPage() {
     scrollAfterSendRef.current = false;
     const frame = requestAnimationFrame(() => {
       const list = messageListRef.current;
-      if (list) list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+      if (list) list.scrollTo({ top: list.scrollHeight, behavior: reducedMotion ? "auto" : "smooth" });
     });
     return () => cancelAnimationFrame(frame);
-  }, [messages, pagination]);
+  }, [messages, pagination, reducedMotion]);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -183,19 +178,9 @@ export default function InvestigationPage() {
       <section className="react-panel react-conversation__header">
         <div className="react-conversation__topline">
           <Link to="/dashboard#investigations" className="react-back-link">
-            <BackIcon />
+            <ArrowLeftIcon />
             {t("common.back")}
           </Link>
-          {inv.status === "open" ? (
-            <button
-              type="button"
-              disabled={sending}
-              onClick={() => { setActionError(""); setClosing(true); }}
-              className="react-button react-button--danger react-button--compact"
-            >
-              {t("cscw.close")}
-            </button>
-          ) : null}
         </div>
         <div className="react-panel__header-copy">
           <p className="react-eyebrow">{t(isPatient ? "cscw.conversationEyebrowPatient" : "cscw.conversationEyebrowDoctor")}</p>
@@ -274,10 +259,35 @@ export default function InvestigationPage() {
               />
             </label>
             <div className="react-composer__actions">
-              <small className="react-composer__hint">{t("cscw.composerHint")}</small>
-              <button type="submit" disabled={sending || !newMsg.trim()} aria-busy={sending} className="react-button">{t("cscw.send")}</button>
+              <small id="composer-hint" className={`react-composer__hint${newMsg.trim() ? "" : " is-requirement"}`}>
+                {newMsg.trim() ? t("cscw.composerHint") : t("cscw.sendEmptyHint")}
+              </small>
+              <button
+                type="submit"
+                disabled={sending || !newMsg.trim()}
+                aria-busy={sending}
+                aria-describedby="composer-hint"
+                className="react-button"
+              >
+                {t("cscw.send")}
+              </button>
             </div>
           </form>
+        )}
+
+        {inv.status === "open" && (
+          <div className="react-conversation__close">
+            <p id="conversation-close-hint">{t("cscw.closeHint")}</p>
+            <button
+              type="button"
+              disabled={sending}
+              onClick={() => { setActionError(""); setClosing(true); }}
+              aria-describedby="conversation-close-hint"
+              className="react-button react-button--text react-button--danger-text"
+            >
+              {t("cscw.close")}
+            </button>
+          </div>
         )}
       </section>
 

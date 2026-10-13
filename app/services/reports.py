@@ -350,6 +350,49 @@ def _resolve_date_window(
     return resolved_start, resolved_end
 
 
+def _stale_metric_dates(db: Session, patient_id: str) -> set[date]:
+    """Days whose readings changed after the latest analysis (still pending)."""
+    return set(db.scalars(
+        select(DailyMetricsCurrent.metric_date).where(
+            DailyMetricsCurrent.patient_id == patient_id,
+            DailyMetricsCurrent.freshness_status != "fresh",
+        )
+    ))
+
+
+def _resolve_default_window(
+    db: Session,
+    patient_id: str,
+    latest_run: AnalysisRun | None,
+    available_start: date | None,
+    available_end: date | None,
+    stale_dates: set[date],
+) -> tuple[date | None, date | None, bool]:
+    """Default window, anchored on analysed data when the newest days are pending.
+
+    With no explicit dates the window ends at the newest available day. When
+    that 30-day window holds only days still waiting for analysis (e.g. a
+    manual reading after an older analysed history), it would open empty, so
+    it ends at the latest analysed day instead (third value ``True``).
+    """
+    resolved_start, resolved_end = _resolve_date_window(available_start, available_end, None, None)
+    if latest_run is None or resolved_start is None or resolved_end is None:
+        return resolved_start, resolved_end, False
+    analysed_dates = [
+        day for day in db.scalars(
+            select(DailyIndicator.indicator_date).where(
+                DailyIndicator.analysis_run_id == latest_run.id,
+                DailyIndicator.patient_id == patient_id,
+            )
+        )
+        if day not in stale_dates
+    ]
+    if not analysed_dates or any(resolved_start <= day <= resolved_end for day in analysed_dates):
+        return resolved_start, resolved_end, False
+    fallback_start, fallback_end = _resolve_date_window(available_start, available_end, None, max(analysed_dates))
+    return fallback_start, fallback_end, True
+
+
 def _mean_or_none(values: list[float | None]) -> float | None:
     clean_values = [value for value in values if value is not None]
     return mean(clean_values) if clean_values else None
@@ -562,12 +605,21 @@ def get_patient_detail_context(
     record_end = patient_local_date(record_bounds[1], patient.timezone) if record_bounds[1] else None
     available_start = metric_bounds[0] or record_start
     available_end = metric_bounds[1] or record_end
+    stale_dates = _stale_metric_dates(db, patient_id)
+    default_start, default_end, window_fallback = _resolve_default_window(
+        db, patient_id, latest_run, available_start, available_end, stale_dates,
+    )
     if exact_dates is not None:
         # Exact selection is authoritative, including dates outside the default
         # or explicitly requested interval.
         resolved_start, resolved_end = None, None
+    elif start_date is None and end_date is None:
+        resolved_start, resolved_end = default_start, default_end
     else:
         resolved_start, resolved_end = _resolve_date_window(available_start, available_end, start_date, end_date)
+    # Pending days newer than the window are reported apart, so a window that
+    # ends before them (e.g. the analysed fallback) still says they exist.
+    pending_after = sorted(day for day in stale_dates if resolved_end and day > resolved_end)
 
     indicator_query = None
     if latest_run:
@@ -677,6 +729,11 @@ def get_patient_detail_context(
             "available_end_date": available_end.isoformat() if available_end else None,
             "start_date": resolved_start.isoformat() if resolved_start else None,
             "end_date": resolved_end.isoformat() if resolved_end else None,
+            "default_start_date": default_start.isoformat() if default_start else None,
+            "default_end_date": default_end.isoformat() if default_end else None,
+            "window_fallback": window_fallback,
+            "pending_outside_window": len(pending_after),
+            "latest_pending_date": pending_after[-1].isoformat() if pending_after else None,
         },
         "latest_batch_links": latest_batch_links,
         "latest_run_links": latest_run_links,
@@ -729,7 +786,12 @@ def get_patient_report_context(
     record_end = patient_local_date(record_bounds[1], patient.timezone) if record_bounds[1] else None
     available_start = metric_bounds[0] or record_start
     available_end = metric_bounds[1] or record_end
-    resolved_start, resolved_end = _resolve_date_window(available_start, available_end, start_date, end_date)
+    if start_date is None and end_date is None:
+        resolved_start, resolved_end, _ = _resolve_default_window(
+            db, patient_id, latest_run, available_start, available_end, _stale_metric_dates(db, patient_id),
+        )
+    else:
+        resolved_start, resolved_end = _resolve_date_window(available_start, available_end, start_date, end_date)
 
     indicator_query = None
     if latest_run:

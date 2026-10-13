@@ -6,6 +6,7 @@ import StateBlock from "./StateBlock";
 import ConfirmDialog from "./ConfirmDialog";
 import Pagination from "./Pagination";
 import { ChevronDownIcon } from "./Icons";
+import { preferredScrollBehavior } from "../hooks/usePrefersReducedMotion";
 
 const STATUS_ORDER = { active: 0, pending: 1, revoked: 2, rejected: 3, cancelled: 4 };
 
@@ -104,7 +105,7 @@ export default function DoctorLinksManager() {
     if (linksStatus !== "ready" || !location.hash.startsWith("#doctor-link-")) return;
     const targetId = decodeURIComponent(location.hash.slice("#doctor-link-".length));
     if (document.getElementById(`doctor-link-${targetId}`)) {
-      requestAnimationFrame(() => document.getElementById(`doctor-link-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+      requestAnimationFrame(() => document.getElementById(`doctor-link-${targetId}`)?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "center" }));
       return;
     }
     if (targetLookupRef.current === targetId) return;
@@ -337,7 +338,7 @@ export function PendingLinksPanel({ onChange }) {
     if (status !== "ready" || !location.hash.startsWith("#pending-link-")) return;
     const targetId = decodeURIComponent(location.hash.slice("#pending-link-".length));
     if (document.getElementById(`pending-link-${targetId}`)) {
-      requestAnimationFrame(() => document.getElementById(`pending-link-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+      requestAnimationFrame(() => document.getElementById(`pending-link-${targetId}`)?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "center" }));
       return;
     }
     if (targetLookupRef.current === targetId) return;

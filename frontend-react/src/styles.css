@@ -84,6 +84,8 @@
   --state-selected-bg: rgba(22, 124, 217, 0.1);
   --state-selected-border: rgba(22, 124, 217, 0.55);
   --state-disabled-bg: rgba(82, 100, 122, 0.16);
+  --state-error-bg: rgba(227, 93, 115, 0.12);
+  --state-info-bg: rgba(39, 183, 231, 0.14);
 }
 
 *,
@@ -674,7 +676,7 @@ small {
 }
 
 .react-badge--blue {
-  background: rgba(39, 183, 231, 0.14);
+  background: var(--state-info-bg);
   color: var(--react-blue-deep);
 }
 
@@ -1646,18 +1648,23 @@ small {
 }
 
 .react-state__icon {
-  width: 2.8rem;
-  height: 2.8rem;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 18px;
-  background: linear-gradient(145deg, rgba(22, 124, 217, 0.18), rgba(30, 171, 105, 0.18));
+  background: var(--state-selected-bg);
+  color: var(--react-blue-deep);
 }
 
 .react-state--danger .react-state__icon {
-  background: linear-gradient(145deg, rgba(227, 93, 115, 0.2), rgba(244, 169, 61, 0.16));
+  background: var(--state-error-bg);
+  color: var(--react-rose-text);
 }
 
 .react-state--info .react-state__icon {
-  background: linear-gradient(145deg, rgba(39, 183, 231, 0.2), rgba(22, 124, 217, 0.14));
+  background: var(--state-info-bg);
+  color: var(--react-blue-deep);
 }
 
 .react-state h3 {
@@ -4123,3 +4130,114 @@ small {
   }
 }
 
+
+/* Touch targets: the 24px info trigger keeps its look with a 44px hit area. */
+.react-info-tooltip__trigger {
+  position: relative;
+}
+
+.react-info-tooltip__trigger::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.react-pagination__item {
+  min-width: 2.75rem;
+}
+
+/* Pending days left outside the resolved window, with the way to view them. */
+.react-pending-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+}
+
+.react-pending-note span {
+  flex: 1 1 24ch;
+}
+
+.react-pending-note .react-button--text {
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) 0;
+}
+
+.react-trend__note {
+  margin: var(--space-1) 0 0;
+  color: var(--react-muted);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+}
+
+/* Disabled primary actions say what they are waiting for. */
+.react-action-hint {
+  color: var(--react-muted);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+}
+
+.react-filter-actions small.react-action-hint {
+  color: var(--react-muted);
+  font-weight: 400;
+}
+
+/* Closing a conversation sits at the end of the panel, apart from the composer. */
+.react-conversation__close {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--react-border);
+}
+
+.react-conversation__close p {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--react-muted);
+  font-size: var(--type-body-sm);
+  line-height: var(--type-body-sm-lh);
+}
+
+.react-conversation__close .react-button--text {
+  margin-left: calc(-1 * var(--space-3));
+}
+
+@media (max-width: 640px) {
+  .react-composer__hint.is-requirement {
+    display: block;
+    flex: 1 1 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
+  .react-button:not(:disabled):hover,
+  .react-button:focus-visible {
+    transform: none;
+  }
+}
+
+.react-dialog__actions .react-action-hint {
+  flex: 1 1 100%;
+  text-align: right;
+}

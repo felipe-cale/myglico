@@ -49,7 +49,7 @@
     "group": "Group {{n}}",
     "hipo_frequente": {
       "label": "Frequent hypoglycemia profile",
-      "description": "Days with more readings below 70 mg/dL."
+      "description": "Days with more readings below 70 mg/dL. This profile takes precedence over the others."
     },
     "hiper_predominante": {
       "label": "Hyperglycemia-predominant profile",
@@ -215,6 +215,10 @@
           {
             "title": "Hypoglycemic Profile",
             "body": "Applied when time in low is 10% or higher in the period. Time in low considers readings below 70 mg/dL."
+          },
+          {
+            "title": "When both thresholds apply",
+            "body": "If the patient reaches both the hyperglycemic and the hypoglycemic thresholds, the list shows the Hyperglycemic Profile. Check the time below 70 mg/dL on the patient panel."
           }
         ]
       },
@@ -238,7 +242,7 @@
         "sections": [
           {
             "title": "Classification threshold",
-            "body": "The profile is applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher."
+            "body": "The profile is applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher. This profile takes precedence over the Hypoglycemic Profile."
           },
           {
             "title": "What counts as high",
@@ -252,7 +256,7 @@
         "sections": [
           {
             "title": "Classification threshold",
-            "body": "The profile is applied when time in low is 10% or higher in the period."
+            "body": "The profile is applied when time in low is 10% or higher in the period. If the hyperglycemic criterion is also met, the Hyperglycemic Profile prevails."
           },
           {
             "title": "What counts as low",
@@ -318,7 +322,13 @@
       "viewAllHistory": "See full history",
       "pendingAnalysisNote_one": "{{count}} day with recent readings is still awaiting analysis. Its indicators show up after the next processing run.",
       "pendingAnalysisNote_other": "{{count}} days with recent readings are still awaiting analysis. Their indicators show up after the next processing run.",
-      "newReading": "Log a reading"
+      "newReading": "Log a reading",
+      "fullHistory": "Full available history.",
+      "latestAnalysedWindow": "Default window ending on the most recent analysed day.",
+      "pendingOutsideNote_one": "{{count}} more recent day is awaiting analysis and falls outside this period.",
+      "pendingOutsideNote_other": "{{count}} more recent days are awaiting analysis and fall outside this period.",
+      "viewRecentReadings": "View recent readings",
+      "sourceFile": "Source: UCI {{file}}"
     },
     "filter": {
       "eyebrow": "Period",
@@ -329,7 +339,8 @@
       "apply": "Filter",
       "invalidRange": "The start date cannot be later than the end date.",
       "periodAdjusted": "Period adjusted to include the selected day(s) {{dates}}: from {{originalStart}} – {{originalEnd}} to {{start}} – {{end}}. Clearing the day selection restores the original period.",
-      "toggle": "Change period"
+      "toggle": "Change period",
+      "applyHint": "Change one of the dates to filter."
     },
     "distribution": {
       "eyebrow": "Distribution",
@@ -370,7 +381,10 @@
       },
       "dayStripAriaLabel": "Available days in the period",
       "chartLegendAriaLabel": "Glucose chart legend",
-      "viewModeLabel": "Chart view"
+      "viewModeLabel": "Chart view",
+      "legendDayCurveCount_one": "Glucose curve · {{count}} reading",
+      "legendDayCurveCount_other": "Glucose curve · {{count}} readings",
+      "sparseDayNote": "Few readings on this day: the points are joined by straight lines and there are no measurements between them."
     },
     "sidebar": {
       "eyebrowDay": "Daily focus",
@@ -709,7 +723,10 @@
     "awaitingYou": "Awaiting your reply",
     "promptEyebrow": "Atypical day",
     "promptTitle": "Want to talk about it?",
-    "popupEmptyHint": "Adjust the period or see the whole history."
+    "popupEmptyHint": "Adjust the period or see the whole history.",
+    "popupApplyHint": "Select at least one day to apply the filter.",
+    "sendEmptyHint": "Write a message to send.",
+    "closeHint": "Close it once the question is resolved. After that, nobody can send new messages."
   },
   "notifications": {
     "title": "Notifications",

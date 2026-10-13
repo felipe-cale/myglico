@@ -96,3 +96,20 @@ Contas com os dois papéis não são testadas: por decisão do produto, cada con
 
 Junto com a suíte E2E (`frontend-react/e2e/`), os **68 critérios** da
 `MATRIZ-ACEITE.md` estão referenciados.
+
+## Rodar contra MySQL 8
+
+O conftest só recria o schema no SQLite. Para MySQL, use um banco descartável,
+migre-o antes e mantenha as **mesmas chaves** na migração e no pytest (dados
+cifrados com outras chaves geram `cryptography.exceptions.InvalidTag`):
+
+```bash
+export MYGLICO_ENCRYPTION_KEY_V1=$(python -c "import secrets;print(secrets.token_hex(32))")
+export MYGLICO_LOOKUP_HMAC_KEY=$(python -c "import secrets;print(secrets.token_hex(32))")
+URL="mysql+pymysql://root:<senha>@127.0.0.1:3307/myglico_e2e?charset=utf8mb4"
+# recrie o banco descartável vazio antes (DROP/CREATE DATABASE myglico_e2e)
+MYGLICO_DATABASE_URL="$URL" python -m alembic upgrade head
+MYGLICO_INTEGRATION_DATABASE_URL="$URL" python -m pytest tests -q
+```
+
+Nunca aponte essa variável para um banco com dados que importam.

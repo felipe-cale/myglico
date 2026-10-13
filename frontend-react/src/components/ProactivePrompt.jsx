@@ -5,6 +5,7 @@ import { fetchAtypicalDayPrompts, deferAtypicalDayPrompt } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import Pagination from "./Pagination";
 import { ChevronDownIcon } from "./Icons";
+import { preferredScrollBehavior } from "../hooks/usePrefersReducedMotion";
 
 function formatPromptDate(value, locale) {
   if (!value) return "";
@@ -62,7 +63,7 @@ export default function ProactivePrompt() {
       setExpandedPrompt(prompt.batch_id);
       return;
     }
-    requestAnimationFrame(() => document.getElementById(`atypical-day-${indicatorId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    requestAnimationFrame(() => document.getElementById(`atypical-day-${indicatorId}`)?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "center" }));
   }, [location.hash, prompts, expandedPrompt, session?.patient?.id]);
 
   const handleDefer = async (prompt) => {

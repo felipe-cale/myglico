@@ -254,10 +254,10 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
                         </span>
                       </label>
                       <div className="react-atypical-item__actions">
-                        <button type="button" className="react-button react-button--ghost" onClick={() => handleViewInDetail(d.date)}>
+                        <button type="button" className="react-button react-button--text" onClick={() => handleViewInDetail(d.date)}>
                           {t("cscw.viewInDetail")}
                         </button>
-                        <button type="button" className="react-button" onClick={() => handleOpenInv(d.indicator_id)}>
+                        <button type="button" className="react-button react-button--ghost" onClick={() => handleOpenInv(d.indicator_id)}>
                           {t(isPatient ? "cscw.popupAskPatient" : "cscw.popupAskDoctor")}
                         </button>
                       </div>
@@ -276,12 +276,21 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
               )}
 
               <div className="react-actions react-dialog__actions">
-                <button type="button" onClick={handleApply} disabled={selectedDates.size === 0} className="react-button">
+                <button
+                  type="button"
+                  onClick={handleApply}
+                  disabled={selectedDates.size === 0}
+                  aria-describedby={selectedDates.size === 0 ? "atypical-apply-hint" : undefined}
+                  className="react-button"
+                >
                   {t("cscw.popupApply")}
                 </button>
                 <button type="button" onClick={handleClear} className="react-button react-button--ghost">
                   {t("cscw.popupClearDays")}
                 </button>
+                {selectedDates.size === 0 ? (
+                  <small id="atypical-apply-hint" className="react-action-hint">{t("cscw.popupApplyHint")}</small>
+                ) : null}
               </div>
             </div>
           </div>

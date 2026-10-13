@@ -7,6 +7,7 @@ import InvestigationOrigin from "./InvestigationOrigin";
 import StateBlock from "./StateBlock";
 import Pagination from "./Pagination";
 import { ArrowRightIcon } from "./Icons";
+import { preferredScrollBehavior } from "../hooks/usePrefersReducedMotion";
 
 function formatDate(value, locale) {
   if (!value) return "";
@@ -136,7 +137,7 @@ export default function InvestigationsList() {
 
   useEffect(() => {
     if (location.hash === "#investigations") {
-      sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      sectionRef.current?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" });
     }
   }, [location.hash, listStatus]);
 
