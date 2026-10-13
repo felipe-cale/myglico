@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { fetchDashboardSummary, fetchPatients } from "../api";
@@ -10,8 +10,13 @@ import InvestigationsList from "../components/InvestigationsList";
 import ProactivePrompt from "../components/ProactivePrompt";
 import CloseIcon from "../components/CloseIcon";
 import useFocusTrap from "../hooks/useFocusTrap";
+import useBodyScrollLock from "../hooks/useBodyScrollLock";
 import useMediaQuery from "../hooks/useMediaQuery";
+import useDocumentTitle from "../hooks/useDocumentTitle";
+import { preferredScrollBehavior } from "../hooks/usePrefersReducedMotion";
 import { ArrowRightIcon, CheckIcon, CopyIcon, HelpIcon } from "../components/Icons";
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 function formatNumber(value, suffix = "", locale = "pt-BR") {
   if (value === null || value === undefined) {
@@ -59,6 +64,7 @@ function FilterHelpDialog({ signal, open, onClose }) {
   }, [onClose, open]);
 
   useFocusTrap(open, dialogRef, { initialFocusRef: closeRef, onEscape: onClose });
+  useBodyScrollLock(open);
 
   if (!open) {
     return null;
@@ -107,6 +113,12 @@ function DoctorHome() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [copiedPatientId, setCopiedPatientId] = useState("");
   const [reloadToken, setReloadToken] = useState(0);
+  const [refreshingInline, setRefreshingInline] = useState(false);
+  const patientsSectionRef = useRef(null);
+  // Typing refreshes the list in the background; paging and filters keep the blocking overlay.
+  const typedQueryRef = useRef(null);
+  const backgroundFetchRef = useRef(false);
+  const scrollAfterLoadRef = useRef(false);
 
   const currentPage = Number(searchParams.get("page") || "1");
   const requestedPageSize = Number(searchParams.get("page_size") || "10");
@@ -114,18 +126,21 @@ function DoctorHome() {
   const currentQuery = searchParams.get("q") || "";
   const currentSignal = searchParams.get("signal") || "all";
   const [searchValue, setSearchValue] = useState(currentQuery);
-  const deferredSearch = useDeferredValue(searchValue);
 
   useEffect(() => {
+    // A query this field just pushed must not overwrite what the person kept typing.
+    if (typedQueryRef.current === currentQuery) return;
     setSearchValue(currentQuery);
   }, [currentQuery]);
 
   useEffect(() => {
-    const nextQuery = deferredSearch.trim();
+    const nextQuery = searchValue.trim();
     if (nextQuery === currentQuery) {
-      return;
+      return undefined;
     }
-    startTransition(() => {
+    const timer = setTimeout(() => {
+      typedQueryRef.current = nextQuery;
+      backgroundFetchRef.current = true;
       const next = new URLSearchParams(searchParams);
       if (nextQuery) {
         next.set("q", nextQuery);
@@ -134,14 +149,18 @@ function DoctorHome() {
       }
       next.set("page", "1");
       setSearchParams(next);
-    });
-  }, [currentQuery, deferredSearch, searchParams, setSearchParams]);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [currentQuery, searchValue, searchParams, setSearchParams]);
 
   useEffect(() => {
     let active = true;
+    const background = backgroundFetchRef.current;
+    backgroundFetchRef.current = false;
     setLoadingPatients(true);
+    setRefreshingInline(background);
     setPatientsError(null);
-    fetchPatients({ page: currentPage, pageSize: currentPageSize, query: currentQuery, signal: currentSignal })
+    fetchPatients({ page: currentPage, pageSize: currentPageSize, query: currentQuery, signal: currentSignal }, { background })
       .then((data) => {
         if (active) {
           setPatients(data);
@@ -155,6 +174,11 @@ function DoctorHome() {
       .finally(() => {
         if (active) {
           setLoadingPatients(false);
+          setRefreshingInline(false);
+          if (scrollAfterLoadRef.current) {
+            scrollAfterLoadRef.current = false;
+            requestAnimationFrame(() => patientsSectionRef.current?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" }));
+          }
         }
       });
     return () => {
@@ -165,6 +189,7 @@ function DoctorHome() {
   function handlePageChange(page) {
     const next = new URLSearchParams(searchParams);
     next.set("page", String(page));
+    scrollAfterLoadRef.current = true;
     setSearchParams(next);
   }
 
@@ -172,6 +197,7 @@ function DoctorHome() {
     const next = new URLSearchParams(searchParams);
     next.set("page_size", String(pageSize));
     next.set("page", "1");
+    scrollAfterLoadRef.current = true;
     setSearchParams(next);
   }
 
@@ -263,7 +289,7 @@ function DoctorHome() {
           <InvestigationsList />
         </div>
 
-        <section className="react-panel react-doctor-home__patients" aria-labelledby="patients-title">
+        <section ref={patientsSectionRef} className="react-panel react-doctor-home__patients" aria-labelledby="patients-title">
           <div className="react-panel__header react-panel__header--patients">
             <div className="react-panel__header-copy">
               <p className="react-eyebrow">{t("overview.patients.eyebrow")}</p>
@@ -289,7 +315,7 @@ function DoctorHome() {
                 <HelpIcon />
                 <span>{t("overview.patients.helpButtonLabel")}</span>
               </button>
-              <div className="react-search react-search--patients">
+              <div className={`react-search react-search--patients${refreshingInline && patients ? " is-refreshing" : ""}`}>
                 <input
                   type="search"
                   value={searchValue}
@@ -297,6 +323,9 @@ function DoctorHome() {
                   placeholder={t("overview.patients.searchPlaceholder")}
                   aria-label={t("overview.patients.searchAriaLabel")}
                 />
+                <p className="react-list-refresh" aria-live="polite">
+                  {refreshingInline && patients ? t("common.updating") : ""}
+                </p>
               </div>
             </div>
           </div>
@@ -308,9 +337,15 @@ function DoctorHome() {
           {loadingPatients && !patients ? (
             <StateBlock title={t("overview.patients.loading.title")} description={t("overview.patients.loading.description")} tone="info" />
           ) : patientsError ? (
-            <StateBlock title={t("overview.patients.error.title")} description={t("overview.patients.error.description")} tone="danger" />
+            <div role="alert">
+              <StateBlock title={t("overview.patients.error.title")} description={t("overview.patients.error.description")} tone="danger">
+                <button type="button" className="react-button react-button--ghost react-button--compact" onClick={() => setReloadToken((current) => current + 1)}>
+                  {t("common.retry")}
+                </button>
+              </StateBlock>
+            </div>
           ) : visiblePatients.length ? (
-            <>
+            <div className="react-patient-results" aria-busy={loadingPatients}>
               {compactList ? (
                 <ul className="react-patient-rows">
                   {visiblePatients.map((patient) => {
@@ -382,7 +417,7 @@ function DoctorHome() {
               <div className="react-panel__footer">
                 <Pagination page={patients.page} pages={patients.pages} count={patients.count} pageSize={currentPageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
               </div>
-            </>
+            </div>
           ) : (
             <StateBlock title={t("overview.patients.emptyAll.title")} description={t("overview.patients.emptyAll.description")} />
           )}
@@ -474,7 +509,9 @@ function PatientHome({ patient }) {
 }
 
 export default function OverviewPage() {
+  const { t } = useTranslation();
   const { session } = useAuth();
+  useDocumentTitle(t(session?.patient?.id ? "documentTitle.patientHome" : "documentTitle.doctorHome"));
   if (session?.patient?.id) {
     return <PatientHome patient={session.patient} />;
   }

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { pendingRequests, subscribeLoading } from "../loadingStore";
+import { cancelPendingRequests, pendingRequests, subscribeLoading } from "../loadingStore";
 
 // Fast responses never flash the overlay; once shown it stays long enough to read.
 const SHOW_DELAY_MS = 300;
 const MIN_VISIBLE_MS = 450;
+// A slow request offers a way out instead of holding the page indefinitely.
+const CANCEL_AFTER_MS = 8000;
 
 function GlucometerAnimation() {
   return (
@@ -28,12 +30,17 @@ export default function GlobalLoading() {
   const { t } = useTranslation();
   const pending = useSyncExternalStore(subscribeLoading, pendingRequests);
   const [visible, setVisible] = useState(false);
+  const [cancellable, setCancellable] = useState(false);
   const shownAt = useRef(0);
+  const triggerRef = useRef(null);
+  const overlayRef = useRef(null);
+  const liveRef = useRef(null);
 
   useEffect(() => {
     if (pending > 0 && !visible) {
       const timer = setTimeout(() => {
         shownAt.current = Date.now();
+        triggerRef.current = document.activeElement;
         setVisible(true);
       }, SHOW_DELAY_MS);
       return () => clearTimeout(timer);
@@ -47,30 +54,73 @@ export default function GlobalLoading() {
   }, [pending, visible]);
 
   useEffect(() => {
+    if (!visible) {
+      setCancellable(false);
+      return undefined;
+    }
+    const timer = setTimeout(() => setCancellable(true), CANCEL_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [visible]);
+
+  useEffect(() => {
     if (!visible) return undefined;
     const root = document.getElementById("root");
     root?.setAttribute("aria-busy", "true");
-    // Keys must not reach the page while it is blocked.
-    const blockKeys = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
+    // inert keeps pointer, focus and assistive tech out of the page (#root and portaled dialogs)
+    // while the overlay and the live region, siblings in <body>, stay usable.
+    const blocked = Array.from(document.body.children).filter((element) =>
+      element !== overlayRef.current && element !== liveRef.current
+      && !element.hasAttribute("inert") && !["SCRIPT", "STYLE", "TEMPLATE"].includes(element.tagName));
+    blocked.forEach((element) => element.setAttribute("inert", ""));
+    // App shortcuts (Escape closing dialogs, focus traps eating Tab) must not act on an inert page;
+    // stopPropagation leaves every browser key (reload, address bar, close tab) untouched.
+    const isolateKeys = (event) => {
+      if (!overlayRef.current?.contains(event.target)) event.stopPropagation();
     };
-    window.addEventListener("keydown", blockKeys, true);
+    window.addEventListener("keydown", isolateKeys, true);
     return () => {
+      blocked.forEach((element) => element.removeAttribute("inert"));
       root?.removeAttribute("aria-busy");
-      window.removeEventListener("keydown", blockKeys, true);
+      window.removeEventListener("keydown", isolateKeys, true);
+      const trigger = triggerRef.current;
+      triggerRef.current = null;
+      const focusLost = !document.activeElement || document.activeElement === document.body;
+      if (!focusLost) return;
+      if (trigger && trigger !== document.body && trigger.isConnected && typeof trigger.focus === "function") {
+        trigger.focus({ preventScroll: true });
+        return;
+      }
+      // The trigger was replaced (e.g. by an error state): land on that state's recovery action.
+      requestAnimationFrame(() => {
+        if (document.activeElement && document.activeElement !== document.body) return;
+        document.querySelector("#root [role='alert'] button")?.focus({ preventScroll: true });
+      });
     };
   }, [visible]);
 
-  if (!visible) return null;
+  const handleCancel = () => {
+    cancelPendingRequests();
+  };
 
   return createPortal(
-    <div className="react-loading" role="status" aria-live="polite" data-testid="global-loading">
-      <div className="react-loading__card">
-        <GlucometerAnimation />
-        <p>{t("common.working")}</p>
+    <>
+      <div ref={liveRef} className="react-visually-hidden" role="status" aria-live="polite" data-testid="global-loading-status">
+        {visible ? t("common.working") : ""}
       </div>
-    </div>,
+      {visible ? (
+        <div ref={overlayRef} className="react-loading" data-testid="global-loading">
+          <div className="react-loading__card">
+            <GlucometerAnimation />
+            <p aria-hidden="true">{t("common.working")}</p>
+            {cancellable ? (
+              <button type="button" className="react-button react-button--ghost react-loading__cancel" onClick={handleCancel}>
+                {t("common.cancelWaiting")}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </>,
     document.body
   );
 }

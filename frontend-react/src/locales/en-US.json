@@ -9,7 +9,11 @@
     "back": "Back",
     "explain": "Explain {{label}}",
     "loading": "Loading...",
-    "closeDialog": "Close"
+    "closeDialog": "Close",
+    "cancelWaiting": "Cancel",
+    "retry": "Try again",
+    "requestStopped": "The request stopped before it finished. Please try again.",
+    "updating": "Updating…"
   },
   "languageSwitcher": {
     "label": "Language"
@@ -359,7 +363,13 @@
     "extremeEvents": {
       "eyebrow": "Out of range",
       "title": "Very low or very high readings by time of day",
-      "tooltipEvents": "{{count}} events"
+      "tooltipEvents": "{{count}} events",
+      "summaryLow_one": "{{count}} reading below 70 mg/dL, at {{hours}}.",
+      "summaryLow_other": "{{count}} readings below 70 mg/dL, most often at {{hours}}.",
+      "summaryLowNone": "No readings below 70 mg/dL.",
+      "summaryHigh_one": "{{count}} reading above 250 mg/dL, at {{hours}}.",
+      "summaryHigh_other": "{{count}} readings above 250 mg/dL, most often at {{hours}}.",
+      "summaryHighNone": "No readings above 250 mg/dL."
     },
     "trend": {
       "eyebrow": "Glucose trend",
@@ -728,7 +738,10 @@
     "popupEmptyHint": "Adjust the period or see the whole history.",
     "popupApplyHint": "Select at least one day to apply the filter.",
     "sendEmptyHint": "Write a message to send.",
-    "closeHint": "Close it once the question is resolved. After that, nobody can send new messages."
+    "closeHint": "Close it once the question is resolved. After that, nobody can send new messages.",
+    "newMessagesDivider_one": "New message ({{count}})",
+    "newMessagesDivider_other": "New messages ({{count}})",
+    "deferFailed": "This invitation could not be postponed. Please try again."
   },
   "notifications": {
     "title": "Notifications",
@@ -757,7 +770,16 @@
     "unread_one": "{{count}} unread",
     "unread_other": "{{count}} unread",
     "groupCount_one": "{{count}} new",
-    "groupCount_other": "{{count}} new"
+    "groupCount_other": "{{count}} new",
+    "triggerAria_zero": "Notifications",
+    "triggerAria_one": "Notifications, {{count}} unread",
+    "triggerAria_other": "Notifications, {{count}} unread",
+    "detail": {
+      "fromAndIn": "From {{name}}, in “{{title}}”",
+      "from": "From {{name}}",
+      "in": "In “{{title}}”",
+      "linkWith": "With {{name}}"
+    }
   },
   "patientHome": {
     "eyebrow": "My account",
@@ -807,5 +829,15 @@
       "count_one": "{{count}} pending",
       "count_other": "{{count}} pending"
     }
+  },
+  "documentTitle": {
+    "format": "{{page}} · MyGlico",
+    "login": "Sign in",
+    "register": "Create account",
+    "patientHome": "Home",
+    "doctorHome": "Patients",
+    "myPanel": "My dashboard",
+    "patientDetail": "Patient dashboard",
+    "conversation": "Conversation"
   }
 }

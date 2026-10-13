@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { Fragment, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import InvestigationOrigin from "../components/InvestigationOrigin";
@@ -7,6 +7,8 @@ import StateBlock from "../components/StateBlock";
 import Pagination from "../components/Pagination";
 import { ArrowLeftIcon } from "../components/Icons";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
+import useVisibleInterval from "../hooks/useVisibleInterval";
+import useDocumentTitle from "../hooks/useDocumentTitle";
 import { fetchInvestigationDetail, sendInvestigationMessage, closeInvestigation, readInvestigation } from "../api";
 
 function formatDateTime(value, locale) {
@@ -37,6 +39,13 @@ export default function InvestigationPage() {
   const seenMessageIds = useRef(null);
   const followLatestRef = useRef(true);
   const scrollAfterSendRef = useRef(false);
+  // Frozen on the first load: where the unread messages started and how many there were.
+  const [unreadMarker, setUnreadMarker] = useState(null);
+  // "landing" puts the list on the first unread message (or the end); "page" does the same after paging.
+  const pendingScrollRef = useRef("landing");
+  const redirectingRef = useRef(false);
+  const backgroundNextLoadRef = useRef(false);
+  const dividerRef = useRef(null);
 
   const loadData = async ({ background = false } = {}) => {
     try {
@@ -58,6 +67,7 @@ export default function InvestigationPage() {
         }
         const fresh = unread > 0 ? fromCounterpart.slice(-unread) : [];
         setNewMessageIds(new Set(fresh.map((m) => m.id)));
+        setUnreadMarker(unread > 0 ? { afterSequence: lastReadSequence.current, count: unread } : null);
         seenMessageIds.current = new Set(items.map((m) => m.id));
       } else {
         const incoming = items.filter((m) => !seenMessageIds.current.has(m.id) && m.author_role !== ownRole);
@@ -68,13 +78,21 @@ export default function InvestigationPage() {
       }
       setInv(investigation);
       setMessages(items);
+      redirectingRef.current = false;
       if (data.pagination) {
         const pages = data.pagination.pages ?? Math.max(1, Math.ceil(data.pagination.total / data.pagination.page_size));
         const currentPage = data.pagination.page ?? requestedPage;
         setPagination({ ...data.pagination, page: currentPage, pages });
-        if (firstUnreadPage && firstUnreadPage !== currentPage) setPage(Math.min(firstUnreadPage, pages));
-        else if (followLatestRef.current && currentPage !== pages) setPage(pages);
-        else if (currentPage !== requestedPage) setPage(currentPage);
+        let nextPage = null;
+        if (firstUnreadPage && firstUnreadPage !== currentPage) nextPage = Math.min(firstUnreadPage, pages);
+        else if (followLatestRef.current && currentPage !== pages) nextPage = pages;
+        else if (currentPage !== requestedPage) nextPage = currentPage;
+        if (nextPage !== null && nextPage !== page) {
+          // The follow-up load of the page this load picked rides on the same feedback.
+          redirectingRef.current = true;
+          backgroundNextLoadRef.current = true;
+          setPage(nextPage);
+        }
       }
       setLoadError(false);
     } catch(e) {
@@ -86,16 +104,39 @@ export default function InvestigationPage() {
     seenMessageIds.current = null;
     lastReadSequence.current = 0;
     followLatestRef.current = true;
+    pendingScrollRef.current = "landing";
+    setUnreadMarker(null);
     setPage(1);
     setPageSize(10);
     setInv(null);
   }, [id]);
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(() => loadData({ background: true }), 10000); // Polling for messages
-    return () => clearInterval(interval);
+    const background = backgroundNextLoadRef.current;
+    backgroundNextLoadRef.current = false;
+    loadData({ background });
   }, [id, page, pageSize]);
+
+  // Polling for messages, paused while the tab is hidden.
+  useVisibleInterval(() => loadData({ background: true }), 10000);
+
+  // Generic on purpose: conversation titles stay out of tab titles and browser history.
+  useDocumentTitle(t("documentTitle.conversation"));
+
+  useLayoutEffect(() => {
+    const mode = pendingScrollRef.current;
+    const list = messageListRef.current;
+    if (!mode || !list || !messages.length || redirectingRef.current) return;
+    pendingScrollRef.current = null;
+    // Only the inner scroller moves; the page keeps its position.
+    if (dividerRef.current) {
+      list.scrollTop += dividerRef.current.getBoundingClientRect().top - list.getBoundingClientRect().top - 8;
+    } else if (mode === "landing" || pagination.page === pagination.pages) {
+      list.scrollTop = list.scrollHeight;
+    } else {
+      list.scrollTop = 0;
+    }
+  }, [messages, pagination]);
 
   useEffect(() => {
     const sequence = messages.at(-1)?.sequence || 0;
@@ -171,6 +212,7 @@ export default function InvestigationPage() {
   const roleLabel = (role) => (role ? t(`cscw.roles.${role}`, { defaultValue: role }) : t("cscw.nobody"));
   const isPatient = inv.counterpart?.role === "doctor";
   const counterpartName = inv.counterpart?.name || inv.counterpart?.display_name || inv.counterpart?.short_id;
+  const counterpartDisplayName = inv.counterpart?.name || inv.counterpart?.display_name;
   const ownRole = inv.counterpart?.role === "doctor" ? "patient" : "doctor";
 
   return (
@@ -217,8 +259,8 @@ export default function InvestigationPage() {
               pages={pagination.pages}
               count={pagination.total}
               pageSize={pageSize}
-              onPageChange={(nextPage) => { followLatestRef.current = false; setPage(nextPage); }}
-              onPageSizeChange={(size) => { followLatestRef.current = false; setPageSize(size); setPage(1); }}
+              onPageChange={(nextPage) => { followLatestRef.current = false; pendingScrollRef.current = "page"; setPage(nextPage); }}
+              onPageSizeChange={(size) => { followLatestRef.current = false; pendingScrollRef.current = "page"; setPageSize(size); setPage(1); }}
             />
           </div>
         )}
@@ -226,15 +268,26 @@ export default function InvestigationPage() {
           {messages.map((m) => {
             const isNew = newMessageIds.has(m.id);
             const isOwn = m.author_role === ownRole;
+            const isCounterpart = !isOwn && m.author_role === inv.counterpart?.role;
+            // Sequences are contiguous, so the first unread message is the one right after the marker.
+            const startsUnread = Boolean(unreadMarker) && m.sequence === unreadMarker.afterSequence + 1;
+            const author = isOwn ? t("cscw.you") : isCounterpart && counterpartDisplayName ? counterpartDisplayName : roleLabel(m.author_role);
             return (
-              <li key={m.id} className={`react-message${isOwn ? " is-own" : ""}${m.author_role === "system" ? " is-system" : ""}${isNew ? " is-new" : ""}`}>
+              <Fragment key={m.id}>
+              {startsUnread ? (
+                <li ref={dividerRef} className="react-message-divider" role="separator" aria-label={t("cscw.newMessagesDivider", { count: unreadMarker.count })}>
+                  <span aria-hidden="true">{t("cscw.newMessagesDivider", { count: unreadMarker.count })}</span>
+                </li>
+              ) : null}
+              <li className={`react-message${isOwn ? " is-own" : ""}${m.author_role === "system" ? " is-system" : ""}${isNew ? " is-new" : ""}`}>
                 <div className="react-message__meta">
-                  <strong>{isOwn ? t("cscw.you") : roleLabel(m.author_role)}</strong>
+                  <strong>{author}</strong>
                   <small>{formatDateTime(m.created_at, i18n.language)}</small>
                   {isNew && <span className="react-badge react-badge--count">{t("cscw.newMessage")}</span>}
                 </div>
                 <p>{m.content}</p>
               </li>
+              </Fragment>
             );
           })}
         </ol>

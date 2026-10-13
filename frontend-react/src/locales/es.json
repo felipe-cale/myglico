@@ -9,7 +9,11 @@
     "back": "Volver",
     "explain": "Explicar {{label}}",
     "loading": "Cargando...",
-    "closeDialog": "Cerrar"
+    "closeDialog": "Cerrar",
+    "cancelWaiting": "Cancelar",
+    "retry": "Intentar de nuevo",
+    "requestStopped": "La solicitud se interrumpió antes de terminar. Inténtalo de nuevo.",
+    "updating": "Actualizando…"
   },
   "languageSwitcher": {
     "label": "Idioma"
@@ -359,7 +363,13 @@
     "extremeEvents": {
       "eyebrow": "Fuera del rango",
       "title": "Lecturas muy bajas o muy altas por horario",
-      "tooltipEvents": "{{count}} eventos"
+      "tooltipEvents": "{{count}} eventos",
+      "summaryLow_one": "{{count}} lectura por debajo de 70 mg/dL, a las {{hours}}.",
+      "summaryLow_other": "{{count}} lecturas por debajo de 70 mg/dL, más frecuentes a las {{hours}}.",
+      "summaryLowNone": "Ninguna lectura por debajo de 70 mg/dL.",
+      "summaryHigh_one": "{{count}} lectura por encima de 250 mg/dL, a las {{hours}}.",
+      "summaryHigh_other": "{{count}} lecturas por encima de 250 mg/dL, más frecuentes a las {{hours}}.",
+      "summaryHighNone": "Ninguna lectura por encima de 250 mg/dL."
     },
     "trend": {
       "eyebrow": "Tendencia glucémica",
@@ -728,7 +738,10 @@
     "popupEmptyHint": "Ajusta el período o consulta todo el historial.",
     "popupApplyHint": "Selecciona al menos un día para aplicar el filtro.",
     "sendEmptyHint": "Escribe un mensaje para enviar.",
-    "closeHint": "Ciérrala cuando la duda esté resuelta. Después, nadie puede enviar mensajes nuevos."
+    "closeHint": "Ciérrala cuando la duda esté resuelta. Después, nadie puede enviar mensajes nuevos.",
+    "newMessagesDivider_one": "Mensaje nuevo ({{count}})",
+    "newMessagesDivider_other": "Mensajes nuevos ({{count}})",
+    "deferFailed": "No se pudo posponer esta invitación. Inténtalo de nuevo."
   },
   "notifications": {
     "title": "Notificaciones",
@@ -757,7 +770,16 @@
     "unread_one": "{{count}} sin leer",
     "unread_other": "{{count}} sin leer",
     "groupCount_one": "{{count}} nueva",
-    "groupCount_other": "{{count}} nuevas"
+    "groupCount_other": "{{count}} nuevas",
+    "triggerAria_zero": "Notificaciones",
+    "triggerAria_one": "Notificaciones, {{count}} sin leer",
+    "triggerAria_other": "Notificaciones, {{count}} sin leer",
+    "detail": {
+      "fromAndIn": "De {{name}}, en “{{title}}”",
+      "from": "De {{name}}",
+      "in": "En “{{title}}”",
+      "linkWith": "Con {{name}}"
+    }
   },
   "patientHome": {
     "eyebrow": "Mi cuenta",
@@ -807,5 +829,15 @@
       "count_one": "{{count}} pendiente",
       "count_other": "{{count}} pendientes"
     }
+  },
+  "documentTitle": {
+    "format": "{{page}} · MyGlico",
+    "login": "Iniciar sesión",
+    "register": "Crear cuenta",
+    "patientHome": "Inicio",
+    "doctorHome": "Pacientes",
+    "myPanel": "Mi panel",
+    "patientDetail": "Panel del paciente",
+    "conversation": "Conversación"
   }
 }

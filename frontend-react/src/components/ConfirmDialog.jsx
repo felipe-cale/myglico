@@ -1,8 +1,8 @@
-import { useEffect, useId, useRef } from "react";
+import { useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import CloseIcon from "./CloseIcon";
-
-const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]';
+import useFocusTrap from "../hooks/useFocusTrap";
+import useBodyScrollLock from "../hooks/useBodyScrollLock";
 
 export default function ConfirmDialog({
   open,
@@ -22,38 +22,9 @@ export default function ConfirmDialog({
   const descriptionId = useId();
   const dialogRef = useRef(null);
   const cancelRef = useRef(null);
-  const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const previous = document.activeElement;
-    cancelRef.current?.focus();
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onCancelRef.current?.();
-        return;
-      }
-      if (event.key !== "Tab" || !dialogRef.current) return;
-      const focusable = Array.from(dialogRef.current.querySelectorAll(FOCUSABLE));
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      if (previous && typeof previous.focus === "function" && document.contains(previous)) previous.focus();
-    };
-  }, [open]);
+  useFocusTrap(open, dialogRef, { initialFocusRef: cancelRef, onEscape: onCancel });
+  useBodyScrollLock(open);
 
   if (!open) return null;
 

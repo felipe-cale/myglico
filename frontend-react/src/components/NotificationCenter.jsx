@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { fetchNotifications, readNotification } from "../api";
+import { fetchInvestigationDetail, fetchNotifications, readNotification } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import StateBlock from "./StateBlock";
 
@@ -60,6 +60,38 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
   const titleRef = useRef(null);
   const sentinelRef = useRef(null);
   const loadingPageRef = useRef(false);
+  // Titles are read from the investigation endpoint (they never travel in notification payloads).
+  const [titles, setTitles] = useState({});
+  const requestedTitlesRef = useRef(new Set());
+
+  useEffect(() => {
+    const missing = [...new Set(notifications.map((item) => item.payload?.investigation_id).filter(Boolean))]
+      .filter((investigationId) => !requestedTitlesRef.current.has(investigationId));
+    if (!missing.length) return;
+    missing.forEach((investigationId) => {
+      requestedTitlesRef.current.add(investigationId);
+      fetchInvestigationDetail(investigationId, { page: 1, page_size: 1 }, { background: true })
+        .then((data) => {
+          const title = (data.investigation || data)?.title;
+          if (title) setTitles((current) => ({ ...current, [investigationId]: title }));
+        })
+        .catch(() => {
+          // Without access (or offline) the row keeps its type label and sender.
+        });
+    });
+  }, [notifications]);
+
+  const describe = (notification) => {
+    const name = notification.context?.counterpart_name;
+    const title = titles[notification.payload?.investigation_id];
+    if (notification.notification_type.startsWith("association_")) {
+      return name ? t("notifications.detail.linkWith", { name }) : "";
+    }
+    if (name && title) return t("notifications.detail.fromAndIn", { name, title });
+    if (name) return t("notifications.detail.from", { name });
+    if (title) return t("notifications.detail.in", { title });
+    return "";
+  };
 
   useEffect(() => {
     if (!open) return undefined;
@@ -189,7 +221,7 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
           }
           setOpen((current) => !current);
         }}
-        aria-label={t("notifications.title")}
+        aria-label={t("notifications.triggerAria", { count: unreadCount })}
         aria-expanded={open}
       >
         <BellIcon />
@@ -227,11 +259,13 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
                 const label = t(`notifications.types.${n.notification_type}${session?.patient?.id && n.notification_type.startsWith("investigation_") ? "_patient" : ""}`, { defaultValue: n.notification_type });
                 const when = formatWhen(n.created_at, i18n.language);
                 const countText = group.items.length > 1 ? t("notifications.groupCount", { count: group.items.length }) : "";
+                const detail = describe(n);
                 return (
                   <li key={group.key} className="react-notifications__item">
                     <span className="react-notifications__dot" aria-hidden="true" />
                     <button type="button" className="react-notifications__open" onClick={() => handleOpen(group)}>
                       <span className="react-notifications__label">{label}</span>
+                      {detail ? <span className="react-notifications__detail">{detail}</span> : null}
                       {when || countText ? (
                         <span className="react-notifications__meta">
                           {when ? <time dateTime={n.created_at}>{when}</time> : null}
@@ -242,7 +276,7 @@ export default function NotificationCenter({ unreadCount = 0, onChange }) {
                     <button
                       type="button"
                       className="react-button react-button--text react-notifications__read"
-                      aria-label={t("notifications.markReadAria", { label: countText ? `${label} (${countText})` : label, time: when })}
+                      aria-label={t("notifications.markReadAria", { label: `${[label, detail].filter(Boolean).join(", ")}${countText ? ` (${countText})` : ""}`, time: when })}
                       onClick={() => handleRead(group)}
                     >
                       {t("notifications.markRead")}

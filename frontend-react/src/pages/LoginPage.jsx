@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import useDocumentTitle from "../hooks/useDocumentTitle";
 import { Link, useNavigate } from "react-router-dom";
 import { login } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function LoginPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t("documentTitle.login"));
   const navigate = useNavigate();
   const { refreshSession } = useAuth();
 
@@ -22,7 +24,8 @@ export default function LoginPage() {
       await refreshSession();
       navigate("/dashboard");
     } catch (err) {
-      setError(t("auth.error"));
+      // A timeout or a cancel from the loading overlay says nothing about the credentials.
+      setError(t(err?.code === "timeout" || err?.code === "aborted" ? "common.requestStopped" : "auth.error"));
       setSubmitting(false);
     }
   };

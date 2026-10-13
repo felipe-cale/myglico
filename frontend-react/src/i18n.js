@@ -12,15 +12,32 @@ export const SUPPORTED_LANGUAGES = [
 
 const STORAGE_KEY = "myglico.language";
 
+// Storage can be unavailable (private mode, blocked site data); the language then just isn't remembered.
+function readStoredLanguage() {
+  try {
+    return window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeLanguage(lang) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, lang);
+  } catch {
+    // Not persisted; the next visit falls back to the browser language.
+  }
+}
+
 function resolveInitialLanguage() {
   if (typeof window === "undefined") {
     return "pt-BR";
   }
-  const stored = window.localStorage.getItem(STORAGE_KEY);
+  const stored = readStoredLanguage();
   if (stored && SUPPORTED_LANGUAGES.some((lang) => lang.code === stored)) {
     return stored;
   }
-  const browserLang = window.navigator.language;
+  const browserLang = window.navigator.language || "";
   const matched = SUPPORTED_LANGUAGES.find((lang) => lang.code === browserLang || lang.code.split("-")[0] === browserLang.split("-")[0]);
   return matched ? matched.code : "pt-BR";
 }
@@ -40,7 +57,7 @@ i18n.use(initReactI18next).init({
 
 i18n.on("languageChanged", (lang) => {
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(STORAGE_KEY, lang);
+    storeLanguage(lang);
     document.documentElement.lang = lang;
   }
 });

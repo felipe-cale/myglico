@@ -10,6 +10,7 @@ import Pagination from "./Pagination";
 import { ArrowRightIcon } from "./Icons";
 import { preferredScrollBehavior } from "../hooks/usePrefersReducedMotion";
 import useFocusTrap from "../hooks/useFocusTrap";
+import useBodyScrollLock from "../hooks/useBodyScrollLock";
 import CloseIcon from "./CloseIcon";
 
 function formatDate(value, locale) {
@@ -205,6 +206,7 @@ export default function InvestigationsList() {
   };
 
   useFocusTrap(showNew, dialogRef, { initialFocusRef: linkSelectRef, onEscape: handleCancelCreate });
+  useBodyScrollLock(showNew);
 
   const ownRole = isPatient ? "patient" : "doctor";
   const awaitsViewer = (inv) => inv.status === "open" && inv.awaiting_role === ownRole;

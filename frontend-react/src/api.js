@@ -5,14 +5,33 @@ const JSON_HEADERS = {
   "Content-Type": "application/json"
 };
 
-// Requests the person triggered show the global loading overlay; polling and
-// panels with their own inline loading state pass { background: true }.
-async function requestJson(path, { background = false, ...options } = {}) {
-  if (!background) beginRequest();
+export const REQUEST_TIMEOUT_MS = 20000;
+
+// Requests the person triggered show the global loading overlay and can be
+// cancelled from it; polling and panels with their own inline loading state
+// pass { background: true }. Every request gives up after `timeout` ms with
+// error.code === "timeout"; a cancelled one rejects with error.code === "aborted".
+async function requestJson(path, { background = false, timeout = REQUEST_TIMEOUT_MS, ...options } = {}) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = timeout > 0 ? setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeout) : null;
+  if (!background) beginRequest(controller);
   try {
-    return await sendJson(path, options);
+    return await sendJson(path, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      const stopped = new Error(`Request ${timedOut ? "timed out" : "cancelled"} ${path}`);
+      stopped.code = timedOut ? "timeout" : "aborted";
+      stopped.cause = error;
+      throw stopped;
+    }
+    throw error;
   } finally {
-    if (!background) endRequest();
+    if (timer) clearTimeout(timer);
+    if (!background) endRequest(controller);
   }
 }
 
@@ -129,13 +148,13 @@ export function fetchUnreadSummary() {
 export function fetchDashboardSummary() {
   return requestJson("/api/dashboard");
 }
-export function fetchPatients({ page = 1, pageSize = 10, query = "", signal = "all" }) {
+export function fetchPatients({ page = 1, pageSize = 10, query = "", signal = "all" }, { background = false } = {}) {
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("page_size", String(pageSize));
   if (query) params.set("q", query);
   if (signal && signal !== "all") params.set("signal", signal);
-  return requestJson(`/api/patients?${params.toString()}`);
+  return requestJson(`/api/patients?${params.toString()}`, { background });
 }
 export function fetchPatientDetail(patientId, {
   startDate, endDate, dates, indicatorPage = 1, indicatorPageSize = 10, eventPage = 1, eventPageSize = 10

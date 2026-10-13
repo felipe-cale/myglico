@@ -27,6 +27,7 @@ import { ArrowLeftIcon, CalendarIcon, ChartLineIcon, ChevronDownIcon } from "../
 import { useAuth } from "../contexts/AuthContext";
 import useMediaQuery from "../hooks/useMediaQuery";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
+import useDocumentTitle from "../hooks/useDocumentTitle";
 
 // Recharts paints SVG attributes, so the glycemic tokens (--glyco-*) are mirrored here.
 const PIE_COLORS = ["#e35d73", "#1eab69", "#f4a93d"];
@@ -38,6 +39,20 @@ const HYPO_COLOR = "#e35d73";
 const HYPER_COLOR = "#f4a93d";
 const HIGH_RISK_COLOR = "#8a5300";
 const LEGEND_TEXT_COLOR = "#17304a";
+// Each reference line has its own dash pattern so the thresholds stay distinguishable without color.
+const REFERENCE_DASH = { hypo: "2 4", hyper: "9 4", highRisk: "14 4 3 4" };
+const REFERENCE_LINES = [
+  { y: 70, color: HYPO_COLOR, dash: REFERENCE_DASH.hypo },
+  { y: 180, color: HYPER_COLOR, dash: REFERENCE_DASH.hyper },
+  { y: 250, color: HIGH_RISK_COLOR, dash: REFERENCE_DASH.highRisk }
+];
+const MAX_SUMMARY_HOURS = 3;
+
+function peakHours(rows, key) {
+  const peak = Math.max(0, ...rows.map((row) => row[key]));
+  if (!peak) return [];
+  return rows.filter((row) => row[key] === peak).slice(0, MAX_SUMMARY_HOURS).map((row) => row.hour);
+}
 // Below this many readings a smoothed curve would invent values between measurements.
 const SMOOTH_CURVE_MIN_READINGS = 6;
 
@@ -301,6 +316,7 @@ export default function PatientDetailPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const isDoctorView = Boolean(session?.doctor?.id);
+  useDocumentTitle(t(isDoctorView ? "documentTitle.patientDetail" : "documentTitle.myPanel"));
   const [doctorLink, setDoctorLink] = useState(null);
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [revoking, setRevoking] = useState(false);
@@ -748,7 +764,15 @@ export default function PatientDetailPage() {
   }
 
   if (error || !data) {
-    return <StateBlock title={t("patientDetail.error.title")} description={t("patientDetail.error.description")} tone="danger" />;
+    return (
+      <div role="alert">
+        <StateBlock title={t("patientDetail.error.title")} description={t("patientDetail.error.description")} tone="danger">
+          <button type="button" className="react-button react-button--ghost react-button--compact" onClick={() => setReloadToken((current) => current + 1)}>
+            {t("common.retry")}
+          </button>
+        </StateBlock>
+      </div>
+    );
   }
 
   const { patient, filters, recent_events: recentEvents } = data;
@@ -784,24 +808,42 @@ export default function PatientDetailPage() {
         ? t("patientDetail.trend.legendDayCurveCount", { count: selectedDayEvents.length })
         : t("patientDetail.trend.legendDailyAvg"),
       color: TREND_COLOR,
-      dashed: false,
+      dash: null,
     },
     {
       label: t("patientDetail.trend.legendHypo"),
       color: HYPO_COLOR,
-      dashed: true,
+      dash: REFERENCE_DASH.hypo,
     },
     {
       label: t("patientDetail.trend.legendHyperTarget"),
       color: HYPER_COLOR,
-      dashed: true,
+      dash: REFERENCE_DASH.hyper,
     },
     {
       label: t("patientDetail.trend.legendHighRisk"),
       color: HIGH_RISK_COLOR,
-      dashed: true,
+      dash: REFERENCE_DASH.highRisk,
     },
   ];
+  const formatHourList = (hours) => {
+    const labels = hours.map((hour) => `${String(hour).padStart(2, "0")}h`);
+    return typeof Intl.ListFormat === "function"
+      ? new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format(labels)
+      : labels.join(", ");
+  };
+  const extremesTotals = hourlyExtremes.reduce(
+    (totals, row) => ({ low: totals.low + row.lowCount, high: totals.high + row.highCount }),
+    { low: 0, high: 0 }
+  );
+  const extremesSummary = [
+    extremesTotals.low
+      ? t("patientDetail.extremeEvents.summaryLow", { count: extremesTotals.low, hours: formatHourList(peakHours(hourlyExtremes, "lowCount")) })
+      : t("patientDetail.extremeEvents.summaryLowNone"),
+    extremesTotals.high
+      ? t("patientDetail.extremeEvents.summaryHigh", { count: extremesTotals.high, hours: formatHourList(peakHours(hourlyExtremes, "highCount")) })
+      : t("patientDetail.extremeEvents.summaryHighNone")
+  ].join(" ");
   function handleSelectDay(dateValue) {
     setSelectedDay(dateValue);
     setViewMode("day");
@@ -1288,9 +1330,9 @@ export default function PatientDetailPage() {
                     <XAxis dataKey="label" tick={axisTickStyle} minTickGap={isCompactMobile ? 18 : 10} />
                     <YAxis tick={axisTickStyle} width={isCompactMobile ? 32 : 40} domain={trendYAxisDomain} ticks={trendYAxisTicks} interval={0} />
                     <Tooltip formatter={(value) => `${formatNumber(value)} mg/dL`} labelFormatter={(_, payload) => (payload?.[0]?.payload?.date ? formatDate(payload[0].payload.date) : "")} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
-                    <ReferenceLine y={70} stroke={HYPO_COLOR} strokeDasharray="5 5" />
-                    <ReferenceLine y={180} stroke={HYPER_COLOR} strokeDasharray="5 5" />
-                    <ReferenceLine y={250} stroke={HIGH_RISK_COLOR} strokeDasharray="5 5" />
+                    {REFERENCE_LINES.map((line) => (
+                      <ReferenceLine key={line.y} y={line.y} stroke={line.color} strokeWidth={1.5} strokeDasharray={line.dash} />
+                    ))}
                     <Line
                       type="monotone"
                       dataKey="avg_glucose"
@@ -1339,9 +1381,9 @@ export default function PatientDetailPage() {
                       contentStyle={tooltipContentStyle}
                       labelStyle={tooltipLabelStyle}
                     />
-                    <ReferenceLine y={70} stroke={HYPO_COLOR} strokeDasharray="5 5" />
-                    <ReferenceLine y={180} stroke={HYPER_COLOR} strokeDasharray="5 5" />
-                    <ReferenceLine y={250} stroke={HIGH_RISK_COLOR} strokeDasharray="5 5" />
+                    {REFERENCE_LINES.map((line) => (
+                      <ReferenceLine key={line.y} y={line.y} stroke={line.color} strokeWidth={1.5} strokeDasharray={line.dash} />
+                    ))}
                     <Line
                       type={isSparseDay ? "linear" : "monotone"}
                       dataKey="glucose_mg_dl"
@@ -1364,11 +1406,9 @@ export default function PatientDetailPage() {
             <div className="react-chart-legend" aria-label={t("patientDetail.trend.chartLegendAriaLabel")}>
               {trendLegendItems.map((item) => (
                 <div key={item.label} className="react-chart-legend__item">
-                  <span
-                    className={`react-chart-legend__line${item.dashed ? " is-dashed" : ""}`}
-                    style={{ "--legend-color": item.color }}
-                    aria-hidden="true"
-                  />
+                  <svg className="react-chart-legend__line" viewBox="0 0 28 6" aria-hidden="true" focusable="false">
+                    <line x1="0" y1="3" x2="28" y2="3" stroke={item.color} strokeWidth={item.dash ? 2 : 3} strokeDasharray={item.dash || undefined} />
+                  </svg>
                   <small>{item.label}</small>
                 </div>
               ))}
@@ -1421,6 +1461,7 @@ export default function PatientDetailPage() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            <p className="react-chart-summary" data-testid="extremes-summary">{extremesSummary}</p>
           </section>
         </>
       )}

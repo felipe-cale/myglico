@@ -19,6 +19,15 @@
   --react-rose-text: #b23a50;
   --react-amber-text: #8a5300;
 
+  /* Focus: a 2px deep-blue ring (≥ 8:1 on white and on --react-bg) is the
+     indicator; the soft cyan halo only reinforces it. */
+  --focus-ring-color: var(--react-blue-deep);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring: var(--focus-ring-width) solid var(--focus-ring-color);
+  --focus-halo: 0 0 0 6px rgba(39, 183, 231, 0.2);
+  --focus-field: 0 0 0 1px var(--focus-ring-color), 0 0 0 5px rgba(39, 183, 231, 0.18);
+
   /* Font families */
   --font-display: "Bahnschrift SemiBold", "Trebuchet MS", sans-serif;
   --font-body: "Aptos", "Segoe UI", sans-serif;
@@ -110,6 +119,11 @@ body {
     radial-gradient(circle at 0% 0%, rgba(39, 183, 231, 0.1), transparent 30%),
     radial-gradient(circle at 100% 10%, rgba(30, 171, 105, 0.08), transparent 24%),
     linear-gradient(180deg, #f9fdff 0%, var(--react-bg) 100%);
+}
+
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 ::selection {
@@ -754,13 +768,14 @@ small {
 
 .react-button:not(:disabled):hover,
 .react-button:focus-visible {
-  outline: none;
   box-shadow: 0 12px 26px rgba(16, 59, 97, 0.14);
   transform: translateY(-1px);
 }
 
 .react-button:focus-visible {
-  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22);
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-halo);
 }
 
 .react-button:disabled {
@@ -939,6 +954,40 @@ small {
   gap: var(--space-3) var(--space-4);
 }
 
+.react-list-refresh {
+  margin: 0;
+  color: var(--react-muted);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+}
+
+.react-list-refresh:not(:empty) {
+  margin-top: var(--space-2);
+}
+
+/* Inside the search field (the native clear button moves left of it), so typing never shifts the rows. */
+.react-search--patients {
+  position: relative;
+}
+
+.react-search--patients .react-list-refresh {
+  position: absolute;
+  top: 50%;
+  right: var(--space-4);
+  margin: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.react-search--patients.is-refreshing input {
+  padding-right: 7.5rem;
+}
+
+.react-patient-results[aria-busy="true"] {
+  opacity: 0.85;
+  transition: opacity 160ms ease;
+}
+
 .react-patient-toolbar__filter {
   flex: 0 1 12rem;
 }
@@ -987,11 +1036,10 @@ small {
 }
 
 .react-select-field select:focus {
-  outline: none;
-  border-color: rgba(22, 124, 217, 0.35);
-  box-shadow:
-    0 0 0 4px rgba(39, 183, 231, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  /* Transparent outline keeps a ring in forced-colors mode. */
+  outline: var(--focus-ring-width) solid transparent;
+  border-color: var(--focus-ring-color);
+  box-shadow: var(--focus-field);
 }
 
 .react-help-link {
@@ -1028,11 +1076,10 @@ small {
 
 .react-search input:focus,
 .react-filter-form input:focus {
-  outline: none;
-  border-color: rgba(22, 124, 217, 0.35);
-  box-shadow:
-    0 0 0 4px rgba(39, 183, 231, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  /* Transparent outline keeps a ring in forced-colors mode. */
+  outline: var(--focus-ring-width) solid transparent;
+  border-color: var(--focus-ring-color);
+  box-shadow: var(--focus-field);
 }
 
 .react-filter-form {
@@ -1230,8 +1277,9 @@ small {
 }
 
 .react-icon-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22);
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-halo);
 }
 
 .react-patient-code-inline .react-copy-button {
@@ -1263,8 +1311,8 @@ small {
 }
 
 .react-row-link:focus-visible {
-  outline: 2px solid rgba(22, 124, 217, 0.55);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .react-visually-hidden {
@@ -1364,23 +1412,27 @@ small {
 }
 
 .react-chart-legend__line {
-  --legend-color: var(--react-blue);
-  width: 1.7rem;
-  height: 3px;
-  background: var(--legend-color);
+  width: 1.75rem;
+  height: 6px;
   flex: 0 0 auto;
+  overflow: visible;
 }
 
-.react-chart-legend__line.is-dashed {
-  background: repeating-linear-gradient(90deg, var(--legend-color) 0 5px, transparent 5px 9px);
+.react-chart-summary {
+  margin: var(--space-3) 0 0;
+  color: var(--react-muted);
+  font-size: var(--type-body-sm);
+  line-height: var(--type-body-sm-lh);
 }
 
+/* The scroller would clip the pills' focus ring; the inset padding gives it room. */
 .react-day-strip {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+  margin: calc(var(--space-3) - 6px) -6px 0;
   overflow-x: auto;
-  padding-bottom: var(--space-1);
+  padding: 6px 6px calc(var(--space-1) + 6px);
+  scroll-padding-inline: 6px;
 }
 
 .react-day-pill {
@@ -1586,6 +1638,11 @@ small {
 .react-info-tooltip.is-open .react-info-tooltip__trigger {
   border-color: rgba(22, 124, 217, 0.4);
   box-shadow: 0 0 0 3px rgba(39, 183, 231, 0.16);
+}
+
+.react-info-tooltip__trigger:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .react-info-tooltip__content {
@@ -1882,11 +1939,10 @@ small {
 
 .react-field input:focus,
 .react-field textarea:focus {
-  outline: none;
-  border-color: rgba(22, 124, 217, 0.35);
-  box-shadow:
-    0 0 0 4px rgba(39, 183, 231, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  /* Transparent outline keeps a ring in forced-colors mode. */
+  outline: var(--focus-ring-width) solid transparent;
+  border-color: var(--focus-ring-color);
+  box-shadow: var(--focus-field);
 }
 
 .react-check {
@@ -1966,9 +2022,13 @@ small {
 .react-notifications__trigger:hover,
 .react-notifications__trigger:focus-visible,
 .react-notifications__trigger.is-open {
-  outline: none;
   border-color: rgba(22, 124, 217, 0.3);
   box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.12);
+}
+
+.react-notifications__trigger:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .react-notifications__count {
@@ -2005,7 +2065,7 @@ small {
   margin: 0;
 }
 
-.react-notifications__header h3:focus {
+.react-notifications__header h3:focus:not(:focus-visible) {
   outline: none;
 }
 
@@ -2069,7 +2129,7 @@ small {
 }
 
 .react-notifications__open:focus-visible {
-  outline: 2px solid rgba(22, 124, 217, 0.45);
+  outline: var(--focus-ring);
   outline-offset: 3px;
   border-radius: 5px;
 }
@@ -2087,6 +2147,14 @@ small {
   line-height: var(--type-label-lh);
   font-weight: 700;
   color: var(--react-text);
+}
+
+.react-notifications__detail {
+  display: block;
+  color: var(--react-text);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+  overflow-wrap: anywhere;
 }
 
 .react-notifications__meta {
@@ -2232,8 +2300,8 @@ small {
 }
 
 .react-password-input__toggle:focus-visible {
-  outline: 2px solid rgba(22, 124, 217, 0.55);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .react-password-input__toggle svg {
@@ -2468,8 +2536,8 @@ small {
 }
 
 .react-prompt__toggle:focus-visible {
-  outline: 2px solid rgba(22, 124, 217, 0.55);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
   border-radius: 8px;
 }
 
@@ -2560,11 +2628,10 @@ small {
 }
 
 .react-atypical-select > summary:focus-visible {
-  outline: none;
-  border-color: rgba(22, 124, 217, 0.35);
-  box-shadow:
-    0 0 0 4px rgba(39, 183, 231, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  /* Transparent outline keeps a ring in forced-colors mode. */
+  outline: var(--focus-ring-width) solid transparent;
+  border-color: var(--focus-ring-color);
+  box-shadow: var(--focus-field);
 }
 
 .react-atypical-select__options {
@@ -2740,7 +2807,7 @@ small {
 }
 
 .react-button--danger-text:focus-visible {
-  box-shadow: 0 0 0 4px rgba(227, 93, 115, 0.18);
+  box-shadow: 0 0 0 6px rgba(227, 93, 115, 0.16);
 }
 
 .react-link-history {
@@ -2774,8 +2841,8 @@ small {
 }
 
 .react-link-history > summary:focus-visible {
-  outline: 2px solid rgba(22, 124, 217, 0.55);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .react-link-history > summary svg {
@@ -2833,8 +2900,8 @@ small {
 }
 
 .react-investigation-card:has(.react-investigation-card__footer:focus-visible) {
-  outline: 2px solid rgba(22, 124, 217, 0.55);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
   border-radius: 8px;
 }
 
@@ -2911,6 +2978,7 @@ small {
   inset: 0;
 }
 
+/* The whole card carries the ring (see :has rule above). */
 .react-investigation-card__footer:focus-visible {
   outline: none;
 }
@@ -2999,8 +3067,8 @@ small {
 }
 
 .react-back-link:focus-visible {
-  outline: 2px solid rgba(22, 124, 217, 0.55);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .react-conversation__chips {
@@ -3058,6 +3126,25 @@ small {
 .react-message.is-system {
   justify-self: center;
   background: rgba(97, 121, 146, 0.08);
+}
+
+.react-message-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--react-blue-deep);
+  font-size: var(--type-caption);
+  line-height: var(--type-caption-lh);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.react-message-divider::before,
+.react-message-divider::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: rgba(22, 124, 217, 0.35);
 }
 
 .react-message.is-new {
@@ -3280,8 +3367,8 @@ small {
 }
 
 .react-disclosure > summary:focus-visible {
-  outline: 2px solid rgba(22, 124, 217, 0.55);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .react-disclosure--panel > summary h2 {
@@ -3421,9 +3508,10 @@ small {
 }
 
 .react-figure--action:focus-visible {
-  outline: none;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
   border-color: var(--state-selected-border);
-  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22);
+  box-shadow: var(--focus-halo);
 }
 
 .react-figure__action {
@@ -3501,8 +3589,9 @@ small {
 }
 
 .react-segmented button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22);
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-halo);
 }
 
 .react-page--patient-detail .react-chart.react-chart--extremes {
@@ -3571,12 +3660,13 @@ small {
   border-radius: 14px;
 }
 
+/* The ring is drawn on ::after so it covers the whole row. */
 .react-detail-row__select:focus-visible {
   outline: none;
 }
 
 .react-detail-row__select:focus-visible::after {
-  box-shadow: 0 0 0 2px rgba(22, 124, 217, 0.55);
+  box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring-color);
 }
 
 .react-detail-row .react-info-tooltip {
@@ -4000,8 +4090,6 @@ small {
 
   .react-page--patient-detail .react-day-strip {
     gap: var(--space-2);
-    margin-top: var(--space-3);
-    padding-bottom: var(--space-1);
     scroll-snap-type: x proximity;
   }
 
@@ -4339,6 +4427,10 @@ small {
   background: #fff;
   box-shadow: var(--react-shadow);
   text-align: center;
+}
+
+.react-loading__cancel {
+  margin-top: var(--space-1);
 }
 
 .react-loading__card p {

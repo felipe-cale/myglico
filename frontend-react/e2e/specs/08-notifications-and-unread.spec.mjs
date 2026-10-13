@@ -97,6 +97,8 @@ test.describe("Group 8 - notifications and unread counters", () => {
     expect(readBody.up_to_sequence).toBe(10);
     await expect.poll(async () => (await api.unreadSummary(doctor.request)).body.messages_unread).toBe(50);
     await expect(ui.page.getByText("m10", { exact: true })).toBeVisible();
+    // The first unread message is announced by a divider naming how many are new.
+    await expect(ui.page.getByRole("separator", { name: t("cscw.newMessagesDivider_other", "pt-BR", { count: 60 }) })).toBeVisible();
     await expect(ui.page.getByText("m11", { exact: true })).toHaveCount(0);
     await expect(ui.page.getByText("m60", { exact: true })).toHaveCount(0);
 

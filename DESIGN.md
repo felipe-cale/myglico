@@ -218,8 +218,10 @@ in `frontend-react/src/styles.css` (`--react-*`, `--glyco-*`, `--state-*`).
   trend line and the selected point on the trend chart.
 - **Deep Trust Blue** (`trust-blue-deep`): text on ghost buttons, chips,
   selected toggles and pagination; select chevrons.
-- **Clear Cyan** (`clear-cyan`): focus rings (`0 0 0 4px` at 12–22% alpha)
-  and info-state tints.
+- **Clear Cyan** (`clear-cyan`): the soft halo that reinforces the focus ring
+  (never the ring itself) and info-state tints.
+- **Focus ring** (`--focus-ring`: `2px solid` `trust-blue-deep`, offset 2 px):
+  the one keyboard-focus indicator, ≥ 8:1 against white and `--react-bg`.
 
 ### Secondary
 - **Steady Green** (`steady-green`): "in range" chart segments, stable
@@ -402,8 +404,17 @@ ambient shadow; everything nested inside them is flat.
   the notifications popover. Dialogs and menus use their own popover shadow.
 - **Button rest** (`0 3px 8px rgba(20, 99, 155, 0.18)`), rising to
   `0 12px 26px rgba(16, 59, 97, 0.14)` with a 1 px lift on hover.
-- **Focus ring** (`0 0 0 4px rgba(39, 183, 231, 0.12–0.22)`): fields,
-  buttons and icon buttons on focus or hover.
+- **Focus ring** (`--focus-ring`, `--focus-ring-offset`): a 2 px deep-blue
+  outline 2 px outside every `:focus-visible` element (a global rule covers
+  anything without its own). Buttons and icon buttons add `--focus-halo`
+  (`0 0 0 6px` cyan at 20%) outside it; fields use `--focus-field` instead (a
+  deep-blue border thickened to 2 px by a 1 px ring, plus a 5 px cyan halo,
+  with a transparent outline for forced-colors mode). Alpha-only rings
+  (12–22% cyan, 45–55% blue) are gone: they measured below 3:1. Never
+  `outline: none` without one of these replacements; whole-row targets draw
+  the ring on the row (`::after` or `:has`). Horizontal scrollers that hold
+  focusable pills (the day strip) keep 6 px of inner padding so the ring is
+  not clipped.
 - **Inner highlight** (`inset 0 1px 0 rgba(255, 255, 255, 0.85)`): fields.
 
 Nested surfaces (stat cards, mobile cards) have no shadow and no hover lift;
@@ -423,8 +434,8 @@ Pills with bold 14 px labels, gentle lift on hover.
 - **Shape:** full pill (999 px), 2.75 rem tall (compact keeps 44 px height
   with tighter padding).
 - **Primary:** blue→green gradient, white label, rest shadow.
-- **Hover / Focus:** 1 px upward lift and deeper shadow; focus adds the cyan
-  ring.
+- **Hover / Focus:** 1 px upward lift and deeper shadow; focus adds the
+  deep-blue focus ring with the cyan halo outside it.
 - **Disabled:** flat `state-disabled-bg` with muted ink text, no shadow.
 - **Ghost:** translucent white with deep blue label and blue hairline;
   secondary actions and "back".
@@ -462,7 +473,9 @@ Pills with bold 14 px labels, gentle lift on hover.
 - **Style:** 3 rem tall, 20 px radius, hairline blue border, white fill
   with inner highlight; label above in bold muted 14 px, 8 px gap; textareas
   6 rem minimum.
-- **Focus:** border shifts to blue (35%) plus the 4 px cyan ring.
+- **Focus:** the border turns deep blue and thickens to 2 px
+  (`--focus-field`), with the cyan halo outside; ≥ 3:1 against the field
+  and the page.
 - **Selects:** same shell with a CSS chevron in deep blue.
 
 ### Navigation
@@ -501,15 +514,31 @@ line stating that MyGlico does not diagnose.
   solid white (or white → morning mist) fill; translucent glass is for
   panels over the page background only.
 - **Notification rows are flat:** no per-row card; a hairline between rows,
-  12 px vertical padding, `[dot] [label / time] [mark read]` with the text
-  button keeping a 44 px hit area. Consecutive notifications about the same
+  12 px vertical padding, `[dot] [label / detail / time] [mark read]` with the
+  text button keeping a 44 px hit area. Consecutive notifications about the same
   conversation collapse into one row with a count.
+- **Notifications name who and where:** the bold label keeps the event type
+  ("Nova mensagem no questionamento"); a second line in body ink says who sent
+  it and in which conversation ("De {name}, em “{title}”"; links: "Com
+  {name}"). The API sends only the counterpart's name, and only while the
+  recipient can still open the record; the client reads conversation titles
+  from the investigation endpoint (titles never travel in notification
+  payloads, CSCW-CA-31). Without access or data the row falls back to the
+  type label alone. The bell's accessible name carries the unread count
+  ("Notificações, 3 não lidas").
 - **Conversation:** the title is the page `h1` (headline role) under a
   "Back" text link; the danger "Close" sits in the header, never beside
   "Send". The message list is a bare scroll area (no well); pagination sits
   above it because older pages come first. Own messages take a flat blue
-  tint. Below 640 px the composer sticks to the bottom of the viewport with a
-  top hairline.
+  tint; the counterpart's messages are signed with their name (the role label
+  only when no name exists). Below 640 px the composer sticks to the bottom of
+  the viewport with a top hairline.
+- **Conversations land on what is new:** opening a conversation (and paging
+  to the last page) scrolls the message list itself, never the page, to the
+  first unread message, marked by a full-width hairline divider in deep-blue
+  caption type ("Novas mensagens (n)", `role="separator"`); with nothing
+  unread it lands at the end. Earlier pages open at their top. Read markers
+  still advance only for messages actually displayed (CSCW-CA-42).
 
 ### Charts
 Recharts with 12 px axis ticks, 14 px legends and tooltips. Trend charts start
@@ -519,6 +548,12 @@ the reference values read as labels and 250 never collides with the top.
 The time-in-range legend uses divider rows, with dot colors from the
 `--glyco-*` tokens. Reference lines use the glycemic range colors; the selected
 point is a solid trust-blue dot.
+Reference lines are also told apart without color: 70 is dotted (`2 4`), 180
+dashed (`9 4`), 250 dash-dot (`14 4 3 4`), and the legend swatches are drawn
+with the same patterns. Charts that carry a finding get a one-sentence text
+summary below them for assistive tech and quick reading (the hourly extremes
+chart states how many readings fell below 70 / above 250 and their most
+frequent hours); summaries describe, they never interpret.
 A day curve with fewer than 6 readings is drawn as straight segments
 (`type="linear"`), never smoothed, so the chart does not suggest values nobody
 measured. Legend text is always `--react-text`; color lives in the swatch only.
@@ -539,16 +574,39 @@ of it becomes instant (no translate, no slide, no chart animation, `auto`
 scrolling) while every state change still happens.
 
 ### Global Loading
-Every request the person triggers (paging, filtering, saving, sending,
+Every request the person triggers (paging, explicit filters, saving, sending,
 opening a page) goes through the API layer's request counter. After 300 ms
 without an answer a full-screen veil blurs the page (`rgba(244,251,254,.55)`,
-6 px blur), blocks pointer and keyboard input, sets `aria-busy` on the app
-root and shows a white card with the MyGlico glucometer animation (a drop
+6 px blur) and shows a white card with the MyGlico glucometer animation (a drop
 falling on the strip, the screen dots counting) and "Please wait, MyGlico is
-working…" in the three locales; once shown it stays at least 450 ms. Polling,
-read markers and panels with their own inline loading state opt out
-(`background: true`). Lists keep their previous rows under the veil instead
-of emptying. With reduced motion the art is static.
+working…" in the three locales; once shown it stays at least 450 ms. With
+reduced motion the art is static.
+- **Blocking is `inert`, not key trapping.** While the veil shows, `#root`
+  and portaled dialogs get `inert` (and `#root` `aria-busy`); the veil and a
+  permanent, initially empty `role="status"` node live outside them in
+  `<body>`. Browser keys (reload, address bar, close tab) always work; app
+  shortcuts are isolated with `stopPropagation`, never `preventDefault`.
+- **Announced once:** the live node receives "Aguarde…" when the veil shows
+  and is emptied when it hides; the card's own text is `aria-hidden`.
+- **Never forever:** every request times out after 20 s (`error.code ===
+  "timeout"`). After 8 s the card offers a keyboard-reachable "Cancelar" that
+  aborts all pending person-triggered requests (`error.code === "aborted"`);
+  callers end in their normal error state, with a retry where the content was
+  replaced. Focus returns to the element that triggered the request, or to
+  that error state's retry button when the trigger is gone.
+- **Typing never blocks:** search-as-you-type (the doctor's patient search)
+  debounces 300 ms, fetches with `background: true`, keeps the previous rows
+  (`aria-busy` on the results, slightly faded) and shows an inline "Atualizando…"
+  meta line. Inline paginations inside a panel that already has its own
+  loading (atypical-day prompts) do the same.
+- **Polling pauses when hidden:** unread counters (60 s) and the open
+  conversation (10 s) stop while `document.visibilityState` is hidden and
+  refresh at once on return. A load that only redirects to the page it
+  picked (a conversation jumping to its first unread page) does not raise a
+  second veil.
+- Polling, read markers and panels with their own inline loading state opt
+  out (`background: true`). Lists keep their previous rows under the veil
+  instead of emptying; after paging a list scrolls its top into view.
 
 ### Dialogs
 Centered opaque white panel over a dimmed backdrop: a fixed header (subtitle
@@ -558,7 +616,12 @@ rounded edge) and a sticky actions row with a top hairline. Nested pickers
 inside a dialog grow with their content instead of scrolling on their own.
 Confirmation dialogs pair a ghost cancel with the action. Creation flows that
 interrupt a list (new conversation) open as a dialog, not inline in a narrow
-column.
+column. Every dialog and the phone drawer share two hooks: `useFocusTrap`
+(one focusable selector, Escape closes, focus returns to the trigger) and
+`useBodyScrollLock` (the page behind stops scrolling while any of them is
+open, compensating the scrollbar width so nothing shifts). Dialogs that can
+open from inside a panel (atypical days, new conversation) are portaled to
+`<body>`.
 
 ## Do's and Don'ts
 

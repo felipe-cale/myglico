@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { fetchAtypicalDays } from "../api";
@@ -6,8 +7,8 @@ import { useAuth } from "../contexts/AuthContext";
 import StateBlock from "./StateBlock";
 import Pagination from "./Pagination";
 import CloseIcon from "./CloseIcon";
-
-const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+import useFocusTrap from "../hooks/useFocusTrap";
+import useBodyScrollLock from "../hooks/useBodyScrollLock";
 
 function formatDay(value, locale) {
   if (!value) return "";
@@ -82,31 +83,8 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
       ? t("cscw.popupScopeActive", { count: pagination.total, start: formatDay(rangeStart, i18n.language), end: formatDay(rangeEnd, i18n.language) })
       : t("cscw.popupScopeCustom", { count: pagination.total, start: formatDay(rangeStart, i18n.language) || "…", end: formatDay(rangeEnd, i18n.language) || "…" });
 
-  useEffect(() => {
-    if (!open) return undefined;
-    headingRef.current?.focus();
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        close();
-        return;
-      }
-      if (event.key !== "Tab" || !dialogRef.current) return;
-      const focusable = Array.from(dialogRef.current.querySelectorAll(FOCUSABLE));
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && (document.activeElement === first || document.activeElement === headingRef.current)) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, close]);
+  useFocusTrap(open, dialogRef, { initialFocusRef: headingRef, onEscape: close });
+  useBodyScrollLock(open);
 
   const handleToggle = (date) => {
     const next = new Set(selectedDates);
@@ -147,7 +125,7 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
         </button>
       )}
 
-      {open && (
+      {open && createPortal(
         <div
           className="react-dialog-backdrop"
           role="presentation"
@@ -294,7 +272,8 @@ export default function AtypicalDaysPopup({ patientId, appliedDates = [], active
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

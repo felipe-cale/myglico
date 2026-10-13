@@ -436,6 +436,75 @@ def api_doctor_link_revoke(
     return _mutate_link(link_id, "revoke", payload, principal, db)
 
 
+def _notification_context_resolver(db: Session, principal: SessionPrincipal):
+    """Names the counterpart of each notification for its recipient.
+
+    Context is resolved only from records the recipient can open right now
+    (the same participant rules as the detail endpoints). Investigation titles
+    stay out of notification payloads (CSCW-CA-31); the client reads them from
+    the investigation endpoints, which enforce access on their own.
+    """
+    account_id = principal.account.id
+    own_patient_id = principal.patient.id if principal.patient is not None else None
+    own_doctor_id = principal.doctor.id if principal.doctor is not None else None
+    investigations: dict[str, dict[str, object] | None] = {}
+    links: dict[str, dict[str, object] | None] = {}
+
+    def doctor_name(doctor_id: str) -> str | None:
+        doctor = db.get(Doctor, doctor_id)
+        if doctor is None:
+            return None
+        return decrypt_field(doctor.name_encrypted, table="doctors", column="name", record_id=doctor.id) or None
+
+    def patient_name(patient_id: str) -> str | None:
+        patient = db.get(Patient, patient_id)
+        return (patient.display_name or None) if patient else None
+
+    def investigation_context(investigation_id: str) -> dict[str, object] | None:
+        if investigation_id in investigations:
+            return investigations[investigation_id]
+        context = None
+        item = db.get(Investigation, investigation_id)
+        if item is not None and own_patient_id and item.patient_id == own_patient_id:
+            context = {"counterpart_name": doctor_name(item.doctor_id)}
+        elif item is not None and own_doctor_id and item.doctor_id == own_doctor_id:
+            # Mirrors _participant: a doctor whose link is no longer active cannot open it.
+            active = db.scalar(select(PatientDoctorLink.id).where(
+                PatientDoctorLink.id == item.association_id,
+                PatientDoctorLink.patient_id == item.patient_id,
+                PatientDoctorLink.doctor_id == item.doctor_id,
+                PatientDoctorLink.status == "ACTIVE",
+            ))
+            if active is not None:
+                context = {"counterpart_name": patient_name(item.patient_id)}
+        investigations[investigation_id] = context
+        return context
+
+    def link_context(link_id: str) -> dict[str, object] | None:
+        if link_id in links:
+            return links[link_id]
+        context = None
+        link = db.get(PatientDoctorLink, link_id)
+        if link is not None and own_patient_id and link.patient_id == own_patient_id:
+            context = {"counterpart_name": doctor_name(link.doctor_id)}
+        elif link is not None and own_doctor_id and link.doctor_id == own_doctor_id:
+            context = {"counterpart_name": patient_name(link.patient_id)}
+        links[link_id] = context
+        return context
+
+    def resolve(item: Notification) -> dict[str, object] | None:
+        if item.recipient_user_account_id != account_id:
+            return None
+        payload = item.payload if isinstance(item.payload, dict) else {}
+        if item.notification_type.startswith("investigation_") and payload.get("investigation_id"):
+            return investigation_context(str(payload["investigation_id"]))
+        if item.notification_type.startswith("association_") and payload.get("link_id"):
+            return link_context(str(payload["link_id"]))
+        return None
+
+    return resolve
+
+
 @router.get("/api/notifications")
 def api_notifications(
     unread_only: bool = Query(default=False),
@@ -446,11 +515,13 @@ def api_notifications(
     notifications, unread_count, total, current_page = notification_list(
         db, principal.account.id, unread_only, page=page, page_size=page_size,
     )
+    resolve_context = _notification_context_resolver(db, principal)
     return {"notifications": [{
         "id": item.id, "notification_type": item.notification_type,
         "payload": item.payload, "causation_event_id": item.causation_event_id,
         "read_at": item.read_at.isoformat() if item.read_at else None,
         "created_at": item.created_at.isoformat(),
+        "context": resolve_context(item),
     } for item in notifications], "unread_count": unread_count, "pagination": {
         "page": current_page, "page_size": page_size, "total": total,
         "pages": max(1, (total + page_size - 1) // page_size),

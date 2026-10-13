@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-12T20:00:00-03:00",
+  "generatedAt": "2026-10-13T03:30:00-03:00",
   "title": "Design System: MyGlico",
   "extensions": {
     "colorMeta": {
@@ -177,8 +177,13 @@
       },
       {
         "name": "focus-ring",
-        "value": "0 0 0 4px rgba(39, 183, 231, 0.22)",
-        "purpose": "Focus on fields and buttons."
+        "value": "2px solid #0a4c9c (outline, offset 2px) + 0 0 0 6px rgba(39, 183, 231, 0.2) halo",
+        "purpose": "The keyboard focus indicator (--focus-ring): a deep-blue outline (>= 8:1 on white and morning mist) on every :focus-visible; buttons add the cyan halo (--focus-halo) outside it. Alpha-only cyan/blue rings are retired (< 3:1)."
+      },
+      {
+        "name": "focus-field",
+        "value": "0 0 0 1px #0a4c9c, 0 0 0 5px rgba(39, 183, 231, 0.18)",
+        "purpose": "Fields on focus: deep-blue border thickened to 2px plus the cyan halo; a transparent outline keeps a ring in forced-colors mode."
       }
     ],
     "motion": [
@@ -287,7 +292,7 @@
       "refersTo": "button-primary",
       "description": "Main action of a region; gradient pill.",
       "html": "<button class=\"ds-btn-primary\">Salvar medição</button>",
-      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0 16px; border-radius: 999px; border: 1px solid transparent; font: 700 0.875rem/1.2 Aptos, 'Segoe UI', sans-serif; color: #fff; background: linear-gradient(135deg, #126fc1, #0d7f55); box-shadow: 0 3px 8px rgba(20, 99, 155, 0.18); cursor: pointer; transition: box-shadow 160ms ease, transform 160ms ease; } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(16, 59, 97, 0.14); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22); }"
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0 16px; border-radius: 999px; border: 1px solid transparent; font: 700 0.875rem/1.2 Aptos, 'Segoe UI', sans-serif; color: #fff; background: linear-gradient(135deg, #126fc1, #0d7f55); box-shadow: 0 3px 8px rgba(20, 99, 155, 0.18); cursor: pointer; transition: box-shadow 160ms ease, transform 160ms ease; } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(16, 59, 97, 0.14); } .ds-btn-primary:focus-visible { outline: 2px solid #0a4c9c; outline-offset: 2px; box-shadow: 0 0 0 6px rgba(39, 183, 231, 0.2); }"
     },
     {
       "name": "Ghost Button",
@@ -295,7 +300,7 @@
       "refersTo": "button-ghost",
       "description": "Secondary actions and back navigation.",
       "html": "<button class=\"ds-btn-ghost\">Voltar</button>",
-      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0 16px; border-radius: 999px; font: 700 0.875rem/1.2 Aptos, 'Segoe UI', sans-serif; color: #0a4c9c; background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(19, 100, 174, 0.3); box-shadow: 0 2px 5px rgba(22, 76, 126, 0.08); cursor: pointer; transition: box-shadow 160ms ease, transform 160ms ease; } .ds-btn-ghost:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(16, 59, 97, 0.14); } .ds-btn-ghost:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22); }"
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0 16px; border-radius: 999px; font: 700 0.875rem/1.2 Aptos, 'Segoe UI', sans-serif; color: #0a4c9c; background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(19, 100, 174, 0.3); box-shadow: 0 2px 5px rgba(22, 76, 126, 0.08); cursor: pointer; transition: box-shadow 160ms ease, transform 160ms ease; } .ds-btn-ghost:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(16, 59, 97, 0.14); } .ds-btn-ghost:focus-visible { outline: 2px solid #0a4c9c; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22); }"
     },
     {
       "name": "Danger Button",
@@ -303,7 +308,7 @@
       "refersTo": "button-danger",
       "description": "Destructive action, always behind a confirmation dialog.",
       "html": "<button class=\"ds-btn-danger\">Revogar vínculo</button>",
-      "css": ".ds-btn-danger { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 16px; border-radius: 999px; font: 700 0.875rem/1.2 Aptos, 'Segoe UI', sans-serif; color: #b23a50; background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(227, 93, 115, 0.35); cursor: pointer; } .ds-btn-danger:hover, .ds-btn-danger:focus-visible { outline: none; background: rgba(227, 93, 115, 0.08); border-color: rgba(227, 93, 115, 0.55); }"
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 16px; border-radius: 999px; font: 700 0.875rem/1.2 Aptos, 'Segoe UI', sans-serif; color: #b23a50; background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(227, 93, 115, 0.35); cursor: pointer; } .ds-btn-danger:hover, .ds-btn-danger:focus-visible { outline: 2px solid #0a4c9c; outline-offset: 2px; background: rgba(227, 93, 115, 0.08); border-color: rgba(227, 93, 115, 0.55); }"
     },
     {
       "name": "Text Field",
@@ -311,7 +316,7 @@
       "refersTo": "input",
       "description": "Labelled field with soft pill-ish shell.",
       "html": "<label class=\"ds-field\"><span>E-mail</span><input type=\"email\" placeholder=\"voce@exemplo.com\"></label>",
-      "css": ".ds-field { display: grid; gap: 8px; font-family: Aptos, 'Segoe UI', sans-serif; } .ds-field span { font-size: 0.875rem; font-weight: 700; color: #56677e; } .ds-field input { min-height: 3rem; padding: 0 16px; border-radius: 20px; border: 1px solid rgba(22, 124, 217, 0.14); background: rgba(255, 255, 255, 0.95); color: #17304a; font: inherit; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85); } .ds-field input:focus { outline: none; border-color: rgba(22, 124, 217, 0.35); box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.12); }"
+      "css": ".ds-field { display: grid; gap: 8px; font-family: Aptos, 'Segoe UI', sans-serif; } .ds-field span { font-size: 0.875rem; font-weight: 700; color: #56677e; } .ds-field input { min-height: 3rem; padding: 0 16px; border-radius: 20px; border: 1px solid rgba(22, 124, 217, 0.14); background: rgba(255, 255, 255, 0.95); color: #17304a; font: inherit; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85); } .ds-field input:focus { outline: 2px solid transparent; border-color: #0a4c9c; box-shadow: 0 0 0 1px #0a4c9c, 0 0 0 5px rgba(39, 183, 231, 0.18); }"
     },
     {
       "name": "Nav Link",
@@ -319,7 +324,7 @@
       "refersTo": "nav-link",
       "description": "Topbar pill links; active takes the gradient.",
       "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link is-active\" href=\"#\">Visão geral</a><a class=\"ds-nav-link\" href=\"#\">Questionamentos <span class=\"ds-count\">3</span></a></nav>",
-      "css": ".ds-nav { display: flex; gap: 8px; font-family: Aptos, 'Segoe UI', sans-serif; } .ds-nav-link { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.75rem; padding: 12px 20px; font-size: 0.875rem; border-radius: 999px; font-weight: 700; color: #56677e; text-decoration: none; } .ds-nav-link:hover { color: #0a4c9c; } .ds-nav-link:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22); } .ds-nav-link.is-active { color: #fff; background: linear-gradient(135deg, #126fc1, #0d7f55); } .ds-count { min-width: 1.45rem; min-height: 1.45rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: rgba(39, 183, 231, 0.14); color: #0a4c9c; }"
+      "css": ".ds-nav { display: flex; gap: 8px; font-family: Aptos, 'Segoe UI', sans-serif; } .ds-nav-link { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.75rem; padding: 12px 20px; font-size: 0.875rem; border-radius: 999px; font-weight: 700; color: #56677e; text-decoration: none; } .ds-nav-link:hover { color: #0a4c9c; } .ds-nav-link:focus-visible { outline: 2px solid #0a4c9c; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.22); } .ds-nav-link.is-active { color: #fff; background: linear-gradient(135deg, #126fc1, #0d7f55); } .ds-count { min-width: 1.45rem; min-height: 1.45rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: rgba(39, 183, 231, 0.14); color: #0a4c9c; }"
     },
     {
       "name": "Status Badges",
@@ -425,6 +430,18 @@
         "name": "The Progressive Disclosure Rule",
         "body": "Secondary controls open on demand: the period date form behind 'Alterar período' (open by default when the window is custom or days are selected), the manual entry form behind its header toggle (opened by '#new-reading' or the header CTA), optional entry fields behind 'Mais detalhes (opcional)', and phone data tables behind closed disclosures.",
         "section": "components"
+      },
+      {
+        "name": "The Visible Focus Rule",
+        "body": "Keyboard focus is always a 2px deep-blue outline 2px outside the element (--focus-ring); the cyan halo only reinforces it. Fields turn their border deep blue and 2px thick. Never remove an outline without one of these replacements, and give scrollers room so the ring is never clipped."
+      },
+      {
+        "name": "The Patient Wait Rule",
+        "body": "The loading veil blocks with inert (never by trapping keys), announces itself once through a permanent status node, times out at 20s and offers Cancel after 8s, returning focus to the trigger. Typing never raises the veil: search-as-you-type is debounced and refreshes inline, keeping the previous rows."
+      },
+      {
+        "name": "The Land On What Is New Rule",
+        "body": "A conversation opens on its first unread message, marked by a \"New messages (n)\" divider, or at its end; only the message list scrolls. Notifications say who sent what and where (\"From {name}, in “{title}”\") while keeping the event type as their label."
       }
     ],
     "dos": [
@@ -433,7 +450,10 @@
       "Do keep the gradient for one primary action per region, the active nav link and the current page.",
       "Do put destructive actions in the danger style behind a confirmation dialog.",
       "Do show pending status as the neutral dashed chip and atypical status as the amber chip, both with dark text.",
-      "Do render lists as divider rows and make the header 'add/new' action primary only while the list is empty."
+      "Do render lists as divider rows and make the header 'add/new' action primary only while the list is empty.",
+      "Do lock the page scroll while a dialog or the drawer is open (useBodyScrollLock) and trap focus with the shared useFocusTrap.",
+      "Do pause polling while the tab is hidden and refresh as soon as it returns.",
+      "Do tell chart reference lines apart by dash pattern as well as color, and add a one-sentence descriptive summary under charts that carry a finding."
     ],
     "donts": [
       "Don't ship browser-default inputs, square corners or flat #005fcc buttons; those were the off-system patterns removed in the 2026-10 layout review.",
@@ -446,7 +466,10 @@
       "Don't put white text on the light brand trust-blue/steady-green fills; use the action gradient.",
       "Don't wrap list items in cards or nest boxes inside rows; revoke is a danger text button, not a bordered pill.",
       "Don't smooth a curve across sparse readings or ship an animation that ignores reduced motion.",
-      "Don't leave a disabled primary action without saying what is missing."
+      "Don't leave a disabled primary action without saying what is missing.",
+      "Don't use alpha-only focus rings or outline: none without a replacement.",
+      "Don't block the browser's own keys (reload, address bar, close tab) while loading.",
+      "Don't put conversation titles in notification payloads or tab titles."
     ]
   }
 }

@@ -7,6 +7,8 @@ import { fetchUnreadSummary, logout } from "../api";
 import NotificationCenter from "./NotificationCenter";
 import CloseIcon from "./CloseIcon";
 import useFocusTrap from "../hooks/useFocusTrap";
+import useBodyScrollLock from "../hooks/useBodyScrollLock";
+import useVisibleInterval from "../hooks/useVisibleInterval";
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 const EMPTY_SUMMARY = { notifications_unread: 0, messages_unread: 0 };
@@ -33,21 +35,22 @@ export default function AppShell({ children }) {
   }, []);
 
   useEffect(() => {
-    if (!authenticated) {
-      setUnread(EMPTY_SUMMARY);
-      return undefined;
-    }
-    loadUnread();
-    const interval = setInterval(loadUnread, 60000);
-    return () => clearInterval(interval);
-  }, [authenticated, loadUnread]);
+    if (!authenticated) setUnread(EMPTY_SUMMARY);
+  }, [authenticated]);
+
+  useVisibleInterval(loadUnread, 60000, authenticated);
 
   useEffect(() => {
     if (authenticated) loadUnread();
   }, [authenticated, loadUnread, location.pathname]);
 
   const handleLogout = async () => {
-    await logout();
+    try {
+      await logout();
+    } catch {
+      // Cancelled or failed: the session is untouched, so the person stays where they are.
+      return;
+    }
     await refreshSession();
     navigate("/");
   };
@@ -56,16 +59,7 @@ export default function AppShell({ children }) {
     setMenuOpen(false);
   }, [location.pathname, location.search]);
 
-  useEffect(() => {
-    if (!menuOpen || typeof document === "undefined") {
-      return undefined;
-    }
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [menuOpen]);
+  useBodyScrollLock(menuOpen);
 
   useEffect(() => {
     const drawer = drawerRef.current;
