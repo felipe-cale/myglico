@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import AppShell from "./components/AppShell";
+import GlobalLoading from "./components/GlobalLoading";
 import OverviewPage from "./pages/OverviewPage";
 import PatientDetailPage from "./pages/PatientDetailPage";
 import LandingPage from "./pages/LandingPage";
@@ -50,6 +51,7 @@ export default function App() {
       <AppShell>
         <MainRoutes />
       </AppShell>
+      <GlobalLoading />
     </AuthProvider>
   );
 }

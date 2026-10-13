@@ -538,6 +538,18 @@ entry, smooth scroll to an anchor. Under `prefers-reduced-motion: reduce` all
 of it becomes instant (no translate, no slide, no chart animation, `auto`
 scrolling) while every state change still happens.
 
+### Global Loading
+Every request the person triggers (paging, filtering, saving, sending,
+opening a page) goes through the API layer's request counter. After 300 ms
+without an answer a full-screen veil blurs the page (`rgba(244,251,254,.55)`,
+6 px blur), blocks pointer and keyboard input, sets `aria-busy` on the app
+root and shows a white card with the MyGlico glucometer animation (a drop
+falling on the strip, the screen dots counting) and "Please wait, MyGlico is
+working…" in the three locales; once shown it stays at least 450 ms. Polling,
+read markers and panels with their own inline loading state opt out
+(`background: true`). Lists keep their previous rows under the veil instead
+of emptying. With reduced motion the art is static.
+
 ### Dialogs
 Centered opaque white panel over a dimmed backdrop: a fixed header (subtitle
 `h3`, optional one-line description, 44 px close), a body that is the only

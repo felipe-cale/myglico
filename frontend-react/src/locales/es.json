@@ -1,5 +1,6 @@
 {
   "common": {
+    "working": "Espera, MyGlico está trabajando…",
     "all": "Todos",
     "or": "o",
     "yes": "Sí",

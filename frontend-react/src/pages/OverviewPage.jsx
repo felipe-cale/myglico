@@ -305,7 +305,7 @@ function DoctorHome() {
             {copiedPatient ? `${t("overview.patients.copied")}: ${copiedPatient.short_id}` : ""}
           </p>
 
-          {loadingPatients ? (
+          {loadingPatients && !patients ? (
             <StateBlock title={t("overview.patients.loading.title")} description={t("overview.patients.loading.description")} tone="info" />
           ) : patientsError ? (
             <StateBlock title={t("overview.patients.error.title")} description={t("overview.patients.error.description")} tone="danger" />

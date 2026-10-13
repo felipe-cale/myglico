@@ -1,9 +1,22 @@
+import { beginRequest, endRequest } from "./loadingStore";
+
 const JSON_HEADERS = {
   Accept: "application/json",
   "Content-Type": "application/json"
 };
 
-async function requestJson(path, options = {}) {
+// Requests the person triggered show the global loading overlay; polling and
+// panels with their own inline loading state pass { background: true }.
+async function requestJson(path, { background = false, ...options } = {}) {
+  if (!background) beginRequest();
+  try {
+    return await sendJson(path, options);
+  } finally {
+    if (!background) endRequest();
+  }
+}
+
+async function sendJson(path, options) {
   const headers = { ...JSON_HEADERS, ...options.headers };
   const response = await fetch(path, {
     credentials: "same-origin",
@@ -31,7 +44,7 @@ export function logout() {
   return requestJson("/api/auth/logout", { method: "POST" });
 }
 export function fetchSession() {
-  return requestJson("/api/auth/session");
+  return requestJson("/api/auth/session", { background: true });
 }
 
 // === DOCTORS & LINKS ===
@@ -67,9 +80,9 @@ export function fetchInvestigations(params = {}) {
   const q = new URLSearchParams(params).toString();
   return requestJson(`/api/investigations?${q}`);
 }
-export function fetchInvestigationDetail(id, params = {}) {
+export function fetchInvestigationDetail(id, params = {}, { background = false } = {}) {
   const q = new URLSearchParams(params).toString();
-  return requestJson(`/api/investigations/${id}${q ? `?${q}` : ""}`);
+  return requestJson(`/api/investigations/${id}${q ? `?${q}` : ""}`, { background });
 }
 export function createInvestigation(payload) {
   return requestJson("/api/investigations", { method: "POST", body: JSON.stringify(payload) });
@@ -78,7 +91,7 @@ export function sendInvestigationMessage(id, payload) {
   return requestJson(`/api/investigations/${id}/messages`, { method: "POST", body: JSON.stringify(payload) });
 }
 export function readInvestigation(id, up_to_sequence) {
-  return requestJson(`/api/investigations/${id}/read`, { method: "POST", body: JSON.stringify({ up_to_sequence }) });
+  return requestJson(`/api/investigations/${id}/read`, { method: "POST", body: JSON.stringify({ up_to_sequence }), background: true });
 }
 export function closeInvestigation(id, payload) {
   return requestJson(`/api/investigations/${id}/close`, { method: "POST", body: JSON.stringify(payload) });
@@ -87,11 +100,11 @@ export function closeInvestigation(id, payload) {
 // === ATYPICAL DAYS ===
 export function fetchAtypicalDays(patientId, params = {}) {
   const q = new URLSearchParams(params).toString();
-  return requestJson(`/api/patients/${patientId}/atypical-days?${q}`);
+  return requestJson(`/api/patients/${patientId}/atypical-days?${q}`, { background: true });
 }
 export function fetchAtypicalDayPrompts(patientId, params = {}) {
   const q = new URLSearchParams(params).toString();
-  return requestJson(`/api/patients/${patientId}/atypical-day-prompts${q ? `?${q}` : ""}`);
+  return requestJson(`/api/patients/${patientId}/atypical-day-prompts${q ? `?${q}` : ""}`, { background: true });
 }
 export function deferAtypicalDayPrompt(indicator_ids) {
   return requestJson("/api/atypical-day-prompts/defer", {
@@ -103,13 +116,13 @@ export function deferAtypicalDayPrompt(indicator_ids) {
 // === NOTIFICATIONS ===
 export function fetchNotifications(params = {}) {
   const q = new URLSearchParams(params).toString();
-  return requestJson(`/api/notifications?${q}`);
+  return requestJson(`/api/notifications?${q}`, { background: true });
 }
 export function readNotification(id) {
   return requestJson(`/api/notifications/${id}/read`, { method: "POST" });
 }
 export function fetchUnreadSummary() {
-  return requestJson("/api/notifications/unread-summary");
+  return requestJson("/api/notifications/unread-summary", { background: true });
 }
 
 // === LEGACY ===

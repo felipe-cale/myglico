@@ -27,7 +27,7 @@ async function loadUnreadCounts(items) {
   const entries = await Promise.all(items.map(async (inv) => {
     if (typeof inv.unread_count === "number") return [inv.id, inv.unread_count];
     try {
-      const detail = await fetchInvestigationDetail(inv.id, { page_size: 1 });
+      const detail = await fetchInvestigationDetail(inv.id, { page_size: 1 }, { background: true });
       return [inv.id, detail?.unread_count ?? 0];
     } catch {
       return [inv.id, null];

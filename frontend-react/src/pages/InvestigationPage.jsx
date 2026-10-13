@@ -38,10 +38,10 @@ export default function InvestigationPage() {
   const followLatestRef = useRef(true);
   const scrollAfterSendRef = useRef(false);
 
-  const loadData = async () => {
+  const loadData = async ({ background = false } = {}) => {
     try {
       const requestedPage = Number.isInteger(page) && page > 0 ? page : 1;
-      const data = await fetchInvestigationDetail(id, { page: requestedPage, page_size: pageSize });
+      const data = await fetchInvestigationDetail(id, { page: requestedPage, page_size: pageSize }, { background });
       const investigation = data.investigation || data;
       const items = data.messages || data.items || [];
       const ownRole = investigation.counterpart?.role === "doctor" ? "patient" : "doctor";
@@ -93,7 +93,7 @@ export default function InvestigationPage() {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 10000); // Polling for messages
+    const interval = setInterval(() => loadData({ background: true }), 10000); // Polling for messages
     return () => clearInterval(interval);
   }, [id, page, pageSize]);
 
@@ -134,7 +134,7 @@ export default function InvestigationPage() {
       setActionError("");
       followLatestRef.current = true;
       scrollAfterSendRef.current = true;
-      await loadData();
+      await loadData({ background: true });
     } catch(e) {
       setActionError(t("cscw.sendFailed"));
     } finally {
