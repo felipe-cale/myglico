@@ -306,7 +306,6 @@ export default function DoctorLinksManager() {
 
       <ConfirmDialog
         open={Boolean(revokeTarget)}
-        eyebrow={t("dashboard.revokeDialog.eyebrow")}
         title={t("dashboard.revokeDialog.titlePatient", { name: revokeTarget?.doctor?.name || "" })}
         description={t("dashboard.revokeDialog.bodyPatient", { name: revokeTarget?.doctor?.name || "" })}
         confirmLabel={t("dashboard.revokeConfirm")}

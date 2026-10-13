@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -29,24 +29,92 @@ import useMediaQuery from "../hooks/useMediaQuery";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import useDocumentTitle from "../hooks/useDocumentTitle";
 
-// Recharts paints SVG attributes, so the glycemic tokens (--glyco-*) are mirrored here.
-const PIE_COLORS = ["#e35d73", "#1eab69", "#f4a93d"];
 const RANGE_TONES = ["low", "in-range", "high"];
 const TREND_REFERENCE_TICKS = [0, 70, 180, 250];
 const HOURLY_TICKS = Array.from({ length: 24 }, (_, index) => index);
-const TREND_COLOR = "#167cd9";
-const HYPO_COLOR = "#e35d73";
-const HYPER_COLOR = "#f4a93d";
-const HIGH_RISK_COLOR = "#8a5300";
-const LEGEND_TEXT_COLOR = "#17304a";
 // Each reference line has its own dash pattern so the thresholds stay distinguishable without color.
 const REFERENCE_DASH = { hypo: "2 4", hyper: "9 4", highRisk: "14 4 3 4" };
-const REFERENCE_LINES = [
-  { y: 70, color: HYPO_COLOR, dash: REFERENCE_DASH.hypo },
-  { y: 180, color: HYPER_COLOR, dash: REFERENCE_DASH.hyper },
-  { y: 250, color: HIGH_RISK_COLOR, dash: REFERENCE_DASH.highRisk }
-];
 const MAX_SUMMARY_HOURS = 3;
+// Recharts paints SVG attributes, which cannot resolve var(); the tokens are read once from :root.
+// The fallbacks only cover a missing stylesheet and mirror the token values in styles.css.
+const CHART_TOKENS = {
+  trend: ["--react-blue", "#167cd9"],
+  low: ["--glyco-low", "#e35d73"],
+  inRange: ["--glyco-in-range", "#1eab69"],
+  high: ["--glyco-high", "#f4a93d"],
+  veryHigh: ["--glyco-very-high", "#8a5300"],
+  text: ["--react-text", "#17304a"],
+  muted: ["--react-muted", "#56677e"],
+  surface: ["--react-surface-solid", "#ffffff"],
+  grid: ["--tint-blue-12", "rgba(22, 124, 217, 0.12)"],
+  border: ["--react-border", "rgba(22, 124, 217, 0.14)"]
+};
+let chartPaletteCache = null;
+
+function chartPalette() {
+  if (chartPaletteCache) return chartPaletteCache;
+  const styles = typeof window !== "undefined" ? window.getComputedStyle(document.documentElement) : null;
+  const palette = Object.fromEntries(
+    Object.entries(CHART_TOKENS).map(([key, [token, fallback]]) => [key, styles?.getPropertyValue(token).trim() || fallback])
+  );
+  if (styles?.getPropertyValue("--react-blue").trim()) chartPaletteCache = palette;
+  return palette;
+}
+
+// A stretch longer than this without readings breaks the trend line instead of bridging it.
+const TREND_GAP_DAYS = 14;
+// On phones a long period is drawn as weekly averages; the day strip and tables keep every day.
+const WEEKLY_TREND_MIN_DAYS = 60;
+const DAY_MS = 86400000;
+const dayTime = (value) => Date.parse(`${value}T00:00:00Z`);
+
+function weekStartOf(value) {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  return date.toISOString().slice(0, 10);
+}
+
+function buildTrendSeries(indicators, weekly) {
+  const days = [...indicators].sort((left, right) => (left.date < right.date ? -1 : left.date > right.date ? 1 : 0));
+  let points = days.map((indicator) => ({ ...indicator, key: indicator.date, startDate: indicator.date, endDate: indicator.date, dates: [indicator.date] }));
+  if (weekly) {
+    const groups = new Map();
+    for (const indicator of days) {
+      const key = weekStartOf(indicator.date);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(indicator);
+    }
+    points = Array.from(groups.entries()).map(([key, items]) => {
+      const values = items.map((item) => item.avg_glucose).filter((value) => value !== null && value !== undefined);
+      const withValue = items.filter((item) => item.avg_glucose !== null && item.avg_glucose !== undefined);
+      return {
+        key,
+        weekly: true,
+        date: (withValue.at(-1) || items.at(-1)).date,
+        startDate: items[0].date,
+        endDate: items.at(-1).date,
+        dates: items.map((item) => item.date),
+        avg_glucose: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null
+      };
+    });
+  }
+  const series = [];
+  const gaps = [];
+  points.forEach((point, index) => {
+    const previous = points[index - 1];
+    if (previous && (dayTime(point.startDate) - dayTime(previous.endDate)) / DAY_MS > TREND_GAP_DAYS) {
+      // A null point between both sides makes Recharts leave the line open across the gap.
+      const gap = { key: `gap-${index}`, gap: true, gapStart: previous.endDate, gapEnd: point.startDate, avg_glucose: null };
+      gaps.push(gap);
+      series.push(gap);
+    }
+    series.push(point);
+  });
+  const first = days[0]?.date;
+  const last = days.at(-1)?.date;
+  const spansYears = Boolean(first && last && (dayTime(last) - dayTime(first)) / DAY_MS > 365);
+  return { series, gaps, spansYears };
+}
 
 function peakHours(rows, key) {
   const peak = Math.max(0, ...rows.map((row) => row[key]));
@@ -123,6 +191,7 @@ function enumLabel(namespace, code, fallback, t) {
 function InfoTooltip({ content, label }) {
   const [isOpen, setIsOpen] = useState(false);
   const tooltipRef = useRef(null);
+  const tooltipId = useId();
 
   useEffect(() => {
     if (!isOpen) {
@@ -167,6 +236,7 @@ function InfoTooltip({ content, label }) {
         className="react-info-tooltip__trigger"
         aria-label={label}
         aria-expanded={isOpen}
+        aria-describedby={tooltipId}
         onClick={(event) => {
           event.stopPropagation();
           setIsOpen((current) => !current);
@@ -174,7 +244,7 @@ function InfoTooltip({ content, label }) {
       >
         i
       </button>
-      <span className="react-info-tooltip__content" role="tooltip">
+      <span className="react-info-tooltip__content" role="tooltip" id={tooltipId}>
         {content}
       </span>
     </span>
@@ -588,6 +658,40 @@ export default function PatientDetailPage() {
     [hourlyHighs250, hourlyLows]
   );
 
+  // Day mode counts the selected day's own readings with the same thresholds the API uses for the period.
+  const dayHourlyExtremes = useMemo(
+    () =>
+      HOURLY_TICKS.map((hour) => {
+        const atHour = selectedDayEvents.filter((event) => Number.parseInt(String(event.event_time || "").slice(0, 2), 10) === hour);
+        return {
+          hour,
+          lowCount: atHour.filter((event) => event.glucose_mg_dl != null && event.glucose_mg_dl < 70).length,
+          highCount: atHour.filter((event) => event.glucose_mg_dl != null && event.glucose_mg_dl > 250).length,
+        };
+      }),
+    [selectedDayEvents]
+  );
+
+  const weeklyTrend = isCompactMobile && chartData.length > WEEKLY_TREND_MIN_DAYS;
+  const trendSeries = useMemo(() => buildTrendSeries(chartData, weeklyTrend), [chartData, weeklyTrend]);
+
+  // The day strip opens on the selected day, or on the most recent one; only the strip scrolls, never the page.
+  const dayStripRef = useRef(null);
+  useEffect(() => {
+    const strip = dayStripRef.current;
+    if (!strip) return;
+    const target = strip.querySelector(".react-day-pill.is-active") || strip.lastElementChild;
+    if (!target) return;
+    const stripBox = strip.getBoundingClientRect();
+    const targetBox = target.getBoundingClientRect();
+    const inset = 6;
+    if (targetBox.right > stripBox.right - inset) {
+      strip.scrollLeft += targetBox.right - stripBox.right + inset;
+    } else if (targetBox.left < stripBox.left + inset) {
+      strip.scrollLeft -= stripBox.left + inset - targetBox.left;
+    }
+  }, [selectedDay, availableDayDates, loading]);
+
   // A "#new-reading" link opens the entry form once per navigation, then scrolls to it and focuses its first field.
   useEffect(() => {
     if (location.hash === "#new-reading") pendingNewReadingRef.current = true;
@@ -788,7 +892,14 @@ export default function PatientDetailPage() {
   const pieOuterRadius = isCompactMobile ? 68 : 78;
   const axisTickStyle = { fontSize: 12 };
   const hourlyAxisTickStyle = { fontSize: 12 };
-  const tooltipContentStyle = { fontSize: 14, borderRadius: 18, borderColor: "rgba(22, 124, 217, 0.14)" };
+  const palette = chartPalette();
+  const pieColors = [palette.low, palette.inRange, palette.high];
+  const referenceLines = [
+    { y: 70, color: palette.low, dash: REFERENCE_DASH.hypo },
+    { y: 180, color: palette.high, dash: REFERENCE_DASH.hyper },
+    { y: 250, color: palette.veryHigh, dash: REFERENCE_DASH.highRisk }
+  ];
+  const tooltipContentStyle = { fontSize: 14, borderRadius: 18, borderColor: palette.border };
   const tooltipLabelStyle = { fontSize: 14, fontWeight: 700 };
   const trendValues = isDayMode
     ? selectedDayEvents.map((event) => event.glucose_mg_dl)
@@ -806,42 +917,60 @@ export default function PatientDetailPage() {
     {
       label: isDayMode
         ? t("patientDetail.trend.legendDayCurveCount", { count: selectedDayEvents.length })
-        : t("patientDetail.trend.legendDailyAvg"),
-      color: TREND_COLOR,
+        : weeklyTrend
+          ? t("patientDetail.trend.legendWeeklyAvg")
+          : t("patientDetail.trend.legendDailyAvg"),
+      color: palette.trend,
       dash: null,
     },
     {
       label: t("patientDetail.trend.legendHypo"),
-      color: HYPO_COLOR,
+      color: palette.low,
       dash: REFERENCE_DASH.hypo,
     },
     {
       label: t("patientDetail.trend.legendHyperTarget"),
-      color: HYPER_COLOR,
+      color: palette.high,
       dash: REFERENCE_DASH.hyper,
     },
     {
       label: t("patientDetail.trend.legendHighRisk"),
-      color: HIGH_RISK_COLOR,
+      color: palette.veryHigh,
       dash: REFERENCE_DASH.highRisk,
     },
   ];
+  const trendTickFormat = trendSeries.spansYears
+    ? new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "2-digit" })
+    : new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit" });
+  const formatTrendTick = (key) => (typeof key === "string" && !key.startsWith("gap-") ? trendTickFormat.format(new Date(`${key}T00:00:00`)) : "");
+  const formatTrendTooltipLabel = (point) => {
+    if (!point) return "";
+    if (point.gap) return t("patientDetail.trend.gapTooltip", { start: formatDate(point.gapStart), end: formatDate(point.gapEnd) });
+    if (point.weekly) return t("patientDetail.trend.weekOf", { start: formatDate(point.startDate), end: formatDate(point.endDate) });
+    return formatDate(point.date);
+  };
+  const trendGapNote = trendSeries.gaps.length === 1
+    ? t("patientDetail.trend.gapNote_one", { start: formatDate(trendSeries.gaps[0].gapStart), end: formatDate(trendSeries.gaps[0].gapEnd) })
+    : trendSeries.gaps.length > 1
+      ? t("patientDetail.trend.gapNote_other", { count: trendSeries.gaps.length })
+      : "";
+  const activeHourlyExtremes = isDayMode && selectedDay ? dayHourlyExtremes : hourlyExtremes;
   const formatHourList = (hours) => {
     const labels = hours.map((hour) => `${String(hour).padStart(2, "0")}h`);
     return typeof Intl.ListFormat === "function"
       ? new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format(labels)
       : labels.join(", ");
   };
-  const extremesTotals = hourlyExtremes.reduce(
+  const extremesTotals = activeHourlyExtremes.reduce(
     (totals, row) => ({ low: totals.low + row.lowCount, high: totals.high + row.highCount }),
     { low: 0, high: 0 }
   );
   const extremesSummary = [
     extremesTotals.low
-      ? t("patientDetail.extremeEvents.summaryLow", { count: extremesTotals.low, hours: formatHourList(peakHours(hourlyExtremes, "lowCount")) })
+      ? t("patientDetail.extremeEvents.summaryLow", { count: extremesTotals.low, hours: formatHourList(peakHours(activeHourlyExtremes, "lowCount")) })
       : t("patientDetail.extremeEvents.summaryLowNone"),
     extremesTotals.high
-      ? t("patientDetail.extremeEvents.summaryHigh", { count: extremesTotals.high, hours: formatHourList(peakHours(hourlyExtremes, "highCount")) })
+      ? t("patientDetail.extremeEvents.summaryHigh", { count: extremesTotals.high, hours: formatHourList(peakHours(activeHourlyExtremes, "highCount")) })
       : t("patientDetail.extremeEvents.summaryHighNone")
   ].join(" ");
   function handleSelectDay(dateValue) {
@@ -908,7 +1037,7 @@ export default function PatientDetailPage() {
           <AtypicalDaysTrigger
             label={atypicalLabel}
             value={atypicalValue}
-            helper={t("patientDetail.stats.anomalyDays.helper")}
+            helper={t(isOwnPatientView ? "patientDetail.stats.anomalyDays.helperPatient" : "patientDetail.stats.anomalyDays.helper")}
             actionHint={atypicalHint}
             onClick={openPopup}
             buttonRef={triggerRef}
@@ -922,7 +1051,6 @@ export default function PatientDetailPage() {
   const revokeDialog = (
     <ConfirmDialog
       open={revokeOpen && Boolean(doctorLink)}
-      eyebrow={t("dashboard.revokeDialog.eyebrow")}
       title={t("dashboard.revokeDialog.titleDoctor", { name: patient.display_name })}
       description={t("dashboard.revokeDialog.bodyDoctor", { name: patient.display_name })}
       confirmLabel={t("dashboard.revokeConfirm")}
@@ -950,6 +1078,18 @@ export default function PatientDetailPage() {
 
   const dailyIndicatorsPagination = renderPagination(data.daily_indicators_pagination, indicatorPageSize, setIndicatorPage, setIndicatorPageSize);
   const recentEventsPagination = renderPagination(data.recent_events_pagination, eventPageSize, setEventPage, setEventPageSize);
+
+  // Every record here is a glucose reading in practice and the subtype repeats the context, so one
+  // "Context" column carries both; a non-glucose event still names its type first.
+  const eventContextLabel = (event) => {
+    const contextLabel = enumLabel("context", event.context_label, event.context_label_display, t);
+    const subtypeLabel = enumLabel("eventSubtype", event.event_subtype, event.event_subtype_label, t);
+    const typeLabel = event.event_type && event.event_type !== "glucose_measurement"
+      ? enumLabel("eventType", event.event_type, event.event_type_label, t)
+      : "";
+    const detail = contextLabel && contextLabel !== "-" ? contextLabel : subtypeLabel;
+    return [typeLabel, detail].filter((value) => value && value !== "-").join(" · ");
+  };
 
   const formatEventValue = (event) =>
     event.glucose_mg_dl != null
@@ -1002,18 +1142,14 @@ export default function PatientDetailPage() {
   const recentEventRows = (
     <ul className="react-detail-rows" aria-label={t("patientDetail.recentEvents.title")}>
       {recentEvents.map((event) => {
-        const eventTypeLabel = enumLabel("eventType", event.event_type, event.event_type_label, t);
-        const eventSubtypeLabel = enumLabel("eventSubtype", event.event_subtype, event.event_subtype_label, t);
-        const contextLabel = enumLabel("context", event.context_label, event.context_label_display, t);
+        const context = eventContextLabel(event);
         return (
           <li key={`${event.occurred_at}-${event.event_type}`} className="react-detail-row">
             <div className="react-detail-row__head">
               <span className="react-detail-row__title">{formatPatientEventDateTime(event)}</span>
               <strong className="react-detail-row__value">{formatEventValue(event)}</strong>
             </div>
-            <p className="react-detail-row__meta">
-              {[eventTypeLabel, eventSubtypeLabel, contextLabel].filter((value) => value && value !== "-").join(" · ")}
-            </p>
+            {context ? <p className="react-detail-row__meta">{context}</p> : null}
           </li>
         );
       })}
@@ -1265,7 +1401,7 @@ export default function PatientDetailPage() {
                           isAnimationActive={false}
                         >
                           {activeDistributionData.map((entry, index) => (
-                            <Cell key={entry.name} fill={PIE_COLORS[index]} />
+                            <Cell key={entry.name} fill={pieColors[index]} />
                           ))}
                         </Pie>
                       </PieChart>
@@ -1294,13 +1430,14 @@ export default function PatientDetailPage() {
           <section className="react-panel react-trend" aria-labelledby="trend-title">
             <div className="react-panel__header">
               <div>
-                <h2 id="trend-title">{isDayMode ? t("patientDetail.trend.titleDay") : t("patientDetail.trend.titlePeriod")}</h2>
+                <h2 id="trend-title">{isDayMode ? t("patientDetail.trend.titleDay") : weeklyTrend ? t("patientDetail.trend.titlePeriodWeekly") : t("patientDetail.trend.titlePeriod")}</h2>
                 <p>
                   {isDayMode && selectedDay
                     ? t("patientDetail.trend.bodyDay", { date: formatDate(selectedDay) })
                     : t("patientDetail.trend.bodyPeriod")}
                 </p>
                 {isSparseDay ? <p className="react-trend__note">{t("patientDetail.trend.sparseDayNote")}</p> : null}
+                {!isDayMode && weeklyTrend ? <p className="react-trend__note">{t("patientDetail.trend.weeklyNote")}</p> : null}
               </div>
               {selectedDay ? (
                 <div className="react-segmented" role="group" aria-label={t("patientDetail.trend.viewModeLabel")}>
@@ -1317,7 +1454,7 @@ export default function PatientDetailPage() {
               {!isDayMode ? (
                 <ResponsiveContainer width="100%" height={trendChartHeight}>
                   <LineChart
-                    data={chartData}
+                    data={trendSeries.series}
                     margin={trendChartMargin}
                     onClick={(state) => {
                       const clickedDate = state?.activePayload?.[0]?.payload?.date;
@@ -1326,18 +1463,33 @@ export default function PatientDetailPage() {
                       }
                     }}
                   >
-                    <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
-                    <XAxis dataKey="label" tick={axisTickStyle} minTickGap={isCompactMobile ? 18 : 10} />
+                    <CartesianGrid strokeDasharray="4 4" stroke={palette.grid} />
+                    <XAxis dataKey="key" tickFormatter={formatTrendTick} tick={axisTickStyle} minTickGap={isCompactMobile ? 18 : 10} />
                     <YAxis tick={axisTickStyle} width={isCompactMobile ? 32 : 40} domain={trendYAxisDomain} ticks={trendYAxisTicks} interval={0} />
-                    <Tooltip formatter={(value) => `${formatNumber(value)} mg/dL`} labelFormatter={(_, payload) => (payload?.[0]?.payload?.date ? formatDate(payload[0].payload.date) : "")} contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
-                    {REFERENCE_LINES.map((line) => (
+                    <Tooltip
+                      formatter={(value) => (value == null ? t("patientDetail.trend.gapValue") : `${formatNumber(value)} mg/dL`)}
+                      labelFormatter={(_, payload) => formatTrendTooltipLabel(payload?.[0]?.payload)}
+                      contentStyle={tooltipContentStyle}
+                      labelStyle={tooltipLabelStyle}
+                    />
+                    {referenceLines.map((line) => (
                       <ReferenceLine key={line.y} y={line.y} stroke={line.color} strokeWidth={1.5} strokeDasharray={line.dash} />
+                    ))}
+                    {trendSeries.gaps.map((gap) => (
+                      <ReferenceLine
+                        key={gap.key}
+                        x={gap.key}
+                        stroke={palette.muted}
+                        strokeDasharray="2 3"
+                        label={{ value: t("patientDetail.trend.gapMarker"), position: "insideTop", fontSize: 12, fill: palette.muted }}
+                      />
                     ))}
                     <Line
                       type="monotone"
                       dataKey="avg_glucose"
-                      name={t("patientDetail.trend.seriesAverage")}
-                      stroke={TREND_COLOR}
+                      connectNulls={false}
+                      name={weeklyTrend ? t("patientDetail.trend.seriesWeeklyAverage") : t("patientDetail.trend.seriesAverage")}
+                      stroke={palette.trend}
                       strokeWidth={3}
                       isAnimationActive={!reducedMotion}
                       activeDot={{ r: 7, onClick: (_, __, event) => event?.stopPropagation?.() }}
@@ -1347,15 +1499,15 @@ export default function PatientDetailPage() {
                           return null;
                         }
 
-                        const isActive = payload.date === selectedDay;
+                        const isActive = payload.dates ? payload.dates.includes(selectedDay) : payload.date === selectedDay;
                         return (
                           <circle
-                            key={`trend-dot-${payload.date}-${index ?? "item"}`}
+                            key={`trend-dot-${payload.key || payload.date}-${index ?? "item"}`}
                             cx={cx}
                             cy={cy}
                             r={isActive ? 6 : 4}
-                            fill={isActive ? TREND_COLOR : "#ffffff"}
-                            stroke={TREND_COLOR}
+                            fill={isActive ? palette.trend : palette.surface}
+                            stroke={palette.trend}
                             strokeWidth={isActive ? 3 : 2}
                             style={{ cursor: "pointer" }}
                             onClick={() => handleSelectDay(payload.date)}
@@ -1368,7 +1520,7 @@ export default function PatientDetailPage() {
               ) : selectedDayEvents.length ? (
                 <ResponsiveContainer width="100%" height={trendChartHeight}>
                   <LineChart data={selectedDayEvents} margin={trendChartMargin}>
-                    <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
+                    <CartesianGrid strokeDasharray="4 4" stroke={palette.grid} />
                     <XAxis dataKey="event_time" tick={axisTickStyle} minTickGap={isCompactMobile ? 16 : 10} />
                     <YAxis tick={axisTickStyle} width={isCompactMobile ? 32 : 40} domain={trendYAxisDomain} ticks={trendYAxisTicks} interval={0} />
                     <Tooltip
@@ -1381,14 +1533,14 @@ export default function PatientDetailPage() {
                       contentStyle={tooltipContentStyle}
                       labelStyle={tooltipLabelStyle}
                     />
-                    {REFERENCE_LINES.map((line) => (
+                    {referenceLines.map((line) => (
                       <ReferenceLine key={line.y} y={line.y} stroke={line.color} strokeWidth={1.5} strokeDasharray={line.dash} />
                     ))}
                     <Line
                       type={isSparseDay ? "linear" : "monotone"}
                       dataKey="glucose_mg_dl"
                       name={t("patientDetail.trend.seriesGlucose")}
-                      stroke={TREND_COLOR}
+                      stroke={palette.trend}
                       strokeWidth={3}
                       dot={{ r: 4 }}
                       isAnimationActive={!reducedMotion}
@@ -1403,17 +1555,18 @@ export default function PatientDetailPage() {
                 />
               )}
             </div>
-            <div className="react-chart-legend" aria-label={t("patientDetail.trend.chartLegendAriaLabel")}>
+            {!isDayMode && trendGapNote ? <p className="react-chart-summary" data-testid="trend-gap-note">{trendGapNote}</p> : null}
+            <ul className="react-chart-legend" aria-label={t("patientDetail.trend.chartLegendAriaLabel")}>
               {trendLegendItems.map((item) => (
-                <div key={item.label} className="react-chart-legend__item">
+                <li key={item.label} className="react-chart-legend__item">
                   <svg className="react-chart-legend__line" viewBox="0 0 28 6" aria-hidden="true" focusable="false">
                     <line x1="0" y1="3" x2="28" y2="3" stroke={item.color} strokeWidth={item.dash ? 2 : 3} strokeDasharray={item.dash || undefined} />
                   </svg>
                   <small>{item.label}</small>
-                </div>
+                </li>
               ))}
-            </div>
-            <div className="react-day-strip" role="group" aria-label={t("patientDetail.trend.dayStripAriaLabel")}>
+            </ul>
+            <div className="react-day-strip" role="group" aria-label={t("patientDetail.trend.dayStripAriaLabel")} ref={dayStripRef}>
               {availableDayDates.map((dateValue) => (
                 <button
                   key={dateValue}
@@ -1433,12 +1586,17 @@ export default function PatientDetailPage() {
             <div className="react-panel__header">
               <div>
                 <h2 id="extremes-title">{t("patientDetail.extremeEvents.title")}</h2>
+                <p>
+                  {isDayMode && selectedDay
+                    ? t("patientDetail.extremeEvents.scopeDay", { date: formatDate(selectedDay) })
+                    : t("patientDetail.extremeEvents.scopePeriod")}
+                </p>
               </div>
             </div>
             <div className="react-chart react-chart--extremes">
               <ResponsiveContainer width="100%" height={dropHoursChartHeight}>
-                <BarChart data={hourlyExtremes} margin={trendChartMargin} barGap={isCompactMobile ? 2 : 4} barCategoryGap={isCompactMobile ? "10%" : "18%"}>
-                  <CartesianGrid strokeDasharray="4 4" stroke="rgba(22, 124, 217, 0.12)" />
+                <BarChart data={activeHourlyExtremes} margin={trendChartMargin} barGap={isCompactMobile ? 2 : 4} barCategoryGap={isCompactMobile ? "10%" : "18%"}>
+                  <CartesianGrid strokeDasharray="4 4" stroke={palette.grid} />
                   <XAxis
                     dataKey="hour"
                     ticks={hourlyAxisTicks}
@@ -1454,10 +1612,10 @@ export default function PatientDetailPage() {
                     verticalAlign="top"
                     height={32}
                     wrapperStyle={{ fontSize: "14px" }}
-                    formatter={(value) => <span style={{ color: LEGEND_TEXT_COLOR }}>{value}</span>}
+                    formatter={(value) => <span style={{ color: palette.text }}>{value}</span>}
                   />
-                  <Bar dataKey="lowCount" name="< 70 mg/dL" fill={HYPO_COLOR} radius={[8, 8, 0, 0]} isAnimationActive={!reducedMotion} />
-                  <Bar dataKey="highCount" name="> 250 mg/dL" fill={HIGH_RISK_COLOR} radius={[8, 8, 0, 0]} isAnimationActive={!reducedMotion} />
+                  <Bar dataKey="lowCount" name="< 70 mg/dL" fill={palette.low} radius={[8, 8, 0, 0]} isAnimationActive={!reducedMotion} />
+                  <Bar dataKey="highCount" name="> 250 mg/dL" fill={palette.veryHigh} radius={[8, 8, 0, 0]} isAnimationActive={!reducedMotion} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1553,28 +1711,18 @@ export default function PatientDetailPage() {
                   <thead>
                     <tr>
                       <th>{t("patientDetail.recentEvents.when")}</th>
-                      <th>{t("patientDetail.recentEvents.type")}</th>
-                      <th>{t("patientDetail.recentEvents.subtype")}</th>
                       <th className="is-num">{t("patientDetail.recentEvents.value")}</th>
                       <th>{t("patientDetail.recentEvents.context")}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentEvents.map((event) => {
-                      const eventTypeLabel = enumLabel("eventType", event.event_type, event.event_type_label, t);
-                      const eventSubtypeLabel = enumLabel("eventSubtype", event.event_subtype, event.event_subtype_label, t);
-                      const contextLabel = enumLabel("context", event.context_label, event.context_label_display, t);
-
-                      return (
-                        <tr key={`${event.occurred_at}-${event.event_type}`}>
-                          <td>{formatPatientEventDateTime(event)}</td>
-                          <td title={event.event_type || ""}>{eventTypeLabel}</td>
-                          <td title={event.event_subtype || ""}>{eventSubtypeLabel}</td>
-                          <td className="is-num">{formatEventValue(event)}</td>
-                          <td title={event.context_label || ""}>{contextLabel}</td>
-                        </tr>
-                      );
-                    })}
+                    {recentEvents.map((event) => (
+                      <tr key={`${event.occurred_at}-${event.event_type}`}>
+                        <td>{formatPatientEventDateTime(event)}</td>
+                        <td className="is-num">{formatEventValue(event)}</td>
+                        <td>{eventContextLabel(event) || t("common.dash")}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

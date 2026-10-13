@@ -895,6 +895,11 @@ def api_atypical_days(
             "indicator_id": indicator.id,
             "date": indicator.indicator_date.isoformat(),
             "reason_summary": None,
+            # Factual day figures so clients can say what stands out without a diagnosis.
+            "glucose_event_count": indicator.glucose_event_count,
+            "avg_glucose": round(indicator.avg_glucose, 1) if indicator.avg_glucose is not None else None,
+            "low_events_count": indicator.low_events_count,
+            "high_events_count": indicator.high_events_count,
             "has_investigation": db.scalar(investigation_query.limit(1)) is not None,
         })
     db.commit()

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-13T03:30:00-03:00",
+  "generatedAt": "2026-10-13T12:00:00-03:00",
   "title": "Design System: MyGlico",
   "extensions": {
     "colorMeta": {
@@ -103,6 +103,12 @@
         "role": "tertiary",
         "displayName": "Glyco Very High",
         "canonical": "#8a5300"
+      },
+      "surface-solid": {
+        "role": "neutral",
+        "displayName": "Solid Surface",
+        "canonical": "#ffffff",
+        "token": "--react-surface-solid"
       }
     },
     "typographyMeta": {
@@ -283,7 +289,47 @@
         "name": "space-12",
         "value": "48px"
       }
-    ]
+    ],
+    "tintScales": {
+      "blue": {
+        "base": "rgba(22, 124, 217, a)",
+        "steps": {
+          "6": 0.06,
+          "8": 0.08,
+          "10": 0.1,
+          "12": 0.12,
+          "16": 0.16,
+          "18": 0.18,
+          "32": 0.32,
+          "55": 0.55
+        },
+        "token": "--tint-blue-{step}",
+        "purpose": "Hovers, washes, chart grid (12), scrollbars (32); selection bg (10) and border (55)."
+      },
+      "cyan": {
+        "base": "rgba(39, 183, 231, a)",
+        "steps": {
+          "12": 0.12,
+          "16": 0.16
+        },
+        "token": "--tint-cyan-{step}",
+        "purpose": "Info washes and soft focus/hover halos."
+      }
+    },
+    "chartTimeAxis": {
+      "yearTicksWhenSpanDaysOver": 365,
+      "yearTickFormat": "dd/mm/yy (Intl)",
+      "gapBreakDaysOver": 14,
+      "gapMarker": "dotted muted reference line labelled 'lacuna' plus a one-line note",
+      "weeklyAggregation": {
+        "viewport": "<= 640px",
+        "whenDaysOver": 60,
+        "scope": "chart only; day strip and tables stay daily",
+        "note": "média semanal"
+      },
+      "dayStrip": "opens scrolled (strip only) to the selected or most recent day",
+      "colors": "read from :root tokens via getComputedStyle"
+    }
   },
   "components": [
     {
@@ -442,6 +488,31 @@
       {
         "name": "The Land On What Is New Rule",
         "body": "A conversation opens on its first unread message, marked by a \"New messages (n)\" divider, or at its end; only the message list scrolls. Notifications say who sent what and where (\"From {name}, in “{title}”\") while keeping the event type as their label."
+      },
+      {
+        "name": "The Signals Not Labels Rule",
+        "body": "The doctor's patient list shows independent factual signals ('Hipo frequente': time below 70 >= 10%; 'Hiper predominante': time high >= 65% or average >= 185 mg/dL) that can coexist, and 'Em faixa' only when neither applies. The filter keeps the single API signal_code (hyper wins) and its help explains both.",
+        "section": "colors"
+      },
+      {
+        "name": "The Range Reference Rule",
+        "body": "A reading is positioned against 70-180 mg/dL with a factual chip (within / above 180 / below 70) in the glyco chip styles, never with judgement words.",
+        "section": "colors"
+      },
+      {
+        "name": "The Honest Time Axis Rule",
+        "body": "Trend axes show the year when the range spans more than a year, break the line over gaps longer than 14 days with a 'lacuna' marker and note, and on phones aggregate periods over 60 days to weekly averages for the chart only, saying so.",
+        "section": "components"
+      },
+      {
+        "name": "The Plain Dialog Rule",
+        "body": "Dialogs use plain language and a factual scope line, keep secondary inputs behind a closed disclosure, make each row label (checkbox + date + short reason) the 44px target with text-button row actions, have one primary footer action, disable resets with nothing to reset, preselect a forced single choice, and share one inset (--dialog-pad) across header, body and actions.",
+        "section": "components"
+      },
+      {
+        "name": "The Tokenized Tint Rule",
+        "body": "White surfaces use --react-surface-solid and blue/cyan alphas use the --tint-blue-* / --tint-cyan-* scales; raw values live only in :root.",
+        "section": "colors"
       }
     ],
     "dos": [

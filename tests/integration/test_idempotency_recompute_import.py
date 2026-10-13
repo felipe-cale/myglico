@@ -305,8 +305,14 @@ def test_aut_ca_21_recompute_preserves_indicators_and_readings(world: World):
     # The reference set has exactly one extreme day; it is the expected atypical day.
     assert atypical == {date(2026, 6, 10)}, atypical
     assert len(first[2]) == 10 * 5
-    api_days = {row["date"] for row in patient.client.get(f"/api/patients/{patient.id}/atypical-days").json()["days"]}
+    api_rows = patient.client.get(f"/api/patients/{patient.id}/atypical-days").json()["days"]
+    api_days = {row["date"] for row in api_rows}
     assert api_days == {d.isoformat() for d in atypical}
+    # Each day carries its own factual figures (the popup's short reason), matching the indicator.
+    expected = {d.isoformat(): (round(avg, 1), count) for d, flag, avg, count in first[0] if flag}
+    for row in api_rows:
+        assert (row["avg_glucose"], row["glucose_event_count"]) == expected[row["date"]]
+        assert row["low_events_count"] >= 0 and row["high_events_count"] >= 0
 
 
 def test_aut_ca_21_uci_import_preserves_pre_timezone_anomaly_classification(uci_import, world: World):

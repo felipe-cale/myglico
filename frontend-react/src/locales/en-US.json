@@ -41,13 +41,13 @@
     "navigation": "Pagination navigation"
   },
   "signal": {
-    "stable": "In-Range Profile",
-    "attention": "Hyperglycemic Profile",
-    "oscillation": "Hypoglycemic Profile",
-    "short": {
-      "stable": "In range",
-      "attention": "Hyperglycemic",
-      "oscillation": "Hypoglycemic"
+    "stable": "In range",
+    "attention": "Mostly high",
+    "oscillation": "Frequent lows (not mostly high)",
+    "chips": {
+      "hypo": "Frequent lows",
+      "hyper": "Mostly high",
+      "inRange": "In range"
     }
   },
   "clusterProfile": {
@@ -75,7 +75,7 @@
   },
   "enums": {
     "eventType": {
-      "glucose_measurement": "Glucose measurement",
+      "glucose_measurement": "Glucose reading",
       "insulin_dose": "Insulin dose",
       "symptom": "Symptom",
       "meal": "Meal",
@@ -153,11 +153,11 @@
     },
     "patients": {
       "eyebrow": "Patients monitored",
-      "title": "Find a patient in seconds",
-      "body": "Search by patient name or code and quickly open the individual dashboard of whoever needs your attention.",
-      "filterLabel": "Filter by profile",
-      "filterAriaLabel": "Filter patients by profile",
-      "helpButtonAriaLabel": "Explain filter profiles",
+      "title": "Patients",
+      "body": "Search by name or code and open the panel of anyone you follow.",
+      "filterLabel": "Filter by signal",
+      "filterAriaLabel": "Filter patients by signal",
+      "helpButtonAriaLabel": "Explain the signals and the filter",
       "searchPlaceholder": "Search by name or code",
       "searchAriaLabel": "Search patient",
       "loading": {
@@ -187,14 +187,14 @@
       },
       "daysObserved_one": "{{count}} day with readings available",
       "daysObserved_other": "{{count}} days with readings available",
-      "helpButtonLabel": "How profiles are defined",
+      "helpButtonLabel": "How signals are defined",
       "openPanelShort": "Open dashboard",
       "openPanelAria": "Open dashboard for {{name}}",
       "rowSummary": "{{avg}} mg/dL · {{low}} low · {{high}} high",
       "columns": {
         "patient": "Patient",
         "code": "Code",
-        "profile": "Profile",
+        "profile": "Signals",
         "days": "Days",
         "avg": "Average (mg/dL)",
         "low": "% low",
@@ -204,78 +204,79 @@
     },
     "profileHelp": {
       "eyebrow": "Filter help",
-      "closeAriaLabel": "Close profile explanation",
+      "closeAriaLabel": "Close the signals explanation",
       "all": {
-        "title": "Filter profiles",
-        "intro": "The profiles below organize the list by the predominant glucose pattern in the analyzed period. They work as a visual triage and do not replace clinical assessment.",
+        "title": "Signals and filter",
+        "intro": "Signals summarize each patient's analysed period using fixed thresholds. They organize the list and do not replace clinical assessment.",
         "sections": [
           {
-            "title": "In-Range Profile",
-            "body": "Groups patients who did not reach the hyperglycemic or hypoglycemic profile thresholds. In the app's metrics, the reference range considers 70 to 180 mg/dL for general readings, 80 to 130 mg/dL for pre-meal readings, and values below 180 mg/dL for post-meal readings."
+            "title": "In range",
+            "body": "Shown when neither signal is reached. In the metrics, the reference range is 70 to 180 mg/dL for general readings, 80 to 130 mg/dL before meals and below 180 mg/dL after meals."
           },
           {
-            "title": "Hyperglycemic Profile",
-            "body": "Applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher. Time in high considers readings at or above 130 mg/dL in pre-meal measurements and at or above 180 mg/dL in post-meal measurements or without specific context."
+            "title": "Mostly high",
+            "body": "Shown when the period's average is 185 mg/dL or higher, or when time in high is 65% or higher. Time in high counts readings at or above 130 mg/dL before meals and at or above 180 mg/dL after meals or without a specific context."
           },
           {
-            "title": "Hypoglycemic Profile",
-            "body": "Applied when time in low is 10% or higher in the period. Time in low considers readings below 70 mg/dL."
+            "title": "Frequent lows",
+            "body": "Shown when time in low is 10% or higher in the period. Time in low counts readings below 70 mg/dL."
           },
           {
-            "title": "When both thresholds apply",
-            "body": "If the patient reaches both the hyperglycemic and the hypoglycemic thresholds, the list shows the Hyperglycemic Profile. Check the time below 70 mg/dL on the patient panel."
+            "title": "When both signals show",
+            "body": "The row shows both signals. In the filter the patient goes to “Mostly high”; the “Frequent lows (not mostly high)” group only holds patients with 10% or more time in low and no other signal."
           }
         ]
       },
       "stable": {
-        "title": "In-Range Profile",
-        "intro": "This filter shows patients who stayed outside the hyperglycemic and hypoglycemic profile criteria in the current screening.",
+        "title": "In range",
+        "intro": "This filter shows patients with neither signal in the analysed period.",
         "sections": [
           {
-            "title": "Reference range",
-            "body": "The reference used in the metrics considers 70 to 180 mg/dL for general readings, 80 to 130 mg/dL for pre-meal readings, and values below 180 mg/dL for post-meal readings."
+            "title": "Range considered",
+            "body": "In the metrics, the reference range is 70 to 180 mg/dL for general readings, 80 to 130 mg/dL before meals and below 180 mg/dL after meals."
           },
           {
-            "title": "How the filter applies here",
-            "body": "The patient stays in this group when the period's average glucose is below 185 mg/dL and time in low is below 10%."
+            "title": "How the filter places a patient here",
+            "body": "A patient lands in this group when the period's average stays below 185 mg/dL, time in high below 65% and time in low below 10%."
           }
         ]
       },
       "attention": {
-        "title": "Hyperglycemic Profile",
-        "intro": "This filter highlights patients with a predominance of elevated readings in the analyzed period.",
+        "title": "Mostly high",
+        "intro": "This filter shows patients whose readings were mostly high in the analysed period.",
         "sections": [
           {
-            "title": "Classification threshold",
-            "body": "The profile is applied when the period's average glucose is 185 mg/dL or higher, or when time in high is 65% or higher. This profile takes precedence over the Hypoglycemic Profile."
+            "title": "Signal threshold",
+            "body": "The signal shows when the period's average is 185 mg/dL or higher, or when time in high is 65% or higher. Patients who also have frequent lows stay in this group and show both signals in the list."
           },
           {
             "title": "What counts as high",
-            "body": "Time in high considers readings at or above 130 mg/dL in pre-meal measurements and at or above 180 mg/dL in post-meal measurements or without specific context."
+            "body": "Time in high counts readings at or above 130 mg/dL before meals and at or above 180 mg/dL after meals or without a specific context."
           }
         ]
       },
       "oscillation": {
-        "title": "Hypoglycemic Profile",
-        "intro": "This filter highlights patients with a more significant recurrence of low readings in the period.",
+        "title": "Frequent lows (not mostly high)",
+        "intro": "This filter shows patients with 10% or more time in low who do not have the mostly-high signal.",
         "sections": [
           {
-            "title": "Classification threshold",
-            "body": "The profile is applied when time in low is 10% or higher in the period. If the hyperglycemic criterion is also met, the Hyperglycemic Profile prevails."
+            "title": "Signal threshold",
+            "body": "The signal shows when time in low is 10% or higher in the period. Patients who are also mostly high appear under the “Mostly high” filter, with both signals in the list."
           },
           {
             "title": "What counts as low",
-            "body": "Time in low considers readings below 70 mg/dL."
+            "body": "Time in low counts readings below 70 mg/dL."
           }
         ]
-      }
+      },
+      "signalsNote": "In the list each signal stands on its own: a patient can show “Frequent lows” and “Mostly high” at the same time. The filter puts each patient in a single group; with both signals, they go to “Mostly high”."
     }
   },
   "manualEntry": {
     "eyebrow": "Manual entry",
     "title": "Log a glucose reading",
-    "body": "Add a one-off measurement taken with your glucose meter. The reading joins your history and the day's indicators are recalculated.",
-    "measuredAt": "Measurement date and time",
+    "body": "Add a one-off reading taken with your glucose meter. It joins your history and the day's indicators are recalculated.",
+    "measuredAt": "Reading date and time",
     "glucose": "Glucose (mg/dL)",
     "glucosePlaceholder": "e.g. 110",
     "context": "Context (optional)",
@@ -289,7 +290,7 @@
     "submitting": "Saving...",
     "success": "Reading logged successfully.",
     "errors": {
-      "measuredAtRequired": "Enter the measurement date and time.",
+      "measuredAtRequired": "Enter the reading date and time.",
       "glucoseRange": "Enter a glucose value greater than 0 and up to 1000 mg/dL.",
       "customContextRequired": "Describe the context or choose another option.",
       "saveFailed": "Could not log the reading. Please try again."
@@ -313,23 +314,23 @@
       "backToOverview": "Back to overview",
       "downloadReport": "Download Glucose Report",
       "periodAnalyzed": "Period analyzed",
-      "defaultWindow": "Default 30-day window from the most recent available date.",
+      "defaultWindow": "Last 30 days with data.",
       "selectedDays": "Selected days ({{count}})",
       "referencePeriod": "Only these days are analyzed. Reference period: {{start}} to {{end}}.",
       "customWindow": "Custom {{count}}-day period chosen in the filter.",
       "eyebrowSelf": "My dashboard",
       "bodySelf": "Here are your readings, indicators and charts for the selected period. Adjust the dates to look back at other moments.",
       "backHome": "Back to home",
-      "measurementsBadge_zero": "No measurements",
-      "measurementsBadge_one": "{{count}} measurement",
-      "measurementsBadge_other": "{{count}} measurements",
+      "measurementsBadge_zero": "No readings",
+      "measurementsBadge_one": "{{count}} reading",
+      "measurementsBadge_other": "{{count}} readings",
       "availablePeriod": "Data available from {{start}} to {{end}}.",
       "viewAllHistory": "See full history",
       "pendingAnalysisNote_one": "{{count}} day with recent readings is still awaiting analysis. Its indicators show up after the next processing run.",
       "pendingAnalysisNote_other": "{{count}} days with recent readings are still awaiting analysis. Their indicators show up after the next processing run.",
       "newReading": "Log a reading",
       "fullHistory": "Full available history.",
-      "latestAnalysedWindow": "Default window ending on the most recent analysed day.",
+      "latestAnalysedWindow": "Last 30 analysed days.",
       "pendingOutsideNote_one": "{{count}} more recent day is awaiting analysis and falls outside this period.",
       "pendingOutsideNote_other": "{{count}} more recent days are awaiting analysis and fall outside this period.",
       "viewRecentReadings": "View recent readings",
@@ -369,7 +370,9 @@
       "summaryLowNone": "No readings below 70 mg/dL.",
       "summaryHigh_one": "{{count}} reading above 250 mg/dL, at {{hours}}.",
       "summaryHigh_other": "{{count}} readings above 250 mg/dL, most often at {{hours}}.",
-      "summaryHighNone": "No readings above 250 mg/dL."
+      "summaryHighNone": "No readings above 250 mg/dL.",
+      "scopePeriod": "In the period shown.",
+      "scopeDay": "On {{date}}."
     },
     "trend": {
       "eyebrow": "Glucose trend",
@@ -388,14 +391,24 @@
       "seriesGlucose": "Glucose",
       "insufficientData": {
         "title": "Not enough readings for the selected day",
-        "description": "There aren't enough glucose measurements to build the hourly view for this day."
+        "description": "There aren't enough readings to build the hourly view for this day."
       },
       "dayStripAriaLabel": "Available days in the period",
       "chartLegendAriaLabel": "Glucose chart legend",
       "viewModeLabel": "Chart view",
       "legendDayCurveCount_one": "Glucose curve · {{count}} reading",
       "legendDayCurveCount_other": "Glucose curve · {{count}} readings",
-      "sparseDayNote": "Few readings on this day: the points are joined by straight lines and there are no measurements between them."
+      "sparseDayNote": "Few readings on this day: the points are joined by straight lines and there are no readings between them.",
+      "legendWeeklyAvg": "Weekly average",
+      "seriesWeeklyAverage": "Weekly average",
+      "weeklyNote": "Weekly average in the chart; the day strip and the tables show every day.",
+      "gapMarker": "gap",
+      "gapTooltip": "No readings from {{start}} to {{end}}",
+      "gapValue": "no readings",
+      "gapNote_one": "No readings from {{start}} to {{end}}: the line is left open over that stretch.",
+      "gapNote_other": "{{count}} stretches of more than 14 days without readings: the line is left open over each one.",
+      "weekOf": "Week from {{start}} to {{end}}",
+      "titlePeriodWeekly": "Weekly average for the period"
     },
     "sidebar": {
       "eyebrowDay": "Daily focus",
@@ -406,8 +419,8 @@
     },
     "stats": {
       "measurements": {
-        "label": "Measurements",
-        "helper": "readings for the day"
+        "label": "Readings",
+        "helper": "on this day"
       },
       "avgDay": {
         "label": "Day average"
@@ -447,7 +460,8 @@
       "anomalyDays": {
         "label": "Atypical days",
         "helper": "flagged by the analysis",
-        "action": "Review and select the days"
+        "action": "Review and select the days",
+        "helperPatient": "outside your usual pattern"
       }
     },
     "dailyIndicators": {
@@ -683,12 +697,10 @@
     "proactivePromptDatedPatient": "We identified an atypical day in your readings on {{date}}. Would you like to open a clarification with a linked doctor?",
     "viewDays": "View the days",
     "promptRegion": "Atypical days invitation",
-    "popupScopeAll": "{{count}} atypical days in the patient's full history.",
-    "popupScopeActive": "{{count}} atypical days in the period shown in the detail view ({{start}} to {{end}}), the same scope as the card.",
-    "popupScopeCustom": "{{count}} atypical days in the period chosen here ({{start}} to {{end}}), different from the period shown in the detail view.",
+    "popupScopeAll": "{{count}} atypical days in the full history.",
     "popupShowAll": "Show full history",
     "popupUseActive": "Use the period shown",
-    "popupOutsideHint": "Days outside the period shown widen the detail period when the filter is applied.",
+    "popupOutsideHint": "When applied, days outside the page's period widen that period.",
     "previousClassification": "Previous classification",
     "originPreviousClassification": "Opened from {{date}}, which was atypical in the analysis at the time. In the current analysis that day is no longer classified as atypical; the conversation and its origin were preserved.",
     "originAtypicalDated": "Origin: atypical day on {{date}}",
@@ -741,7 +753,18 @@
     "closeHint": "Close it once the question is resolved. After that, nobody can send new messages.",
     "newMessagesDivider_one": "New message ({{count}})",
     "newMessagesDivider_other": "New messages ({{count}})",
-    "deferFailed": "This invitation could not be postponed. Please try again."
+    "deferFailed": "This invitation could not be postponed. Please try again.",
+    "recipientDoctor": "Doctor",
+    "recipientPatient": "Patient",
+    "selectDoctor": "Select the doctor",
+    "selectPatient": "Select the patient",
+    "popupScopeRange": "{{count}} atypical days between {{start}} and {{end}}.",
+    "popupDayAvg": "Average {{value}} mg/dL",
+    "popupDayLow_one": "{{count}} reading below 70",
+    "popupDayLow_other": "{{count}} readings below 70",
+    "popupDayHigh_one": "{{count}} above target",
+    "popupDayHigh_other": "{{count}} above target",
+    "atypicalExplainPatient": "An atypical day is a day when your readings moved away from your usual pattern. It is not a diagnosis."
   },
   "notifications": {
     "title": "Notifications",
@@ -801,7 +824,12 @@
     "metrics": {
       "latest": {
         "label": "Latest reading",
-        "empty": "You have not logged any readings yet."
+        "empty": "You have not logged any readings yet.",
+        "range": {
+          "below": "Below 70 mg/dL",
+          "within": "Within 70–180 mg/dL",
+          "above": "Above 180 mg/dL"
+        }
       },
       "records": {
         "label": "My readings",

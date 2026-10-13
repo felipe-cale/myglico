@@ -117,6 +117,7 @@ export default function ProactivePrompt() {
         <div className="react-panel__header-copy">
           <p className="react-eyebrow">{t("cscw.promptEyebrow")}</p>
           <h2>{t("cscw.promptTitle")}</h2>
+          <p>{t("cscw.atypicalExplainPatient")}</p>
         </div>
       </div>
       <ul className="react-prompt__list" aria-busy={loadingPage}>

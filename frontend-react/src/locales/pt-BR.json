@@ -41,13 +41,13 @@
     "navigation": "Navegação da paginação"
   },
   "signal": {
-    "stable": "Perfil em Faixa",
-    "attention": "Perfil Hiperglicêmico",
-    "oscillation": "Perfil Hipoglicêmico",
-    "short": {
-      "stable": "Em faixa",
-      "attention": "Hiperglicêmico",
-      "oscillation": "Hipoglicêmico"
+    "stable": "Em faixa",
+    "attention": "Hiper predominante",
+    "oscillation": "Hipo frequente (sem hiper predominante)",
+    "chips": {
+      "hypo": "Hipo frequente",
+      "hyper": "Hiper predominante",
+      "inRange": "Em faixa"
     }
   },
   "clusterProfile": {
@@ -75,7 +75,7 @@
   },
   "enums": {
     "eventType": {
-      "glucose_measurement": "Medição de glicose",
+      "glucose_measurement": "Leitura de glicose",
       "insulin_dose": "Dose de insulina",
       "symptom": "Sintoma",
       "meal": "Alimentação",
@@ -153,11 +153,11 @@
     },
     "patients": {
       "eyebrow": "Pacientes acompanhados",
-      "title": "Encontre um paciente em segundos",
-      "body": "Busque por nome ou código do paciente e abra rapidamente o painel individual de quem precisa da sua atenção.",
-      "filterLabel": "Filtrar por perfil",
-      "filterAriaLabel": "Filtrar pacientes por perfil",
-      "helpButtonAriaLabel": "Explicar perfis do filtro",
+      "title": "Pacientes",
+      "body": "Busque por nome ou código e abra o painel de quem você acompanha.",
+      "filterLabel": "Filtrar por sinal",
+      "filterAriaLabel": "Filtrar pacientes por sinal",
+      "helpButtonAriaLabel": "Explicar os sinais e o filtro",
       "searchPlaceholder": "Buscar por nome ou código",
       "searchAriaLabel": "Buscar paciente",
       "loading": {
@@ -187,14 +187,14 @@
       },
       "daysObserved_one": "{{count}} dia com leituras disponíveis",
       "daysObserved_other": "{{count}} dias com leituras disponíveis",
-      "helpButtonLabel": "Como os perfis são definidos",
+      "helpButtonLabel": "Como os sinais são definidos",
       "openPanelShort": "Abrir painel",
       "openPanelAria": "Abrir painel de {{name}}",
       "rowSummary": "{{avg}} mg/dL · {{low}} baixa · {{high}} alta",
       "columns": {
         "patient": "Paciente",
         "code": "Código",
-        "profile": "Perfil",
+        "profile": "Sinais",
         "days": "Dias",
         "avg": "Média (mg/dL)",
         "low": "% baixa",
@@ -204,78 +204,79 @@
     },
     "profileHelp": {
       "eyebrow": "Ajuda do filtro",
-      "closeAriaLabel": "Fechar explicação dos perfis",
+      "closeAriaLabel": "Fechar explicação dos sinais",
       "all": {
-        "title": "Perfis de filtro",
-        "intro": "Os perfis abaixo organizam a lista por padrão glicêmico predominante no período analisado. Eles funcionam como triagem visual e não substituem avaliação clínica.",
+        "title": "Sinais e filtro",
+        "intro": "Os sinais resumem o período analisado de cada paciente a partir de limiares fixos. Eles organizam a lista e não substituem a avaliação clínica.",
         "sections": [
           {
-            "title": "Perfil em Faixa",
-            "body": "Agrupa pacientes que não atingiram os limiares de perfil hiperglicêmico nem hipoglicêmico. Nas métricas da aplicação, a faixa usada como referência considera 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL nas leituras pré-refeição e valores abaixo de 180 mg/dL nas leituras pós-refeição."
+            "title": "Em faixa",
+            "body": "Aparece quando nenhum dos dois sinais é atingido. Nas métricas, a faixa de referência é 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL antes das refeições e abaixo de 180 mg/dL depois das refeições."
           },
           {
-            "title": "Perfil Hiperglicêmico",
-            "body": "É aplicado quando a média glicêmica do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%. O tempo em alta considera leituras iguais ou acima de 130 mg/dL nas medições pré-refeição e iguais ou acima de 180 mg/dL nas medições pós-refeição ou sem contexto específico."
+            "title": "Hiper predominante",
+            "body": "Aparece quando a média do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%. O tempo em alta considera leituras iguais ou acima de 130 mg/dL antes das refeições e iguais ou acima de 180 mg/dL depois das refeições ou sem contexto específico."
           },
           {
-            "title": "Perfil Hipoglicêmico",
-            "body": "É aplicado quando o tempo em baixa é maior ou igual a 10% no período. O tempo em baixa considera leituras abaixo de 70 mg/dL."
+            "title": "Hipo frequente",
+            "body": "Aparece quando o tempo em baixa é maior ou igual a 10% no período. O tempo em baixa considera leituras abaixo de 70 mg/dL."
           },
           {
-            "title": "Quando os dois limiares se aplicam",
-            "body": "Se o paciente atinge ao mesmo tempo o limiar hiperglicêmico e o hipoglicêmico, a lista mostra o Perfil Hiperglicêmico. Confira o tempo abaixo de 70 mg/dL no painel do paciente."
+            "title": "Quando os dois sinais aparecem",
+            "body": "A linha mostra os dois sinais. No filtro, o paciente entra em “Hiper predominante”; o grupo “Hipo frequente (sem hiper predominante)” reúne só quem tem tempo em baixa de 10% ou mais sem o outro sinal."
           }
         ]
       },
       "stable": {
-        "title": "Perfil em Faixa",
-        "intro": "Este filtro mostra pacientes que permaneceram fora dos critérios de perfil hiperglicêmico e hipoglicêmico na triagem atual.",
+        "title": "Em faixa",
+        "intro": "Este filtro mostra pacientes sem nenhum dos dois sinais no período analisado.",
         "sections": [
           {
             "title": "Faixa considerada",
-            "body": "A referência usada nas métricas considera 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL nas leituras pré-refeição e valores abaixo de 180 mg/dL nas leituras pós-refeição."
+            "body": "Nas métricas, a faixa de referência é 70 a 180 mg/dL nas leituras gerais, 80 a 130 mg/dL antes das refeições e abaixo de 180 mg/dL depois das refeições."
           },
           {
             "title": "Como o filtro entra aqui",
-            "body": "O paciente permanece neste grupo quando a média glicêmica do período fica abaixo de 185 mg/dL e o tempo em baixa fica abaixo de 10%."
+            "body": "O paciente entra neste grupo quando a média do período fica abaixo de 185 mg/dL, o tempo em alta fica abaixo de 65% e o tempo em baixa fica abaixo de 10%."
           }
         ]
       },
       "attention": {
-        "title": "Perfil Hiperglicêmico",
-        "intro": "Este filtro destaca pacientes com predominância de leituras elevadas no período analisado.",
+        "title": "Hiper predominante",
+        "intro": "Este filtro mostra pacientes com predominância de leituras elevadas no período analisado.",
         "sections": [
           {
-            "title": "Limiar de classificação",
-            "body": "O perfil é aplicado quando a média glicêmica do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%. Este perfil tem precedência sobre o Perfil Hipoglicêmico."
+            "title": "Limiar do sinal",
+            "body": "O sinal aparece quando a média do período é maior ou igual a 185 mg/dL ou quando o tempo em alta é maior ou igual a 65%. Quem também tem hipo frequente fica neste grupo e mostra os dois sinais na lista."
           },
           {
             "title": "O que conta como alta",
-            "body": "O tempo em alta considera leituras iguais ou acima de 130 mg/dL nas medições pré-refeição e iguais ou acima de 180 mg/dL nas medições pós-refeição ou sem contexto específico."
+            "body": "O tempo em alta considera leituras iguais ou acima de 130 mg/dL antes das refeições e iguais ou acima de 180 mg/dL depois das refeições ou sem contexto específico."
           }
         ]
       },
       "oscillation": {
-        "title": "Perfil Hipoglicêmico",
-        "intro": "Este filtro destaca pacientes com recorrência mais relevante de leituras em baixa no período.",
+        "title": "Hipo frequente (sem hiper predominante)",
+        "intro": "Este filtro mostra pacientes com tempo em baixa de 10% ou mais que não têm o sinal de hiper predominante.",
         "sections": [
           {
-            "title": "Limiar de classificação",
-            "body": "O perfil é aplicado quando o tempo em baixa é maior ou igual a 10% no período. Se o critério hiperglicêmico também for atingido, prevalece o Perfil Hiperglicêmico."
+            "title": "Limiar do sinal",
+            "body": "O sinal aparece quando o tempo em baixa é maior ou igual a 10% no período. Quem também tem hiper predominante aparece no filtro “Hiper predominante”, com os dois sinais na lista."
           },
           {
             "title": "O que conta como baixa",
             "body": "O tempo em baixa considera leituras abaixo de 70 mg/dL."
           }
         ]
-      }
+      },
+      "signalsNote": "Na lista, cada sinal aparece por conta própria: um paciente pode mostrar “Hipo frequente” e “Hiper predominante” ao mesmo tempo. O filtro coloca cada paciente em um único grupo; com os dois sinais, ele entra em “Hiper predominante”."
     }
   },
   "manualEntry": {
     "eyebrow": "Registro manual",
     "title": "Registrar leitura de glicemia",
-    "body": "Adicione uma medição avulsa feita no glicosímetro. A leitura entra no seu histórico e os indicadores do dia são recalculados.",
-    "measuredAt": "Data e hora da medição",
+    "body": "Adicione uma leitura avulsa feita no glicosímetro. Ela entra no seu histórico e os indicadores do dia são recalculados.",
+    "measuredAt": "Data e hora da leitura",
     "glucose": "Glicemia (mg/dL)",
     "glucosePlaceholder": "Ex.: 110",
     "context": "Contexto (opcional)",
@@ -289,7 +290,7 @@
     "submitting": "Registrando...",
     "success": "Leitura registrada com sucesso.",
     "errors": {
-      "measuredAtRequired": "Informe a data e a hora da medição.",
+      "measuredAtRequired": "Informe a data e a hora da leitura.",
       "glucoseRange": "Informe um valor de glicemia maior que 0 e até 1000 mg/dL.",
       "customContextRequired": "Descreva o contexto ou escolha outra opção.",
       "saveFailed": "Não foi possível registrar a leitura. Tente novamente."
@@ -313,23 +314,23 @@
       "backToOverview": "Voltar para a visão geral",
       "downloadReport": "Baixar Relatório Glicêmico",
       "periodAnalyzed": "Período analisado",
-      "defaultWindow": "Janela padrão de 30 dias a partir da data mais recente disponível.",
+      "defaultWindow": "Últimos 30 dias com dados.",
       "selectedDays": "Dias selecionados ({{count}})",
       "referencePeriod": "Somente estes dias são analisados. Período de referência: {{start}} a {{end}}.",
       "customWindow": "Período personalizado de {{count}} dias escolhido no filtro.",
       "eyebrowSelf": "Meu painel",
       "bodySelf": "Aqui estão suas leituras, indicadores e gráficos do período selecionado. Ajuste as datas para rever outros momentos.",
       "backHome": "Voltar para o início",
-      "measurementsBadge_zero": "Nenhuma medição",
-      "measurementsBadge_one": "{{count}} medição",
-      "measurementsBadge_other": "{{count}} medições",
+      "measurementsBadge_zero": "Nenhuma leitura",
+      "measurementsBadge_one": "{{count}} leitura",
+      "measurementsBadge_other": "{{count}} leituras",
       "availablePeriod": "Dados disponíveis de {{start}} a {{end}}.",
       "viewAllHistory": "Ver todo o histórico",
       "pendingAnalysisNote_one": "{{count}} dia com leituras recentes ainda aguarda a análise. Os indicadores desse dia aparecem depois do próximo processamento.",
       "pendingAnalysisNote_other": "{{count}} dias com leituras recentes ainda aguardam a análise. Os indicadores desses dias aparecem depois do próximo processamento.",
       "newReading": "Registrar leitura",
       "fullHistory": "Todo o histórico disponível.",
-      "latestAnalysedWindow": "Janela padrão terminando no dia analisado mais recente.",
+      "latestAnalysedWindow": "Últimos 30 dias analisados.",
       "pendingOutsideNote_one": "{{count}} dia mais recente aguarda análise e fica fora deste período.",
       "pendingOutsideNote_other": "{{count}} dias mais recentes aguardam análise e ficam fora deste período.",
       "viewRecentReadings": "Ver leituras recentes",
@@ -369,7 +370,9 @@
       "summaryLowNone": "Nenhuma leitura abaixo de 70 mg/dL.",
       "summaryHigh_one": "{{count}} leitura acima de 250 mg/dL, às {{hours}}.",
       "summaryHigh_other": "{{count}} leituras acima de 250 mg/dL, mais frequentes às {{hours}}.",
-      "summaryHighNone": "Nenhuma leitura acima de 250 mg/dL."
+      "summaryHighNone": "Nenhuma leitura acima de 250 mg/dL.",
+      "scopePeriod": "No período exibido.",
+      "scopeDay": "Em {{date}}."
     },
     "trend": {
       "eyebrow": "Tendência glicêmica",
@@ -388,14 +391,24 @@
       "seriesGlucose": "Glicemia",
       "insufficientData": {
         "title": "Sem leituras suficientes no dia selecionado",
-        "description": "Não há medições glicêmicas suficientes para compor a visualização horária deste dia."
+        "description": "Não há leituras suficientes para compor a visualização horária deste dia."
       },
       "dayStripAriaLabel": "Dias disponíveis no período",
       "chartLegendAriaLabel": "Legenda do gráfico glicêmico",
       "viewModeLabel": "Visualização do gráfico",
       "legendDayCurveCount_one": "Curva glicêmica · {{count}} leitura",
       "legendDayCurveCount_other": "Curva glicêmica · {{count}} leituras",
-      "sparseDayNote": "Poucas leituras neste dia: os pontos são ligados por retas e não há medições entre eles."
+      "sparseDayNote": "Poucas leituras neste dia: os pontos são ligados por retas e não há leituras entre eles.",
+      "legendWeeklyAvg": "Média semanal",
+      "seriesWeeklyAverage": "Média semanal",
+      "weeklyNote": "Média semanal no gráfico; a faixa de dias e as tabelas mostram cada dia.",
+      "gapMarker": "lacuna",
+      "gapTooltip": "Sem leituras de {{start}} a {{end}}",
+      "gapValue": "sem leituras",
+      "gapNote_one": "Sem leituras de {{start}} a {{end}}: a linha fica interrompida nesse trecho.",
+      "gapNote_other": "{{count}} trechos com mais de 14 dias sem leituras: a linha fica interrompida em cada um.",
+      "weekOf": "Semana de {{start}} a {{end}}",
+      "titlePeriodWeekly": "Média semanal do período"
     },
     "sidebar": {
       "eyebrowDay": "Foco diário",
@@ -406,8 +419,8 @@
     },
     "stats": {
       "measurements": {
-        "label": "Medições",
-        "helper": "leituras do dia"
+        "label": "Leituras",
+        "helper": "neste dia"
       },
       "avgDay": {
         "label": "Média do dia"
@@ -447,7 +460,8 @@
       "anomalyDays": {
         "label": "Dias atípicos",
         "helper": "sinalizados pela análise",
-        "action": "Ver e selecionar os dias"
+        "action": "Ver e selecionar os dias",
+        "helperPatient": "fora do seu padrão habitual"
       }
     },
     "dailyIndicators": {
@@ -646,7 +660,7 @@
     "popupError": "Não foi possível carregar os dias atípicos.",
     "retry": "Tentar novamente",
     "hasInvestigation": "Já existe uma conversa sobre este dia",
-    "viewInDetail": "Ver no detalhamento",
+    "viewInDetail": "Ver no detalhe",
     "popupClearDays": "Limpar seleção de dias",
     "proactivePromptDated": "Identificamos um dia atípico nas suas leituras em {{date}}. Você quer abrir um questionamento com um médico associado?",
     "fromAtypicalDay": "Questionamento a partir de um dia atípico",
@@ -683,12 +697,10 @@
     "proactivePromptDatedPatient": "Identificamos um dia atípico nas suas leituras em {{date}}. Quer abrir um esclarecimento com um médico associado?",
     "viewDays": "Ver os dias",
     "promptRegion": "Convite sobre dias atípicos",
-    "popupScopeAll": "{{count}} dias atípicos em todo o histórico do paciente.",
-    "popupScopeActive": "{{count}} dias atípicos no período exibido no detalhamento ({{start}} a {{end}}), o mesmo escopo do card.",
-    "popupScopeCustom": "{{count}} dias atípicos no período escolhido aqui ({{start}} a {{end}}), diferente do período exibido no detalhamento.",
+    "popupScopeAll": "{{count}} dias atípicos em todo o histórico.",
     "popupShowAll": "Ver todo o histórico",
     "popupUseActive": "Usar o período exibido",
-    "popupOutsideHint": "Dias fora do período exibido ampliam o período do detalhamento ao aplicar o filtro.",
+    "popupOutsideHint": "Ao aplicar, dias fora do período da página ampliam esse período.",
     "previousClassification": "Classificação anterior",
     "originPreviousClassification": "Aberto a partir do dia {{date}}, que era atípico na análise da época. Na análise atual esse dia não é mais classificado como atípico; a conversa e a origem foram preservadas.",
     "originAtypicalDated": "Origem: dia atípico de {{date}}",
@@ -741,7 +753,18 @@
     "closeHint": "Encerre quando a dúvida estiver resolvida. Depois disso, ninguém envia novas mensagens.",
     "newMessagesDivider_one": "Nova mensagem ({{count}})",
     "newMessagesDivider_other": "Novas mensagens ({{count}})",
-    "deferFailed": "Não foi possível adiar este convite. Tente novamente."
+    "deferFailed": "Não foi possível adiar este convite. Tente novamente.",
+    "recipientDoctor": "Médico",
+    "recipientPatient": "Paciente",
+    "selectDoctor": "Selecione o médico",
+    "selectPatient": "Selecione o paciente",
+    "popupScopeRange": "{{count}} dias atípicos entre {{start}} e {{end}}.",
+    "popupDayAvg": "Média {{value}} mg/dL",
+    "popupDayLow_one": "{{count}} leitura abaixo de 70",
+    "popupDayLow_other": "{{count}} leituras abaixo de 70",
+    "popupDayHigh_one": "{{count}} acima da meta",
+    "popupDayHigh_other": "{{count}} acima da meta",
+    "atypicalExplainPatient": "Um dia atípico é um dia em que suas leituras fugiram do seu padrão habitual. Não é um diagnóstico."
   },
   "notifications": {
     "title": "Notificações",
@@ -801,7 +824,12 @@
     "metrics": {
       "latest": {
         "label": "Última leitura",
-        "empty": "Você ainda não registrou leituras."
+        "empty": "Você ainda não registrou leituras.",
+        "range": {
+          "below": "Abaixo de 70 mg/dL",
+          "within": "Dentro da faixa 70–180 mg/dL",
+          "above": "Acima de 180 mg/dL"
+        }
       },
       "records": {
         "label": "Minhas leituras",

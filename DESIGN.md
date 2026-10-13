@@ -240,8 +240,22 @@ One mapping everywhere (charts, legends, chips):
 `glyco-low` (rose, text `rose-alert-text`) below 70 mg/dL, `glyco-in-range`
 (steady green, text `steady-green-deep`) 70–180, `glyco-high` (amber, text
 `amber-attention-text`) above 180, `glyco-very-high` (`#8a5300`, fill only)
-above 250. Patient signal chips follow it: hyperglycemic profile → amber,
-hypoglycemic profile → rose, in range → green.
+above 250. Patient signal chips follow it: "Hiper predominante" → amber,
+"Hipo frequente" → rose, "Em faixa" → green.
+
+**Signals, not labels.** The doctor's patient list shows factual signals, never
+one exclusive profile label that could contradict the row's own numbers:
+"Hipo frequente" (time below 70 ≥ 10%) and "Hiper predominante" (time high ≥ 65%
+or average ≥ 185 mg/dL) are independent chips that can coexist; "Em faixa" only
+when neither applies. The filter keeps the API's single `signal_code` (hyper takes
+precedence), so its options are named for that ("Hipo frequente (sem hiper
+predominante)") and the help dialog says that a row can show both signals and
+where the filter puts it.
+
+**Range reference, no verdict.** The patient's latest reading carries one chip
+stating its position against 70–180 mg/dL ("Dentro da faixa 70–180 mg/dL",
+"Acima de 180 mg/dL", "Abaixo de 70 mg/dL") in the same rose / green / amber
+chip styles; never words like "good", "bad" or "normal".
 
 ### States
 - **Pending** (`state-pending-bg` + slate text + 1 px dashed
@@ -264,6 +278,13 @@ hypoglycemic profile → rose, in range → green.
 - **Surface Glass** (`surface-glass`): panels and heroes.
 - **Hairline Blue** (`hairline-blue`): default border of panels, fields and
   chips.
+- **Solid surface** (`--react-surface-solid`, white): dialogs, fields, nested
+  tiles and chart dots; never a raw `#fff` outside `:root`.
+- **Tint scales** (`--tint-blue-6/8/10/12/16/18/32/55`, `--tint-cyan-12/16`):
+  trust blue and clear cyan at fixed alphas for hovers, washes, grid lines,
+  scrollbars and hairlines. Selection tokens are built from them
+  (`--state-selected-bg` = `--tint-blue-10`, border = `--tint-blue-55`). New CSS
+  uses these instead of raw `rgba(22, 124, 217, …)`.
 
 ### Named Rules
 **The Gradient Means Go Rule.** The action gradient marks only the main
@@ -351,7 +372,7 @@ rows below 900 px.
 **Patient detail** follows one reading path, patient at 390 px first and
 doctor at 1440 px:
 1. Page header: "Back" text link above the name `h1`, a meta line
-   ("data-07 · 97 medições"; the source file is doctor-only) and the actions.
+   ("data-07 · 97 leituras"; the source file is doctor-only) and the actions.
    Patient: "Registrar leitura" (primary, opens and focuses the entry form) +
    "Baixar relatório" (ghost); doctor: "Baixar relatório" (primary).
 2. Period bar (`.react-period-bar`): one panel with the range in data-md
@@ -541,7 +562,27 @@ line stating that MyGlico does not diagnose.
   still advance only for messages actually displayed (CSCW-CA-42).
 
 ### Charts
-Recharts with 12 px axis ticks, 14 px legends and tooltips. Trend charts start
+Recharts with 12 px axis ticks, 14 px legends and tooltips. Recharts paints SVG
+attributes, which cannot resolve `var()`, so the page reads the tokens
+(`--glyco-*`, `--react-blue`, `--tint-blue-12` for the grid,
+`--react-surface-solid`) once from `:root` with `getComputedStyle`; no chart
+color is hardcoded in JSX. The trend legend is a list (`ul`/`li`) with an
+`aria-label`; the info tooltip is `role="tooltip"` and linked to its trigger
+with `aria-describedby`.
+
+**Time axis.** When the plotted range spans more than a year, ticks carry the
+year (`dd/mm/yy`, Intl, locale-aware). A stretch of more than 14 days without
+data inserts a null point so the line breaks (`connectNulls={false}`), a dotted
+"lacuna" reference line marks it, the tooltip names the empty dates, and a
+one-line note below the chart states the gap. On phones, a period with more
+than 60 days is drawn as weekly averages (title, legend and a meta note say
+"média semanal"); the day strip and the tables keep daily data, and clicking a
+weekly point selects its latest day. The day strip opens scrolled to the
+selected day, or to the most recent one, by moving only the strip.
+
+**Day mode.** The extremes-by-hour chart follows the trend toggle: in day mode
+it counts the selected day's readings (< 70, > 250) and its description names
+the scope ("No período exibido." / "Em 04/04/1989."). Trend charts start
 the Y axis at 0 and end on a round top of at least 300 mg/dL (next multiple
 of 50 above the data); the ticks are exactly 0, 70, 180, 250 and that top, so
 the reference values read as labels and 250 never collides with the top.
@@ -614,7 +655,22 @@ Centered opaque white panel over a dimmed backdrop: a fixed header (subtitle
 scroller (thin palette scrollbar, never the browser default against the
 rounded edge) and a sticky actions row with a top hairline. Nested pickers
 inside a dialog grow with their content instead of scrolling on their own.
-Confirmation dialogs pair a ghost cancel with the action. Creation flows that
+Confirmation dialogs pair a ghost cancel with the action and carry no eyebrow
+that repeats their title.
+
+**Dialog content rules.** Plain language only: no internal words ("escopo do
+card", "detalhamento"); a scope line states the fact ("2 dias atípicos entre
+{start} e {end}"). Secondary controls (a dialog's own period inputs) sit behind
+a closed "Alterar período" disclosure. List rows are divider rows whose label
+(checkbox + date + short factual reason, e.g. "Média 67 mg/dL · 1 leitura
+abaixo de 70") is the 44 px target; per-row actions are text buttons. The
+footer has one primary action; a reset action is disabled while there is
+nothing to reset. A select whose choice is forced (exactly one option) is
+preselected and focus starts on the next field; its label names the role
+("Médico" for patients, "Paciente" for doctors) and the select is labelled by
+that text alone (`aria-labelledby`). Disclosure summaries draw a deep-blue
+chevron icon (≥ 3:1), never a faint CSS triangle. Header, body and sticky
+actions share one inset (`--dialog-pad`: 20 px, 16 px on phones). Creation flows that
 interrupt a list (new conversation) open as a dialog, not inline in a narrow
 column. Every dialog and the phone drawer share two hooks: `useFocusTrap`
 (one focusable selector, Escape closes, focus returns to the trigger) and

@@ -7,7 +7,7 @@ import { useAuth } from "../contexts/AuthContext";
 import InvestigationOrigin from "./InvestigationOrigin";
 import StateBlock from "./StateBlock";
 import Pagination from "./Pagination";
-import { ArrowRightIcon } from "./Icons";
+import { ArrowRightIcon, ChevronDownIcon } from "./Icons";
 import { preferredScrollBehavior } from "../hooks/usePrefersReducedMotion";
 import useFocusTrap from "../hooks/useFocusTrap";
 import useBodyScrollLock from "../hooks/useBodyScrollLock";
@@ -46,6 +46,8 @@ export default function InvestigationsList() {
   const atypicalSelectRef = useRef(null);
   const dialogRef = useRef(null);
   const linkSelectRef = useRef(null);
+  const subjectRef = useRef(null);
+  const autoPickedRef = useRef(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [investigations, setInvestigations] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, page_size: 10, total: 0, pages: 1 });
@@ -205,7 +207,19 @@ export default function InvestigationsList() {
     setSearchParams(nextParams, { replace: true });
   };
 
-  useFocusTrap(showNew, dialogRef, { initialFocusRef: linkSelectRef, onEscape: handleCancelCreate });
+  // With a single active link there is nothing to choose: it is preselected and focus starts on the subject.
+  useEffect(() => {
+    if (!showNew) {
+      autoPickedRef.current = false;
+      return;
+    }
+    if (autoPickedRef.current || selectedLink || links.length !== 1) return;
+    autoPickedRef.current = true;
+    setSelectedLink(String(links[0].id));
+    requestAnimationFrame(() => subjectRef.current?.focus());
+  }, [showNew, links, selectedLink]);
+
+  useFocusTrap(showNew, dialogRef, { initialFocusRef: links.length === 1 ? subjectRef : linkSelectRef, onEscape: handleCancelCreate });
   useBodyScrollLock(showNew);
 
   const ownRole = isPatient ? "patient" : "doctor";
@@ -273,9 +287,9 @@ export default function InvestigationsList() {
             <form onSubmit={handleCreate} className="react-form react-form--investigation">
               <div className="react-form__row">
                 <label className="react-select-field">
-                  <span>{t("cscw.association")}</span>
-                    <select ref={linkSelectRef} value={selectedLink} onChange={e => handleLinkChange(e.target.value)} required>
-                    <option value="">{t("cscw.selectAssociation")}</option>
+                  <span id="new-investigation-recipient">{t(isPatient ? "cscw.recipientDoctor" : "cscw.recipientPatient")}</span>
+                  <select ref={linkSelectRef} aria-labelledby="new-investigation-recipient" value={selectedLink} onChange={e => handleLinkChange(e.target.value)} required>
+                    <option value="">{t(isPatient ? "cscw.selectDoctor" : "cscw.selectPatient")}</option>
                     {links.map(l => (
                       <option key={l.id} value={l.id}>
                         {isPatient ? l.doctor?.name : l.patient?.display_name}
@@ -285,7 +299,7 @@ export default function InvestigationsList() {
                 </label>
                 <label className="react-field">
                   <span>{t("cscw.subject")}</span>
-                  <input type="text" value={title} onChange={e => setTitle(e.target.value)} required />
+                  <input ref={subjectRef} type="text" value={title} onChange={e => setTitle(e.target.value)} required />
                 </label>
               </div>
               <fieldset className="react-atypical-association">
@@ -296,6 +310,7 @@ export default function InvestigationsList() {
                       <span>{selectedAtypicalIds.length
                         ? t("cscw.relatedAtypicalCount", { count: selectedAtypicalIds.length })
                         : t("cscw.notRelatedAtypical")}</span>
+                      <ChevronDownIcon />
                     </summary>
                     <div className="react-atypical-select__options">
                       <button

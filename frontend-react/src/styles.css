@@ -11,6 +11,7 @@
   --react-text: #17304a;
   --react-muted: #56677e;
   --react-surface: rgba(255, 255, 255, 0.94);
+  --react-surface-solid: #fff;
   --react-border: rgba(22, 124, 217, 0.14);
   --react-shadow: 0 24px 52px rgba(20, 79, 126, 0.14);
   --react-action-start: #126fc1;
@@ -18,6 +19,18 @@
   --react-action-gradient: linear-gradient(135deg, var(--react-action-start), var(--react-action-end));
   --react-rose-text: #b23a50;
   --react-amber-text: #8a5300;
+
+  /* Tint scales: trust blue and clear cyan at fixed alphas for hovers, hairlines and washes. */
+  --tint-blue-6: rgba(22, 124, 217, 0.06);
+  --tint-blue-8: rgba(22, 124, 217, 0.08);
+  --tint-blue-10: rgba(22, 124, 217, 0.1);
+  --tint-blue-12: rgba(22, 124, 217, 0.12);
+  --tint-blue-16: rgba(22, 124, 217, 0.16);
+  --tint-blue-18: rgba(22, 124, 217, 0.18);
+  --tint-blue-32: rgba(22, 124, 217, 0.32);
+  --tint-blue-55: rgba(22, 124, 217, 0.55);
+  --tint-cyan-12: rgba(39, 183, 231, 0.12);
+  --tint-cyan-16: rgba(39, 183, 231, 0.16);
 
   /* Focus: a 2px deep-blue ring (≥ 8:1 on white and on --react-bg) is the
      indicator; the soft cyan halo only reinforces it. */
@@ -90,8 +103,8 @@
   --state-pending-border: rgba(82, 100, 122, 0.4);
   --state-atypical-bg: rgba(244, 169, 61, 0.16);
   --state-atypical-text: var(--react-amber-text);
-  --state-selected-bg: rgba(22, 124, 217, 0.1);
-  --state-selected-border: rgba(22, 124, 217, 0.55);
+  --state-selected-bg: var(--tint-blue-10);
+  --state-selected-border: var(--tint-blue-55);
   --state-disabled-bg: rgba(82, 100, 122, 0.16);
   --state-error-bg: rgba(227, 93, 115, 0.12);
   --state-info-bg: rgba(39, 183, 231, 0.14);
@@ -127,7 +140,7 @@ body {
 }
 
 ::selection {
-  background: rgba(22, 124, 217, 0.18);
+  background: var(--tint-blue-18);
   color: var(--react-text);
 }
 
@@ -219,7 +232,7 @@ small {
   display: inline-grid;
   place-items: center;
   border-radius: 18px;
-  background: linear-gradient(160deg, rgba(39, 183, 231, 0.16), rgba(30, 171, 105, 0.18));
+  background: linear-gradient(160deg, var(--tint-cyan-16), rgba(30, 171, 105, 0.18));
 }
 
 .react-brand__mark img {
@@ -279,7 +292,7 @@ small {
   gap: var(--space-1);
   border-radius: 18px;
   border: 1px solid var(--react-border);
-  background: #fff;
+  background: var(--react-surface-solid);
 }
 
 .react-topbar__menu-button span {
@@ -312,7 +325,7 @@ small {
   z-index: 40;
   width: min(86vw, 22rem);
   padding: var(--space-4);
-  background: #fff;
+  background: var(--react-surface-solid);
   border-right: 1px solid var(--react-border);
   box-shadow: 0 20px 48px rgba(16, 59, 97, 0.18);
   transform: translateX(-100%);
@@ -350,7 +363,7 @@ small {
   height: 2.75rem;
   border-radius: 16px;
   border: 1px solid var(--react-border);
-  background: #fff;
+  background: var(--react-surface-solid);
   color: var(--react-blue-deep);
   line-height: 1;
 }
@@ -372,7 +385,7 @@ small {
   font-weight: 700;
   color: var(--react-muted);
   background: rgba(248, 252, 255, 0.92);
-  border: 1px solid rgba(22, 124, 217, 0.08);
+  border: 1px solid var(--tint-blue-8);
 }
 
 .react-drawer__link.is-active {
@@ -400,7 +413,7 @@ small {
 
 .react-nav__link:not(.is-active):hover {
   color: var(--react-blue-deep);
-  background: rgba(22, 124, 217, 0.06);
+  background: var(--tint-blue-6);
 }
 
 .react-nav__link.is-active {
@@ -412,12 +425,9 @@ small {
   border: 0;
   background: transparent;
   font: inherit;
+  font-size: var(--type-label);
   font-weight: 700;
   cursor: pointer;
-}
-
-.react-nav__link--button {
-  font-size: var(--type-label);
 }
 
 .react-drawer__logout {
@@ -442,8 +452,8 @@ small {
   min-height: 2.75rem;
   padding: 0 var(--space-3);
   border-radius: 999px;
-  border: 1px solid rgba(22, 124, 217, 0.16);
-  background: #fff;
+  border: 1px solid var(--tint-blue-16);
+  background: var(--react-surface-solid);
   cursor: pointer;
   font-size: var(--type-label);
   line-height: var(--type-label-lh);
@@ -472,8 +482,8 @@ small {
   min-width: 176px;
   padding: var(--space-2);
   border-radius: 14px;
-  border: 1px solid rgba(22, 124, 217, 0.14);
-  background: #fff;
+  border: 1px solid var(--react-border);
+  background: var(--react-surface-solid);
   box-shadow: 0 18px 40px rgba(15, 35, 60, 0.16);
 }
 
@@ -504,7 +514,7 @@ small {
 
 .react-language-switcher__item:hover,
 .react-language-switcher__item.is-active {
-  background: rgba(22, 124, 217, 0.1);
+  background: var(--tint-blue-10);
 }
 
 .react-main,
@@ -548,6 +558,7 @@ small {
 
 .react-hero__visual img {
   max-width: 100%;
+  height: auto;
   object-fit: contain;
 }
 
@@ -645,16 +656,6 @@ small {
   font-variant-numeric: tabular-nums;
 }
 
-.react-pagination__size select {
-  min-height: 2.75rem;
-  width: 100%;
-  padding: 0 var(--space-8) 0 var(--space-3);
-  border: 1px solid var(--react-border);
-  border-radius: 12px;
-  background: #fff;
-  color: var(--react-text);
-}
-
 /* Pills: badges, buttons, chips and pagination */
 .react-badge,
 .react-button,
@@ -680,7 +681,7 @@ small {
 }
 
 .react-badge--brand {
-  background: rgba(22, 124, 217, 0.12);
+  background: var(--tint-blue-12);
   color: var(--react-blue-deep);
 }
 
@@ -1228,6 +1229,12 @@ small {
   color: var(--react-blue-deep);
 }
 
+.react-signal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
 .react-signal-chip {
   display: inline-flex;
   align-items: center;
@@ -1273,7 +1280,7 @@ small {
 }
 
 .react-icon-button:hover {
-  background: rgba(22, 124, 217, 0.08);
+  background: var(--tint-blue-8);
 }
 
 .react-icon-button:focus-visible {
@@ -1337,6 +1344,7 @@ small {
   position: relative;
   display: grid;
   place-items: center;
+  width: 100%;
   min-height: 100%;
 }
 
@@ -1390,6 +1398,9 @@ small {
 }
 
 .react-chart-legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);
@@ -1441,7 +1452,7 @@ small {
   gap: var(--space-1);
   padding: var(--space-3) var(--space-4);
   border-radius: 18px;
-  border: 1px solid rgba(22, 124, 217, 0.14);
+  border: 1px solid var(--react-border);
   background: rgba(255, 255, 255, 0.92);
   color: var(--react-blue-deep);
   text-align: left;
@@ -1467,7 +1478,7 @@ small {
 .react-table-shell {
   overflow-x: auto;
   border-radius: 22px;
-  border: 1px solid rgba(22, 124, 217, 0.1);
+  border: 1px solid var(--tint-blue-10);
 }
 
 .react-table-shell--daily-indicators {
@@ -1514,7 +1525,7 @@ small {
 .react-table th,
 .react-table td {
   padding: var(--space-4);
-  border-bottom: 1px solid rgba(22, 124, 217, 0.08);
+  border-bottom: 1px solid var(--tint-blue-8);
   text-align: left;
   vertical-align: top;
 }
@@ -1617,14 +1628,15 @@ small {
 }
 
 .react-info-tooltip__trigger {
+  position: relative;
   width: 1.5rem;
   height: 1.5rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  border: 1px solid rgba(22, 124, 217, 0.18);
-  background: #fff;
+  border: 1px solid var(--tint-blue-18);
+  background: var(--react-surface-solid);
   color: var(--react-blue-deep);
   font-size: var(--type-caption);
   font-weight: 700;
@@ -1637,7 +1649,7 @@ small {
 .react-info-tooltip__trigger:focus-visible,
 .react-info-tooltip.is-open .react-info-tooltip__trigger {
   border-color: rgba(22, 124, 217, 0.4);
-  box-shadow: 0 0 0 3px rgba(39, 183, 231, 0.16);
+  box-shadow: 0 0 0 3px var(--tint-cyan-16);
 }
 
 .react-info-tooltip__trigger:focus-visible {
@@ -1653,8 +1665,8 @@ small {
   width: min(17rem, 70vw);
   padding: var(--space-3);
   border-radius: 16px;
-  border: 1px solid rgba(22, 124, 217, 0.16);
-  background: #fff;
+  border: 1px solid var(--tint-blue-16);
+  background: var(--react-surface-solid);
   color: var(--react-text);
   font-size: var(--type-meta);
   line-height: 1.45;
@@ -1673,8 +1685,8 @@ small {
   width: 0.72rem;
   height: 0.72rem;
   background: inherit;
-  border-left: 1px solid rgba(22, 124, 217, 0.16);
-  border-top: 1px solid rgba(22, 124, 217, 0.16);
+  border-left: 1px solid var(--tint-blue-16);
+  border-top: 1px solid var(--tint-blue-16);
   transform: translateX(-50%) rotate(45deg);
 }
 
@@ -1700,7 +1712,7 @@ small {
   gap: var(--space-4);
   padding: var(--space-5);
   border-radius: 24px;
-  border: 1px dashed rgba(22, 124, 217, 0.18);
+  border: 1px dashed var(--tint-blue-18);
   background: rgba(255, 255, 255, 0.88);
 }
 
@@ -1756,6 +1768,7 @@ small {
 
 /* Dialogs: header and actions stay put; only the body scrolls, inside the rounded panel. */
 .react-dialog {
+  --dialog-pad: var(--space-5);
   display: flex;
   flex-direction: column;
   width: min(100%, 34rem);
@@ -1763,8 +1776,8 @@ small {
   overflow: hidden;
   padding: 0;
   border-radius: 26px;
-  border: 1px solid rgba(22, 124, 217, 0.14);
-  background: #fff;
+  border: 1px solid var(--react-border);
+  background: var(--react-surface-solid);
   box-shadow: 0 24px 58px rgba(12, 34, 56, 0.22);
 }
 
@@ -1774,7 +1787,7 @@ small {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-5) var(--space-5) var(--space-4);
+  padding: var(--dialog-pad) var(--dialog-pad) var(--space-4);
   border-bottom: 1px solid var(--react-border);
 }
 
@@ -1792,7 +1805,7 @@ small {
   justify-content: center;
   border-radius: 18px;
   border: 1px solid var(--react-border);
-  background: #fff;
+  background: var(--react-surface-solid);
   color: var(--react-blue-deep);
   line-height: 1;
   cursor: pointer;
@@ -1806,18 +1819,18 @@ small {
   gap: var(--space-4);
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--space-4) var(--space-5) var(--space-5);
+  padding: var(--space-4) var(--dialog-pad) var(--dialog-pad);
 }
 
 .react-dialog__body .react-dialog__actions,
 .react-dialog__body .react-form__actions {
   position: sticky;
-  bottom: calc(-1 * var(--space-5));
+  bottom: calc(-1 * var(--dialog-pad));
   z-index: 1;
-  margin: 0 calc(-1 * var(--space-5)) calc(-1 * var(--space-5));
-  padding: var(--space-3) var(--space-5) var(--space-5);
+  margin: 0 calc(-1 * var(--dialog-pad)) calc(-1 * var(--dialog-pad));
+  padding: var(--space-3) var(--dialog-pad) var(--dialog-pad);
   border-top: 1px solid var(--react-border);
-  background: #fff;
+  background: var(--react-surface-solid);
 }
 
 .react-dialog__body > p,
@@ -1840,8 +1853,8 @@ small {
   gap: var(--space-1);
   padding: var(--space-4);
   border-radius: 20px;
-  border: 1px solid rgba(22, 124, 217, 0.1);
-  background: #fff;
+  border: 1px solid var(--tint-blue-10);
+  background: var(--react-surface-solid);
 }
 
 .react-dialog__actions {
@@ -1957,6 +1970,7 @@ small {
 
 .react-check input,
 .react-atypical-item__select input {
+  flex: 0 0 auto;
   width: 1.15rem;
   height: 1.15rem;
   margin: var(--space-1) 0 0;
@@ -2014,7 +2028,7 @@ small {
   justify-content: center;
   border-radius: 18px;
   border: 1px solid var(--react-border);
-  background: #fff;
+  background: var(--react-surface-solid);
   color: var(--react-blue-deep);
   cursor: pointer;
 }
@@ -2023,7 +2037,7 @@ small {
 .react-notifications__trigger:focus-visible,
 .react-notifications__trigger.is-open {
   border-color: rgba(22, 124, 217, 0.3);
-  box-shadow: 0 0 0 4px rgba(39, 183, 231, 0.12);
+  box-shadow: 0 0 0 4px var(--tint-cyan-12);
 }
 
 .react-notifications__trigger:focus-visible {
@@ -2049,7 +2063,7 @@ small {
   padding: var(--space-4);
   border-radius: 24px;
   border: 1px solid var(--react-border);
-  background: linear-gradient(180deg, #fff, var(--react-bg));
+  background: linear-gradient(180deg, var(--react-surface-solid), var(--react-bg));
   box-shadow: var(--react-shadow);
 }
 
@@ -2190,10 +2204,6 @@ small {
   font-weight: 600;
 }
 
-.react-hero__visual img {
-  height: auto;
-}
-
 .react-audiences {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2296,7 +2306,7 @@ small {
 }
 
 .react-password-input__toggle:hover {
-  background: rgba(22, 124, 217, 0.08);
+  background: var(--tint-blue-8);
 }
 
 .react-password-input__toggle:focus-visible {
@@ -2430,6 +2440,10 @@ small {
 
 .react-latest-reading__actions {
   margin-top: var(--space-3);
+}
+
+.react-latest-reading__range {
+  align-self: center;
 }
 
 /* Doctor home: patients in the main column, triage rail on the side (rail first in the DOM). */
@@ -2603,19 +2617,10 @@ small {
   gap: var(--space-4);
   min-height: 3rem;
   width: 100%;
-  padding: 0 2.7rem 0 var(--space-4);
+  padding: 0 var(--space-4);
   border-radius: 20px;
   border: 1px solid var(--react-border);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 251, 254, 0.94)),
-    linear-gradient(45deg, transparent 50%, var(--react-blue-deep) 50%),
-    linear-gradient(135deg, var(--react-blue-deep) 50%, transparent 50%);
-  background-position:
-    0 0,
-    calc(100% - 1.2rem) calc(50% - 0.12rem),
-    calc(100% - 0.82rem) calc(50% - 0.12rem);
-  background-size: 100% 100%, 0.42rem 0.42rem, 0.42rem 0.42rem;
-  background-repeat: no-repeat;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 251, 254, 0.94));
   color: var(--react-text);
   font-weight: 600;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
@@ -2625,6 +2630,17 @@ small {
 
 .react-atypical-select > summary::-webkit-details-marker {
   display: none;
+}
+
+/* The chevron is deep blue (8:1 on white), so the summary reads as an active control. */
+.react-atypical-select > summary svg {
+  flex: 0 0 auto;
+  color: var(--react-blue-deep);
+  transition: transform 160ms ease;
+}
+
+.react-atypical-select[open] > summary svg {
+  transform: rotate(180deg);
 }
 
 .react-atypical-select > summary:focus-visible {
@@ -2643,7 +2659,7 @@ small {
   padding: var(--space-3);
   border: 1px solid var(--react-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--react-surface-solid);
   box-shadow: 0 12px 28px rgba(20, 48, 78, 0.12);
 }
 
@@ -2682,7 +2698,7 @@ small {
 }
 
 .react-atypical-select__options label:hover {
-  background: rgba(22, 124, 217, 0.06);
+  background: var(--tint-blue-6);
 }
 
 /* Sub-panels (inline forms inside a panel) */
@@ -2837,7 +2853,7 @@ small {
 }
 
 .react-link-history > summary:hover {
-  background: rgba(22, 124, 217, 0.06);
+  background: var(--tint-blue-6);
 }
 
 .react-link-history > summary:focus-visible {
@@ -3112,7 +3128,7 @@ small {
   min-width: 0;
   padding: var(--space-3) var(--space-4);
   border-radius: 18px 18px 18px 6px;
-  border: 1px solid rgba(22, 124, 217, 0.1);
+  border: 1px solid var(--tint-blue-10);
   background: white;
 }
 
@@ -3120,7 +3136,7 @@ small {
   justify-self: end;
   border-color: transparent;
   border-radius: 18px 18px 6px 18px;
-  background: rgba(22, 124, 217, 0.08);
+  background: var(--tint-blue-8);
 }
 
 .react-message.is-system {
@@ -3213,7 +3229,6 @@ small {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: var(--space-3);
 }
 
 .react-atypical-item {
@@ -3221,17 +3236,28 @@ small {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: 20px;
-  border: 1px solid var(--react-border);
-  background: #fff;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-2);
+  border-top: 1px solid var(--react-border);
+  border-radius: 0;
 }
 
+.react-atypical-item:last-child {
+  border-bottom: 1px solid var(--react-border);
+}
+
+.react-atypical-item.is-selected {
+  background: var(--state-selected-bg);
+}
+
+/* The whole label (checkbox, date and reason) is the 44px target. */
 .react-atypical-item__select {
+  flex: 1 1 14rem;
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-items: flex-start;
+  min-height: 2.75rem;
+  padding: var(--space-2) 0;
   cursor: pointer;
 }
 
@@ -3248,12 +3274,20 @@ small {
 .react-atypical-item__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: 0;
+  margin-left: auto;
 }
 
 .react-atypical-scope {
   display: grid;
   gap: var(--space-1);
+}
+
+.react-atypical-scope__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-1);
+  margin-left: calc(-1 * var(--space-3));
 }
 
 .react-atypical-scope p {
@@ -3294,7 +3328,13 @@ small {
   background: rgba(244, 169, 61, 0.1);
 }
 
+/* Also carries pending days left outside the resolved window, with the way to view them. */
 .react-pending-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
   border: 1px dashed var(--state-pending-border);
   background: var(--state-pending-bg);
 }
@@ -3495,7 +3535,7 @@ small {
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--react-border);
   border-radius: 18px;
-  background: #fff;
+  background: var(--react-surface-solid);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -3535,10 +3575,6 @@ small {
   gap: var(--space-4);
 }
 
-.react-distribution-visual {
-  width: 100%;
-}
-
 .react-distribution-legend__dot.is-low {
   background: var(--glyco-low);
 }
@@ -3559,7 +3595,7 @@ small {
   padding: var(--space-1);
   border: 1px solid var(--react-border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--react-surface-solid);
 }
 
 .react-segmented button {
@@ -3761,7 +3797,7 @@ small {
 }
 
 .react-manual-entry-form__more > summary:hover {
-  background: rgba(22, 124, 217, 0.06);
+  background: var(--tint-blue-6);
 }
 
 .react-manual-entry-form__optional {
@@ -4007,16 +4043,15 @@ small {
     max-height: min(70dvh, 32rem);
   }
 
+  /* Phones: header, body and actions share one 16px inset so their edges line up. */
   .react-dialog {
+    --dialog-pad: var(--space-4);
     width: 100%;
     max-height: 88vh;
-    padding: var(--space-4);
   }
 
   .react-dialog__header {
-    top: calc(-1 * var(--space-4));
-    margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
-    padding: var(--space-4) var(--space-4) var(--space-3);
+    padding-bottom: var(--space-3);
   }
 
   .react-dialog__actions .react-button {
@@ -4212,7 +4247,7 @@ small {
     z-index: 2;
     margin: var(--space-4) calc(-1 * var(--space-5)) calc(-1 * var(--space-5));
     padding: var(--space-3) var(--space-5) max(var(--space-4), env(safe-area-inset-bottom));
-    background: #fff;
+    background: var(--react-surface-solid);
   }
 
   /* clip (not hidden) keeps the panel corners without creating a scroll container for the sticky composer. */
@@ -4231,10 +4266,6 @@ small {
 
 
 /* Touch targets: the 24px info trigger keeps its look with a 44px hit area. */
-.react-info-tooltip__trigger {
-  position: relative;
-}
-
 .react-info-tooltip__trigger::before {
   content: "";
   position: absolute;
@@ -4248,15 +4279,6 @@ small {
 
 .react-pagination__item {
   min-width: 2.75rem;
-}
-
-/* Pending days left outside the resolved window, with the way to view them. */
-.react-pending-note {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-1) var(--space-3);
 }
 
 .react-pending-note span {
@@ -4345,7 +4367,7 @@ small {
   width: min(100%, 42rem);
 }
 
-.react-dialog--investigation .react-dialog__header p {
+.react-dialog__header h3 + p {
   margin: var(--space-1) 0 0;
   color: var(--react-muted);
   font-size: var(--type-body-sm);
@@ -4364,7 +4386,7 @@ small {
 .react-day-strip,
 .react-table-shell {
   scrollbar-width: thin;
-  scrollbar-color: rgba(22, 124, 217, 0.32) transparent;
+  scrollbar-color: var(--tint-blue-32) transparent;
 }
 
 .react-dialog__body::-webkit-scrollbar,
@@ -4384,7 +4406,7 @@ small {
 .react-day-strip::-webkit-scrollbar-thumb,
 .react-table-shell::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(22, 124, 217, 0.32);
+  background: var(--tint-blue-32);
 }
 
 .react-dialog__body::-webkit-scrollbar-track,
@@ -4424,7 +4446,7 @@ small {
   padding: var(--space-6) var(--space-8);
   border-radius: 26px;
   border: 1px solid var(--react-border);
-  background: #fff;
+  background: var(--react-surface-solid);
   box-shadow: var(--react-shadow);
   text-align: center;
 }
@@ -4469,7 +4491,7 @@ small {
 }
 
 .react-loading__strip {
-  fill: #fff;
+  fill: var(--react-surface-solid);
   stroke: var(--react-blue);
   stroke-width: 2;
 }

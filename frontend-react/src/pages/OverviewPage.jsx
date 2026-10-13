@@ -25,16 +25,35 @@ function formatNumber(value, suffix = "", locale = "pt-BR") {
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value) + suffix;
 }
 
-function getPatientSignal(patient, t) {
-  const code =
-    patient.signal_code ||
-    (patient.pct_hyper >= 65 || patient.avg_glucose >= 185
-      ? "attention"
-      : patient.pct_hypo >= 10
-        ? "oscillation"
-        : "stable");
-  const tone = code === "attention" ? "warning" : code === "oscillation" ? "alert" : "stable";
-  return { label: t(`signal.${code}`), shortLabel: t(`signal.short.${code}`), tone };
+// Same thresholds as the backend filter (reports._patient_signal), but each one is shown on its own:
+// a patient can carry both signals, so the row never contradicts its own numbers.
+const HYPO_SIGNAL_PCT = 10;
+const HYPER_SIGNAL_PCT = 65;
+const HYPER_SIGNAL_AVG = 185;
+
+function getPatientSignals(patient, t) {
+  const signals = [];
+  if ((patient.pct_hypo ?? 0) >= HYPO_SIGNAL_PCT) {
+    signals.push({ key: "hypo", label: t("signal.chips.hypo"), tone: "alert" });
+  }
+  if ((patient.pct_hyper ?? 0) >= HYPER_SIGNAL_PCT || (patient.avg_glucose ?? 0) >= HYPER_SIGNAL_AVG) {
+    signals.push({ key: "hyper", label: t("signal.chips.hyper"), tone: "warning" });
+  }
+  if (!signals.length) {
+    signals.push({ key: "inRange", label: t("signal.chips.inRange"), tone: "stable" });
+  }
+  return signals;
+}
+
+function PatientSignals({ patient }) {
+  const { t } = useTranslation();
+  return (
+    <span className="react-signal-chips">
+      {getPatientSignals(patient, t).map((signal) => (
+        <span key={signal.key} className={`react-signal-chip react-signal-chip--${signal.tone}`}>{signal.label}</span>
+      ))}
+    </span>
+  );
 }
 
 function FilterHelpDialog({ signal, open, onClose }) {
@@ -90,6 +109,7 @@ function FilterHelpDialog({ signal, open, onClose }) {
         </div>
         <div className="react-dialog__body">
           <p>{content.intro}</p>
+          <p>{t("overview.profileHelp.signalsNote")}</p>
           <div className="react-dialog__sections">
             {content.sections.map((section) => (
               <section key={section.title} className="react-dialog__section">
@@ -292,7 +312,6 @@ function DoctorHome() {
         <section ref={patientsSectionRef} className="react-panel react-doctor-home__patients" aria-labelledby="patients-title">
           <div className="react-panel__header react-panel__header--patients">
             <div className="react-panel__header-copy">
-              <p className="react-eyebrow">{t("overview.patients.eyebrow")}</p>
               <h2 id="patients-title">{t("overview.patients.title")}</h2>
               <p>{t("overview.patients.body")}</p>
             </div>
@@ -349,12 +368,11 @@ function DoctorHome() {
               {compactList ? (
                 <ul className="react-patient-rows">
                   {visiblePatients.map((patient) => {
-                    const signal = getPatientSignal(patient, t);
                     return (
                       <li key={patient.id} className="react-patient-row">
                         <div className="react-patient-row__head">
                           <h3>{patient.display_name}</h3>
-                          <span className={`react-signal-chip react-signal-chip--${signal.tone}`}>{signal.label}</span>
+                          <PatientSignals patient={patient} />
                         </div>
                         <p className="react-patient-row__numbers">
                           {t("overview.patients.rowSummary", {
@@ -391,7 +409,6 @@ function DoctorHome() {
                     </thead>
                     <tbody>
                       {visiblePatients.map((patient) => {
-                        const signal = getPatientSignal(patient, t);
                         return (
                           <tr key={patient.id}>
                             <th scope="row">{patient.display_name}</th>
@@ -401,7 +418,7 @@ function DoctorHome() {
                                 {copyButton(patient)}
                               </span>
                             </td>
-                            <td><span className={`react-signal-chip react-signal-chip--${signal.tone}`} title={signal.label}>{signal.shortLabel}</span></td>
+                            <td><PatientSignals patient={patient} /></td>
                             <td className="is-num">{formatNumber(patient.days_observed, "", i18n.language)}</td>
                             <td className="is-num">{avgLabel(patient)}</td>
                             <td className="is-num">{formatNumber(patient.pct_hypo, "%", i18n.language)}</td>
@@ -430,6 +447,18 @@ function DoctorHome() {
 
 function formatReadingWhen(value, locale) {
   return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+// A factual position against the reference range shown on every chart (70–180 mg/dL); no judgement words.
+function ReadingRangeChip({ value }) {
+  const { t } = useTranslation();
+  if (value === null || value === undefined) return null;
+  const range = value < 70 ? { key: "below", tone: "alert" } : value > 180 ? { key: "above", tone: "warning" } : { key: "within", tone: "stable" };
+  return (
+    <span className={`react-signal-chip react-signal-chip--${range.tone} react-latest-reading__range`}>
+      {t(`patientHome.metrics.latest.range.${range.key}`)}
+    </span>
+  );
 }
 
 function PatientHome({ patient }) {
@@ -477,6 +506,7 @@ function PatientHome({ patient }) {
                   <strong>{formatNumber(latest.glucose_mg_dl, "", i18n.language)}</strong>
                   <span>mg/dL</span>
                 </p>
+                <ReadingRangeChip value={latest.glucose_mg_dl} />
                 <p className="react-latest-reading__time">
                   <time dateTime={latest.measured_at}>{formatReadingWhen(latest.measured_at, i18n.language)}</time>
                 </p>

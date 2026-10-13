@@ -57,6 +57,13 @@ async function openManualEntry(page) {
   await expect(page.locator("#new-reading").getByRole("button", { name: tx("manualEntry.toggleClose") })).toHaveAttribute("aria-expanded", "true");
 }
 
+// Inside the popup the period inputs sit behind its own "Alterar período" disclosure.
+async function expandPopupRange(dialog) {
+  const toggle = dialog.getByRole("button", { name: tx("patientDetail.filter.toggle") });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+
 async function openPopup(page) {
   await popupTrigger(page).click();
   const dialog = page.getByRole("dialog", { name: t("cscw.popupTitle") });
@@ -170,6 +177,7 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
     // N2: same scope as the card, and the scope is stated.
     await expect(dialog.getByRole("checkbox")).toHaveCount(cardCount);
     await expect(dialog.getByTestId("atypical-scope")).toContainText(String(cardCount));
+    await expandPopupRange(dialog);
     await expect(dialog.locator('input[type="date"]').first()).toHaveValue(shortRange.start_date);
     await expect(dialog.locator('input[type="date"]').last()).toHaveValue(shortRange.end_date);
     await dialog.getByRole("button", { name: tx("cscw.popupShowAll") }).click();
@@ -308,6 +316,7 @@ test.describe("Group 9 - atypical-days popup and filters", () => {
     await expect(dialog.getByRole("checkbox")).toHaveCount(seeded.flagged.length);
     await dialog.getByRole("checkbox").first().check();
     const onlyFirst = seeded.flagged.at(-1).date;
+    await expandPopupRange(dialog);
     const range = dialog.locator("form");
     await range.locator("input[type=date]").first().fill(onlyFirst);
     await range.locator("input[type=date]").last().fill(onlyFirst);

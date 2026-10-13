@@ -23,7 +23,7 @@ test.describe("Group 5 - investigation opening and isolation", () => {
     const ui = await browserSession("patientA");
     await ui.authenticateWithApi();
     await ui.page.goto(`${ROUTES.dashboard}?atypical_day_event_id=${target.indicator_id}`);
-    await ui.page.getByLabel(t("cscw.association")).selectOption({ label: doctor.profile.display_name });
+    await ui.page.getByRole("combobox", { name: t("cscw.recipientDoctor"), exact: true }).selectOption({ label: doctor.profile.display_name });
     await ui.page.getByLabel(t("cscw.subject")).fill("Dia atípico E2E");
     await ui.page.getByLabel(t("cscw.message")).fill("Primeira mensagem sobre o dia atípico");
     const created = ui.page.waitForResponse((r) => r.url().endsWith("/api/investigations") && r.request().method() === "POST");
@@ -113,11 +113,11 @@ test.describe("Group 5 - investigation opening and isolation", () => {
     await ui.authenticateWithApi();
     await ui.page.goto(ROUTES.dashboard);
     await ui.page.getByRole("button", { name: tx("cscw.newPatient") }).click();
-    const select = ui.page.getByLabel(t("cscw.association"));
+    const select = ui.page.getByRole("combobox", { name: t("cscw.recipientDoctor"), exact: true });
     // No implicit default: placeholder first, both doctors offered.
     await expect(select).toHaveValue("");
     await expect(select.locator("option")).toHaveCount(3);
-    await expect(select.locator("option").first()).toHaveText(t("cscw.selectAssociation"));
+    await expect(select.locator("option").first()).toHaveText(t("cscw.selectDoctor"));
     const optionTexts = await select.locator("option").allInnerTexts();
     expect(optionTexts).toEqual(expect.arrayContaining([doctorA.profile.display_name, doctorB.profile.display_name]));
     await select.selectOption({ label: doctorB.profile.display_name });

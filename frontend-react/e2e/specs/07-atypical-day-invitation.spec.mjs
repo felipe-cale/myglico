@@ -135,7 +135,7 @@ test.describe("Group 7 - atypical-day invitation", () => {
     // Nobody is notified merely by opening the form.
     expect((await api.notifications(doctorA.request)).body.notifications.length).toBe(before.a);
 
-    const select = ui.page.getByLabel(t("cscw.association"));
+    const select = ui.page.getByRole("combobox", { name: t("cscw.recipientDoctor"), exact: true });
     await expect(select).toHaveValue("");
     await select.selectOption({ label: doctorB.profile.display_name });
     await ui.page.getByLabel(t("cscw.subject")).fill("Convite aceito");
