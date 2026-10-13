@@ -62,8 +62,12 @@ export default function GlobalLoading() {
     return () => clearTimeout(timer);
   }, [visible]);
 
+  // Blocking ends the moment the last request settles; only the short fade-out keeps the veil on screen,
+  // so typing right after the content appears is never swallowed by an inert page.
+  const blocking = visible && pending > 0;
+
   useEffect(() => {
-    if (!visible) return undefined;
+    if (!blocking) return undefined;
     const root = document.getElementById("root");
     root?.setAttribute("aria-busy", "true");
     // inert keeps pointer, focus and assistive tech out of the page (#root and portaled dialogs)
@@ -96,7 +100,7 @@ export default function GlobalLoading() {
         document.querySelector("#root [role='alert'] button")?.focus({ preventScroll: true });
       });
     };
-  }, [visible]);
+  }, [blocking]);
 
   const handleCancel = () => {
     cancelPendingRequests();
@@ -108,7 +112,7 @@ export default function GlobalLoading() {
         {visible ? t("common.working") : ""}
       </div>
       {visible ? (
-        <div ref={overlayRef} className="react-loading" data-testid="global-loading">
+        <div ref={overlayRef} className={`react-loading${blocking ? "" : " is-releasing"}`} data-testid="global-loading">
           <div className="react-loading__card">
             <GlucometerAnimation />
             <p aria-hidden="true">{t("common.working")}</p>

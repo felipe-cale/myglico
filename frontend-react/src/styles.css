@@ -4443,6 +4443,12 @@ small {
   animation: react-loading-in 160ms ease-out both;
 }
 
+.react-loading.is-releasing {
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
 .react-loading__card {
   display: grid;
   justify-items: center;
