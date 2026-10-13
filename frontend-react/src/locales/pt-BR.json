@@ -362,6 +362,8 @@
       "readingsCount_other": "{{count}} leituras"
     },
     "extremeEvents": {
+      "legendHigh": "Muito altas (> 250 mg/dL)",
+      "legendLow": "Muito baixas (< 70 mg/dL)",
       "eyebrow": "Fora da faixa",
       "title": "Leituras muito baixas ou muito altas por horário",
       "tooltipEvents": "{{count}} eventos",

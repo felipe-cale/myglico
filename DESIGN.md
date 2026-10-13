@@ -22,7 +22,7 @@ colors:
   glyco-low: "#e35d73"
   glyco-in-range: "#1eab69"
   glyco-high: "#f4a93d"
-  glyco-very-high: "#8a5300"
+  glyco-very-high: "#d1700f"
   state-pending-bg: "rgba(82, 100, 122, 0.10)"
   state-pending-border: "rgba(82, 100, 122, 0.40)"
   state-atypical-bg: "rgba(244, 169, 61, 0.16)"
@@ -239,7 +239,7 @@ in `frontend-react/src/styles.css` (`--react-*`, `--glyco-*`, `--state-*`).
 One mapping everywhere (charts, legends, chips):
 `glyco-low` (rose, text `rose-alert-text`) below 70 mg/dL, `glyco-in-range`
 (steady green, text `steady-green-deep`) 70–180, `glyco-high` (amber, text
-`amber-attention-text`) above 180, `glyco-very-high` (`#8a5300`, fill only)
+`amber-attention-text`) above 180, `glyco-very-high` (`#d1700f`, fills and the 250 line)
 above 250. Patient signal chips follow it: "Hiper predominante" → amber,
 "Hipo frequente" → rose, "Em faixa" → green.
 
@@ -565,6 +565,11 @@ line stating that MyGlico does not diagnose.
   still advance only for messages actually displayed (CSCW-CA-42).
 
 ### Charts
+The very-low/very-high by hour chart is mirrored on one symmetric axis:
+very high readings (> 250, `--glyco-very-high` #d1700f, 3.5:1) rise above a
+solid zero line and very low ones (< 70, `--glyco-low`) drop below it, so the
+direction reads without color; the axis shows absolute counts and the legend
+names "Very high (> 250 mg/dL)" / "Very low (< 70 mg/dL)".
 Recharts with 12 px axis ticks, 14 px legends and tooltips. Recharts paints SVG
 attributes, which cannot resolve `var()`, so the page reads the tokens
 (`--glyco-*`, `--react-blue`, `--tint-blue-12` for the grid,

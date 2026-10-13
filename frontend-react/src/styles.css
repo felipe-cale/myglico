@@ -95,7 +95,7 @@
   --glyco-in-range-text: var(--react-green-deep);
   --glyco-high: #f4a93d;
   --glyco-high-text: var(--react-amber-text);
-  --glyco-very-high: #8a5300;
+  --glyco-very-high: #d1700f;
 
   /* States */
   --state-pending-bg: rgba(82, 100, 122, 0.1);

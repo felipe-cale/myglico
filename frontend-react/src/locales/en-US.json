@@ -362,6 +362,8 @@
       "readingsCount_other": "{{count}} readings"
     },
     "extremeEvents": {
+      "legendHigh": "Very high (> 250 mg/dL)",
+      "legendLow": "Very low (< 70 mg/dL)",
       "eyebrow": "Out of range",
       "title": "Very low or very high readings by time of day",
       "tooltipEvents": "{{count}} events",
