@@ -565,11 +565,11 @@ line stating that MyGlico does not diagnose.
   still advance only for messages actually displayed (CSCW-CA-42).
 
 ### Charts
-The very-low/very-high by hour chart is mirrored on one symmetric axis:
-very high readings (> 250, `--glyco-very-high` #d1700f, 3.5:1) rise above a
-solid zero line and very low ones (< 70, `--glyco-low`) drop below it, so the
-direction reads without color; the axis shows absolute counts and the legend
-names "Very high (> 250 mg/dL)" / "Very low (< 70 mg/dL)".
+The very-low/very-high by hour chart keeps both bars side by side per hour
+from a zero baseline: very low (< 70, `--glyco-low`) first, very high (> 250,
+`--glyco-very-high` #d1700f, 3.5:1 on white) second, never a muddy brown. The
+legend names "Very low (< 70 mg/dL)" / "Very high (> 250 mg/dL)" and a text
+summary under the chart states totals and peak hours.
 Recharts with 12 px axis ticks, 14 px legends and tooltips. Recharts paints SVG
 attributes, which cannot resolve `var()`, so the page reads the tokens
 (`--glyco-*`, `--react-blue`, `--tint-blue-12` for the grid,

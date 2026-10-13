@@ -951,11 +951,6 @@ export default function PatientDetailPage() {
       ? t("patientDetail.trend.gapNote_other", { count: trendSeries.gaps.length })
       : "";
   const activeHourlyExtremes = isDayMode && selectedDay ? dayHourlyExtremes : hourlyExtremes;
-  const extremesChartData = activeHourlyExtremes.map((row) => ({ ...row, lowPlot: row.lowCount ? -row.lowCount : 0 }));
-  // A symmetric axis keeps zero in the middle so lows and highs read on the same scale.
-  const extremesPeak = Math.max(1, ...activeHourlyExtremes.map((row) => Math.max(row.lowCount, row.highCount)));
-  const extremesStep = Math.max(1, Math.ceil(extremesPeak / 2));
-  const extremesTicks = [-2 * extremesStep, -extremesStep, 0, extremesStep, 2 * extremesStep];
   const formatHourList = (hours) => {
     const labels = hours.map((hour) => `${String(hour).padStart(2, "0")}h`);
     return typeof Intl.ListFormat === "function"
@@ -1600,10 +1595,10 @@ export default function PatientDetailPage() {
             <div className="react-chart react-chart--extremes">
               <ResponsiveContainer width="100%" height={dropHoursChartHeight}>
                 <BarChart
-                  data={extremesChartData}
+                  data={activeHourlyExtremes}
                   margin={trendChartMargin}
-                  stackOffset="sign"
-                  barCategoryGap={isCompactMobile ? "14%" : "22%"}
+                  barGap={isCompactMobile ? 2 : 4}
+                  barCategoryGap={isCompactMobile ? "10%" : "18%"}
                 >
                   <CartesianGrid strokeDasharray="4 4" stroke={palette.grid} />
                   <XAxis
@@ -1619,14 +1614,9 @@ export default function PatientDetailPage() {
                     allowDecimals={false}
                     tick={axisTickStyle}
                     width={isCompactMobile ? 24 : 32}
-                    tickFormatter={(value) => String(Math.abs(value))}
-                    domain={[extremesTicks[0], extremesTicks.at(-1)]}
-                    ticks={extremesTicks}
-                    interval={0}
                   />
-                  <ReferenceLine y={0} stroke={palette.text} strokeWidth={1} />
                   <Tooltip
-                    formatter={(value, name) => [t("patientDetail.extremeEvents.tooltipEvents", { count: Math.abs(value) }), name]}
+                    formatter={(value, name) => [t("patientDetail.extremeEvents.tooltipEvents", { count: value }), name]}
                     labelFormatter={(label) => `${String(label).padStart(2, "0")}h`}
                     contentStyle={tooltipContentStyle}
                     labelStyle={tooltipLabelStyle}
@@ -1637,9 +1627,8 @@ export default function PatientDetailPage() {
                     wrapperStyle={{ fontSize: "14px" }}
                     formatter={(value) => <span style={{ color: palette.text }}>{value}</span>}
                   />
-                  {/* Mirrored: very high readings rise above zero, very low ones drop below it, so direction reads without color. */}
-                  <Bar dataKey="highCount" stackId="extremes" name={t("patientDetail.extremeEvents.legendHigh")} fill={palette.veryHigh} radius={[6, 6, 0, 0]} isAnimationActive={!reducedMotion} />
-                  <Bar dataKey="lowPlot" stackId="extremes" name={t("patientDetail.extremeEvents.legendLow")} fill={palette.low} radius={[0, 0, 6, 6]} isAnimationActive={!reducedMotion} />
+                  <Bar dataKey="lowCount" name={t("patientDetail.extremeEvents.legendLow")} fill={palette.low} radius={[6, 6, 0, 0]} isAnimationActive={!reducedMotion} />
+                  <Bar dataKey="highCount" name={t("patientDetail.extremeEvents.legendHigh")} fill={palette.veryHigh} radius={[6, 6, 0, 0]} isAnimationActive={!reducedMotion} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
