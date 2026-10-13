@@ -1270,12 +1270,12 @@ export default function PatientDetailPage() {
               >
                 {t("patientDetail.filter.apply")}
               </button>
-              {hasInvalidRange ? (
-                <small id="period-form-hint">{t("patientDetail.filter.invalidRange")}</small>
-              ) : !hasPendingFilterChange ? (
-                <small id="period-form-hint" className="react-action-hint">{t("patientDetail.filter.applyHint")}</small>
-              ) : null}
             </div>
+            {hasInvalidRange ? (
+              <p id="period-form-hint" className="react-period-bar__hint is-error" role="alert">{t("patientDetail.filter.invalidRange")}</p>
+            ) : !hasPendingFilterChange ? (
+              <p id="period-form-hint" className="react-period-bar__hint">{t("patientDetail.filter.applyHint")}</p>
+            ) : null}
           </form>
         ) : null}
         {periodAdjustment ? (

@@ -3471,11 +3471,37 @@ small {
   flex: 0 1 auto;
 }
 
-.react-period-bar__form {
-  max-width: 44rem;
+/* Dates and the apply button share one baseline; the hint gets its own line under the row. */
+.react-filter-form.react-period-bar__form {
+  grid-template-columns: repeat(2, minmax(0, 15rem)) auto;
+  justify-content: start;
+  align-items: end;
+  gap: var(--space-2) var(--space-4);
   margin-top: var(--space-4);
   padding-top: var(--space-4);
   border-top: 1px solid var(--react-border);
+}
+
+.react-period-bar__form .react-filter-actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+.react-period-bar__form .react-filter-actions .react-button {
+  min-height: 3rem;
+}
+
+.react-period-bar__hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--react-muted);
+  font-size: var(--type-meta);
+  line-height: var(--type-meta-lh);
+}
+
+.react-period-bar__hint.is-error {
+  color: var(--react-rose-text);
+  font-weight: 600;
 }
 
 /* Empty window: no analysed day in the active period. */
@@ -3844,6 +3870,18 @@ small {
 
   .react-period-bar__actions .react-button {
     flex: 1 1 auto;
+  }
+
+  .react-filter-form.react-period-bar__form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .react-period-bar__form .react-filter-actions {
+    grid-column: 1 / -1;
+  }
+
+  .react-period-bar__form .react-filter-actions .react-button {
+    width: 100%;
   }
 
   .react-period-summary__range-body {
