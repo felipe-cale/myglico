@@ -5,6 +5,33 @@ const apiTarget = process.env.VITE_API_TARGET || "http://localhost:8001";
 // Temporary tunnels (phone testing) are allowed only through an explicit, comma-separated list.
 const allowedHosts = process.env.VITE_ALLOWED_HOSTS ? process.env.VITE_ALLOWED_HOSTS.split(",").map((host) => host.trim()).filter(Boolean) : undefined;
 
+const proxy = {
+    "/api": {
+      target: apiTarget,
+      // Host must stay the browser's: /api/glico validates Origin against the request host (CSRF).
+      changeOrigin: false,
+      // Phone-testing tunnels end TLS before this server: tell the API which scheme the browser
+      // really used (https through an allowed tunnel host, http for direct local access).
+      ...(process.env.VITE_TUNNEL_HTTPS ? {
+        configure(proxy) {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            const host = String(req.headers.host || "").split(":")[0].toLowerCase();
+            const tunneled = (allowedHosts || []).some((entry) => entry.startsWith(".") ? host.endsWith(entry) : host === entry);
+            proxyReq.setHeader("x-forwarded-proto", tunneled ? "https" : "http");
+          });
+        }
+      } : {})
+    },
+    "/artifacts": {
+      target: apiTarget,
+      changeOrigin: true
+    },
+    "/health": {
+      target: apiTarget,
+      changeOrigin: true
+    }
+  };
+
 export default defineConfig(() => ({
   base: "/",
   plugins: [react()],
@@ -30,31 +57,15 @@ export default defineConfig(() => ({
     watch: {
       usePolling: true
     },
-    proxy: {
-      "/api": {
-        target: apiTarget,
-        // Host must stay the browser's: /api/glico validates Origin against the request host (CSRF).
-        changeOrigin: false,
-        // Phone-testing tunnels end TLS before this server: tell the API which scheme the browser
-        // really used (https through an allowed tunnel host, http for direct local access).
-        ...(process.env.VITE_TUNNEL_HTTPS ? {
-          configure(proxy) {
-            proxy.on("proxyReq", (proxyReq, req) => {
-              const host = String(req.headers.host || "").split(":")[0].toLowerCase();
-              const tunneled = (allowedHosts || []).some((entry) => entry.startsWith(".") ? host.endsWith(entry) : host === entry);
-              proxyReq.setHeader("x-forwarded-proto", tunneled ? "https" : "http");
-            });
-          }
-        } : {})
-      },
-      "/artifacts": {
-        target: apiTarget,
-        changeOrigin: true
-      },
-      "/health": {
-        target: apiTarget,
-        changeOrigin: true
-      }
-    }
+    proxy
+  },
+  // `vite preview` serves the compiled app: no hot-reload websocket, so a tablet that leaves the
+  // browser for the camera is not reloaded when it comes back (the dev server does exactly that).
+  preview: {
+    host: "0.0.0.0",
+    port: 8000,
+    strictPort: true,
+    ...(allowedHosts ? { allowedHosts } : {}),
+    proxy
   }
 }));

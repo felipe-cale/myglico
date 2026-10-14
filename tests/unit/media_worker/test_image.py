@@ -223,3 +223,29 @@ def test_dev_capture_is_off_by_default_and_keeps_photo_and_diagnosis_when_enable
     import json
     note = json.loads((tmp_path / saved[0]).read_text(encoding="utf-8"))
     assert note["assessment"]["candidate_value_mg_dl"] == 106 and note["passes"] == 1
+
+
+def _jpeg_with_orientation(size, orientation):
+    exif = Image.Exif()
+    exif[274] = orientation  # 6 = the photo must be rotated 90 degrees to be upright
+    stream = io.BytesIO()
+    Image.new("RGB", size, "white").save(stream, format="JPEG", exif=exif)
+    return stream.getvalue()
+
+
+def test_exif_rotation_is_applied_before_every_ocr_view():
+    """Phones/tablets store photos sideways; losing the tag laid every real photo on its side."""
+    from app.media_worker.image import enhanced_variants, prepare_for_ocr
+
+    landscape_file = _jpeg_with_orientation((1600, 1200), 6)  # stored 1600x1200, shown 1200x1600
+    prepared = Image.open(io.BytesIO(prepare_for_ocr(landscape_file)))
+    assert prepared.size[0] < prepared.size[1], "the working copy must be upright (portrait)"
+    for blob in enhanced_variants(landscape_file):
+        view = Image.open(io.BytesIO(blob))
+        assert view.size[0] < view.size[1]
+    # a photo already small enough is passed through untouched; the decoder applies EXIF itself
+    from app.media_worker.image import ImageLimits, _decode_image
+    small = _jpeg_with_orientation((600, 400), 6)
+    assert prepare_for_ocr(small) == small
+    decoded = _decode_image(small, ImageLimits())
+    assert decoded.size == (400, 600)

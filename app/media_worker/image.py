@@ -321,11 +321,13 @@ def _png(image) -> bytes:
 
 def _open_rgb(data: bytes):
     import io
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     image = Image.open(io.BytesIO(data))
     image.load()
-    return image.convert("RGB")
+    # Phones and tablets store photos sideways with the rotation in EXIF; re-encoding drops that tag,
+    # so the rotation must be applied here or every later view reaches the OCR lying on its side.
+    return ImageOps.exif_transpose(image).convert("RGB")
 
 
 def prepare_for_ocr(data: bytes) -> bytes:

@@ -335,7 +335,9 @@ test.describe("Glico assistant - media states (UI against stubbed extract endpoi
     await openAssistant(ui);
     await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "x.gif", mimeType: "image/gif", buffer: PNG });
     await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.unsupported"));
+    // not a decodable image and over the limit: it cannot be shrunk, so sending is refused locally
     await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "big.png", mimeType: "image/png", buffer: Buffer.alloc(3 * 1024 * 1024 + 1) });
+    await sendPickedPhoto(ui);
     await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.tooLarge"));
     expect(calls).toBe(0);
   });
@@ -491,5 +493,44 @@ test.describe("Glico assistant - conversation order", () => {
       node.querySelector('[data-testid="glico-receipt"]') ? "receipt" : node.classList.contains("glico__message--user") ? "user" : "glico")));
     // the receipt stays above the newer exchange instead of sinking to the bottom
     expect(after.indexOf("receipt")).toBeLessThan(after.lastIndexOf("user"));
+  });
+});
+
+
+test.describe("Glico assistant - camera photos", () => {
+  test("a multi-megabyte camera photo is shrunk in the browser before it is uploaded", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await stubMediaCapabilities(ui.page);
+    let uploaded = null;
+    await ui.page.route("**/api/glico/conversations/*/extract/image", async (route) => {
+      uploaded = route.request().postDataBuffer();
+      await route.fulfill({ status: 200, json: { type: "clarification", answer_key: "glico.reading.ambiguous_image" } });
+    });
+    await openAssistant(ui);
+    const original = await ui.page.evaluate(async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 3264;
+      canvas.height = 2448;
+      const ctx = canvas.getContext("2d");
+      const image = ctx.createImageData(canvas.width, canvas.height);
+      for (let i = 0; i < image.data.length; i += 4) {
+        image.data[i] = Math.random() * 255; image.data[i + 1] = Math.random() * 255; image.data[i + 2] = Math.random() * 255; image.data[i + 3] = 255;
+      }
+      ctx.putImageData(image, 0, 0);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 1));
+      const file = new File([blob], "camera.jpg", { type: "image/jpeg" });
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      const input = document.querySelector('[data-testid="glico-photo-input"]');
+      input.files = transfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return file.size;
+    });
+    expect(original).toBeGreaterThan(3 * 1024 * 1024);
+    await sendPickedPhoto(ui);
+    await expect.poll(() => uploaded?.length ?? 0).toBeGreaterThan(0);
+    expect(uploaded.length).toBeLessThan(3 * 1024 * 1024);
+    expect(uploaded.length).toBeLessThan(original / 2);
   });
 });

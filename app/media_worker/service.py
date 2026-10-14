@@ -195,6 +195,35 @@ def _agreed_assessment(passes, limits) -> tuple[object, dict] | None:
     return None
 
 
+async def read_photo(engine, body: bytes):
+    """Full photo pipeline: first pass at a working size, then cheaper-first retries on other views of
+    the same photo, then the agreement rule. Returns (result, assessment, passes)."""
+    result = await engine.extract_async(prepare_for_ocr(body))
+    assessment = _image_assessment(result, engine.limits)
+    tried = [result]
+    if not assessment["needs_clarification"]:
+        return result, assessment, tried
+    if any(re.fullmatch(r"\s*(hi|lo)\s*", item.text, re.I) for item in result.candidates):
+        return result, assessment, tried  # an out-of-range signal is never retried into a value
+    started = time.monotonic()
+    for variant in enhanced_variants(body):
+        # Extra passes must never push the answer past the gateway's own deadline.
+        if time.monotonic() - started > RETRY_BUDGET_SECONDS:
+            break
+        try:
+            retry = await engine.extract_async(variant)
+        except MediaError:
+            break
+        tried.append(retry)
+        again = _image_assessment(retry, engine.limits)
+        if not again["needs_clarification"]:
+            return retry, again, tried
+    agreed = _agreed_assessment(tried, engine.limits) if len(tried) > 1 else None
+    if agreed is not None:
+        return agreed[0], agreed[1], tried
+    return result, assessment, tried
+
+
 def _audio_numeric_candidates(text: str) -> list[int]:
     """Return only explicit digit tokens; spoken number words remain untrusted."""
     return [int(raw) for raw in re.findall(r"(?<!\d)\d{2,4}(?!\d)", text)]
@@ -287,11 +316,7 @@ def create_media_app(
                 raise HTTPException(status_code=401, detail={"code": "worker_authentication_failed"})
             saved_image = _dev_save_image(body)
             started_image = time.monotonic()
-            result = await engine.extract_async(prepare_for_ocr(body))
-            retry_inputs: list[bytes] = []
-            if (_image_assessment(result, engine.limits)["needs_clarification"]
-                    and not any(re.fullmatch(r"\s*(hi|lo)\s*", item.text, re.I) for item in result.candidates)):
-                retry_inputs = enhanced_variants(body)
+            result, assessment, tried = await read_photo(engine, body)
         except MediaError as exc:
             status = 504 if exc.code == "processing_timeout" else 503 if exc.code == "capability_unavailable" else 422
             raise HTTPException(status_code=status, detail={"code": exc.code}) from None
@@ -300,28 +325,6 @@ def create_media_app(
             del body
             chunks.clear()
             slots.release()
-        assessment = _image_assessment(result, engine.limits)
-        # A first pass that does not conclude is retried on rescaled/smoothed copies of the same photo.
-        tried = [result]
-        retry_started = time.monotonic()
-        for variant in retry_inputs:
-            # Extra passes must never push the answer past the gateway's own deadline.
-            if time.monotonic() - retry_started > RETRY_BUDGET_SECONDS:
-                break
-            try:
-                retry = await engine.extract_async(variant)
-            except MediaError:
-                break
-            tried.append(retry)
-            again = _image_assessment(retry, engine.limits)
-            if not again["needs_clarification"]:
-                result, assessment = retry, again
-                break
-        else:
-            if assessment["needs_clarification"] and len(tried) > 1:
-                agreed = _agreed_assessment(tried, engine.limits)
-                if agreed is not None:
-                    result, assessment = agreed
         _dev_note_audio(saved_image, {
             "assessment": assessment, "passes": len(tried), "total_seconds": round(time.monotonic() - started_image, 1),
             "candidates": [{"text": item.text, "confidence": item.confidence, "box": item.box} for item in result.candidates],

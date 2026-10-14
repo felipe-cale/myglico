@@ -4,6 +4,33 @@ import { CameraIcon, CloseIcon, ImageIcon, MicIcon, StopIcon } from "./GlicoIcon
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+const MAX_PICK_BYTES = 40 * 1048576;
+const MAX_SIDE = 1600;
+
+// Camera photos are big (3 MB or more) and slow on mobile networks. Shrink them in the browser before
+// sending: upright pixels (the browser applies the EXIF rotation), 1600 px, JPEG. Falls back to the
+// original file if anything is unavailable.
+async function shrinkPhoto(file) {
+  try {
+    if (typeof createImageBitmap !== "function" || typeof document === "undefined") return file;
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size <= 1.5 * 1048576) {
+      bitmap.close?.();
+      return file;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+    return blob && blob.size < file.size ? blob : file;
+  } catch {
+    return file;
+  }
+}
+
 function formatBytes(bytes) {
   return `${Math.round((bytes / 1048576) * 10) / 10} MiB`;
 }
@@ -60,15 +87,17 @@ export default function GlicoMediaCapture({ capabilities, enabled, processing, o
     event.target.value = "";
     if (!file) return;
     if (!IMAGE_TYPES.includes(file.type)) return onError("unsupported");
-    if (file.size > photoLimit) return onError("tooLarge");
+    if (file.size > MAX_PICK_BYTES) return onError("tooLarge");
     setPhoto({ file, url: URL.createObjectURL(file) });
   };
 
-  const sendPhoto = () => {
+  const sendPhoto = async () => {
     if (!photo) return;
     const { file } = photo;
     setPhoto(null);
-    onSubmit("image", file);
+    const prepared = await shrinkPhoto(file);
+    if (prepared.size > photoLimit) return onError("tooLarge");
+    onSubmit("image", prepared);
   };
 
   const stopRecording = useCallback(() => {

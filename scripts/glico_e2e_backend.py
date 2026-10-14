@@ -115,8 +115,11 @@ def main() -> None:
         raise RuntimeError("backend did not become healthy")
 
     nonce = uuid.uuid4().hex[:12]
-    patient = _account(base, "patient", f"glico-patient-{nonce}@example.test", secrets.token_urlsafe(18))
-    doctor = _account(base, "doctor", f"glico-doctor-{nonce}@example.test", secrets.token_urlsafe(18))
+    fixed = bool(os.environ.get("GLICO_FIXED_LOGIN"))
+    patient = _account(base, "patient", "paciente@tet.test" if fixed else f"glico-patient-{nonce}@example.test",
+                       secrets.token_urlsafe(18))
+    doctor = _account(base, "doctor", "medico@tet.test" if fixed else f"glico-doctor-{nonce}@example.test",
+                      secrets.token_urlsafe(18))
     outsider = _account(base, "doctor", f"glico-outsider-{nonce}@example.test", secrets.token_urlsafe(18))
     link_response = patient["client"].post("/api/doctor-links", json={"doctor_short_id": doctor["short_id"]})
     link_response.raise_for_status()
@@ -126,6 +129,19 @@ def main() -> None:
     for actor in (patient, doctor, outsider):
         actor["client"].close()
         del actor["client"]
+    if fixed:
+        # Local testing only: simple, stable credentials. The API enforces 8+ characters at
+        # registration, so the real password policy stays intact and only the stored hash is set here.
+        from app.core.crypto import hash_password
+        from app.db.session import SessionLocal
+        from app.models.entities import UserAccount
+        from app.services.auth_service import email_lookup, normalize_email
+        with SessionLocal() as db:
+            for actor in (patient, doctor):
+                account = db.query(UserAccount).filter(UserAccount.email_lookup == email_lookup(normalize_email(actor["email"]))).one()
+                account.password_hash = hash_password(os.environ.get("GLICO_FIXED_PASSWORD", "querty"))
+                actor["password"] = os.environ.get("GLICO_FIXED_PASSWORD", "querty")
+            db.commit()
     fixture = {"base_url": base, "sqlite_path": str(db_path), "foreign_keys": True,
         "patient": patient, "linked_doctor": doctor, "unlinked_doctor": outsider}
     print(json.dumps(fixture), flush=True)
