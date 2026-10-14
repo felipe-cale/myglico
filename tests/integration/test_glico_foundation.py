@@ -995,3 +995,66 @@ def test_dose_question_is_refused_even_if_the_model_misclassifies_it(llm):
                        {"intent": "pdf_report", "reply": ""})
     body = response.json()
     assert body["type"] == "message" and "médico" in body["text"]
+
+
+def test_off_topic_requests_get_a_fixed_reply_never_model_text(llm):
+    body = llm.say("como escrevo hello world em python?",
+                   {"intent": "off_topic", "reply": "print('Hello World')"}).json()
+    assert body["type"] == "message"
+    assert "print(" not in body["text"] and "MyGlico" in body["text"]
+
+
+def test_spoken_number_words_become_a_reviewable_proposal_with_transcript(world: World, monkeypatch):
+    import json
+    from app.api import glico_routes
+    from app.services import glico_llm
+
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    settings = _llm_settings()
+    settings.glico_audio_enabled = True
+    settings.glico_media_global_jobs = 2
+    settings.glico_media_worker_url = "http://worker"
+    settings.glico_media_worker_secret = "m" * 32
+    monkeypatch.setattr(glico_routes, "get_settings", lambda: settings)
+    monkeypatch.setattr(glico_llm, "interpret", lambda **kwargs: {
+        "intent": "record_reading", "glucose_value": 128.0, "unit": "mg/dL", "reply": ""})
+    spoken = "minha glicose está em cento e vinte e oito miligramas por decilitro"
+    payload = {"text": spoken, "language": "pt", "engine": "fake-asr",
+               "assessment": _worker_assessment(needs_clarification=True, reasons=["value_not_detected"])}
+
+    class FakeResponse:
+        status_code = 200
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return False
+        async def aiter_bytes(self):
+            yield json.dumps(payload).encode()
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return False
+        def stream(self, *args, **kwargs): return FakeResponse()
+
+    monkeypatch.setattr(glico_routes.httpx, "AsyncClient", FakeClient)
+    response = patient.client.post(
+        f"/api/glico/conversations/{conversation_id}/extract/audio",
+        headers={**headers, "content-type": "application/octet-stream",
+                 "x-glico-context-version": str(version), "x-glico-request-id": str(uuid.uuid4())},
+        content=b"synthetic media")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["type"] == "proposal" and body["proposal"]["fields"]["glucose_mg_dl"] == 128.0
+    assert body["proposal"]["origin"] == "glico_audio"
+    assert body["transcript"] == spoken
+
+
+@pytest.mark.parametrize("text", ["My glucose is 128 mg/dL", "minha glicemia deu 128 mg/dL", "mi glucosa es 128 mg/dL"])
+def test_a_value_with_unit_is_recorded_not_treated_as_a_readings_query(world: World, text):
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    response = _post_text(patient, headers, conversation_id, version, text)
+    assert response.status_code == 200, response.text
+    assert response.json()["type"] == "proposal"

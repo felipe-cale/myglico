@@ -500,7 +500,12 @@ export default function GlicoAssistantPage() {
         clientRequestId: requestId(),
         signal: controller.signal
       });
-      if (activeConversationId.current === conversation.id) handleResult(result);
+      if (activeConversationId.current === conversation.id) {
+        if (kind === "audio" && typeof result?.transcript === "string" && result.transcript.trim()) {
+          setMessages((current) => [...current, { id: requestId(), role: "user", text: result.transcript.trim() }]);
+        }
+        handleResult(result);
+      }
     } catch (reason) {
       if (activeConversationId.current !== conversation.id) return;
       if (reason?.code === "aborted") setNotice("media.discarded");

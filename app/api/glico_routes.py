@@ -298,17 +298,17 @@ _LLM_QUERY_KEYWORD = {
 
 
 def _language_model_result(db: Session, conversation: GlicoConversation, principal: SessionPrincipal,
-                           text: str, history: list) -> dict | None:
+                           text: str, history: list, spoken: bool = False) -> dict | None:
     """Let the optional model pick an intent; execution stays on the deterministic handlers.
 
     Returns None whenever the model is off, unavailable, or its output cannot be trusted, so the
     caller falls back to the keyword assistant. Nothing here is written without a proposal review.
     """
     settings = get_settings()
-    if not settings.gemini_api_key or conversation.patient_id is None:
+    if not getattr(settings, "gemini_api_key", None) or conversation.patient_id is None:
         return None
     from zoneinfo import ZoneInfo
-    from app.services.glico_llm import DOSE_REFUSAL, interpret, is_dose_question
+    from app.services.glico_llm import DOSE_REFUSAL, OFF_TOPIC_REPLY, interpret, is_dose_question
     if is_dose_question(text):
         return {"type": "message", "text": DOSE_REFUSAL.get(conversation.locale, DOSE_REFUSAL["pt-BR"])}
     patient = db.get(Patient, conversation.patient_id)
@@ -331,8 +331,10 @@ def _language_model_result(db: Session, conversation: GlicoConversation, princip
             raise HTTPException(status_code=403, detail="operation_not_allowed")
         value = intent["glucose_value"]
         # The model must not invent numbers: the value has to be present in what the user typed.
+        # Spoken numbers ("cento e vinte") are transcribed as words, so audio is exempt; the
+        # proposal still goes through range validation and the user's review.
         typed = text.replace(",", ".")
-        if not re.search(rf"(?<!\d){re.escape(format(value, 'g'))}(?!\d)", typed):
+        if not spoken and not re.search(rf"(?<!\d){re.escape(format(value, 'g'))}(?!\d)", typed):
             return None
         parts = [f"{format(value, 'g')} {intent['unit']}"]
         if intent.get("measured_date"):
@@ -342,6 +344,9 @@ def _language_model_result(db: Session, conversation: GlicoConversation, princip
         return _query_answer(db, conversation, _LLM_QUERY_KEYWORD[kind])
     if kind == "pdf_report":
         return {"type": "answer", "answer_key": "glico.query.pdf"}
+    if kind == "off_topic":
+        # Fixed text on purpose: the model never writes the reply to out-of-scope requests.
+        return {"type": "message", "text": OFF_TOPIC_REPLY.get(conversation.locale, OFF_TOPIC_REPLY["pt-BR"])}
     if kind == "answer" and intent["reply"]:
         return {"type": "message", "text": intent["reply"]}
     return None
@@ -386,6 +391,8 @@ def _query_answer(db: Session, conversation: GlicoConversation, text: str) -> di
             return {"type": "answer", "answer_key": "glico.query.linked_patients",
                     "items": [{"patient_id": r.id, "short_id": r.short_id, "name": r.name} for r in rows]}
         return None
+    if re.search(r"\d\s*(mg\s*/?\s*dl|mmol\s*/?\s*l)\b", lower):
+        return None  # a value with its unit is a reading to record, never a query
     wants_readings = any(x in lower for x in ("leitura", "leituras", "reading", "readings", "glicemia", "glucose"))
     wants_summary = any(x in lower for x in ("resumo", "summary", "métrica", "metric", "media", "average"))
     wants_cases = any(x in lower for x in ("atíp", "atip", "anomal", "atypical"))
@@ -962,11 +969,29 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
                 current.owner_account_id) != snapshot:
             raise HTTPException(status_code=409, detail="context_changed")
         text = " ".join(extracted_texts).strip()
-        answer = _query_answer(db, current, text) if media_kind == "audio" and text else None
+        answer = None
+        proposal_result = None
+        llm_proposal = False
+        if media_kind == "audio" and text:
+            # With the language model on, the transcript is understood like typed text and takes
+            # precedence over the keyword matcher; any failure falls back to the matcher.
+            spoken_result = None
+            if (current.patient_id is not None
+                    and getattr(get_settings(), "gemini_api_key", None)):
+                try:
+                    spoken_result = _language_model_result(db, current, principal, text, [], spoken=True)
+                except HTTPException:
+                    spoken_result = None
+            if spoken_result is not None:
+                if spoken_result.get("type") == "proposal":
+                    proposal_result, llm_proposal = spoken_result, True
+                else:
+                    answer = spoken_result
+            else:
+                answer = _query_answer(db, current, text)
         if media_kind == "image" and any(re.fullmatch(r"\s*(hi|lo)\s*", t, re.I) for t in extracted_texts):
             # Meters print HI/LO outside their measuring range: never a numeric reading.
             answer = {"type": "clarification", "answer_key": "glico.reading.unsupported_signal"}
-        proposal_result = None
         if answer is None and media_kind == "audio" and current.patient_id is None:
             answer = {"type": "clarification", "answer_key": "glico.help.try_manual"}
         if (answer is None and trusted_value is not None
@@ -978,8 +1003,14 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
             if media_kind == "image":
                 proposal_result = _make_proposal(db, current, f"{trusted_value:g} mg/dL")
             else:
-                proposal_result = _make_proposal(db, current, text)
-        if proposal_result and proposal_result.get("type") == "proposal":
+                found = result.get("assessment", {}) if isinstance(result, dict) else {}
+                original, unit = found.get("candidate_original_value"), found.get("candidate_unit")
+                if (unit in {"mg/dL", "mmol/L"} and isinstance(original, (int, float))
+                        and not isinstance(original, bool)):
+                    proposal_result = _make_proposal(db, current, f"{original:g} {unit}")
+                else:
+                    proposal_result = _make_proposal(db, current, text)
+        if proposal_result and proposal_result.get("type") == "proposal" and not llm_proposal:
             proposal = db.get(GlicoProposal, proposal_result["proposal"]["id"])
             if float(proposal_result["proposal"]["fields"].get("glucose_mg_dl", -1)) != trusted_value:
                 db.delete(proposal)
@@ -997,6 +1028,9 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
         else:
             response_data = answer or {"type": "clarification", "answer_key":
                 "glico.reading.ambiguous_image" if media_kind == "image" else "glico.help.try_manual"}
+        if media_kind == "audio" and text:
+            # Echo what was understood so the user can see it; it is the user's own speech.
+            response_data = {**response_data, "transcript": text[:500]}
         _save_replay(db, principal, current, media_kind, request_id, body_digest, response_data)
         db.commit()
         return response_data

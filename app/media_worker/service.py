@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from app.media_worker.auth import ReplayStore, WorkerSignature, verify_request
 from app.media_worker.audio import AudioLimits, FasterWhisperTranscriber
 from app.media_worker.image import ImageLimits, MediaError, PaddleReadingExtractor
+from app.media_worker.spoken import normalize_spoken
 
 
 _CORRELATION_RE = re.compile(r"^[A-Za-z0-9_-]{16,80}$")
@@ -41,6 +42,37 @@ def _assessment(candidates: list[int], unit_present: bool, confidence: float | N
         "physiological_range_mg_dl": [limits.min_glucose_mg_dl, limits.max_glucose_mg_dl],
         "confidence_threshold": limits.min_confidence,
     }
+
+
+_MMOL_RE = re.compile(r"\bmmol\s*/?\s*l\b", re.I)
+# Without a spoken unit the number is only read as a glucose when the speech is about a measurement.
+_GLUCOSE_CONTEXT = re.compile(
+    r"gli[cs]|gluc|a[cç]úcar|azúcar|sugar|diabet|medi[çc]|medic[ií]|medid|measur|resultado|result"
+    r"|marcou|deu |mostrou|show|reading|lectura|leitura|lectur", re.I)
+
+
+def _audio_reading(text: str) -> dict | None:
+    """Single number in the transcript -> value in mg/dL with the unit explicit or inferred.
+
+    Speakers rarely say the unit. Decimals and values under 20 are read as mmol/L, 34+ as mg/dL, the
+    ambiguous 20-33 band as mg/dL (Brazilian default). The review card always shows the unit.
+    """
+    numbers = list(dict.fromkeys(re.findall(r"(?<![\d.,])(\d{1,4}(?:[.,]\d{1,2})?)(?!\d)", text)))
+    if len(numbers) != 1:
+        return None
+    raw = numbers[0]
+    value = float(raw.replace(",", "."))
+    decimal = "." in raw or "," in raw
+    if _MMOL_RE.search(text):
+        unit, inferred = "mmol/L", False
+    elif _UNIT_RE.search(text):
+        unit, inferred = "mg/dL", False
+    elif _GLUCOSE_CONTEXT.search(text):
+        unit, inferred = ("mmol/L" if (decimal or value < 20) else "mg/dL"), True
+    else:
+        return None
+    mg_dl = round(value * 18.0182, 1) if unit == "mmol/L" else value
+    return {"original_value": value, "unit": unit, "inferred": inferred, "mg_dl": mg_dl}
 
 
 def _audio_numeric_candidates(text: str) -> list[int]:
@@ -218,15 +250,21 @@ def create_media_app(
             del body
             chunks.clear()
             slots.release()
-        # Spelled-out values remain untrusted until a locale-aware parser has
-        # been validated against human speech.
-        unique_values = _audio_numeric_candidates(result.text)
+        # Spelled-out numbers and units ("cento e vinte", "um dois zero", "miligramas por
+        # decilitro") become digits and mg/dL; the strict digit-and-unit gate still decides.
+        spoken_text = normalize_spoken(result.text, result.language)
+        reading = _audio_reading(spoken_text)
         confidence = getattr(result, "confidence", None)
-        assessment = _assessment(unique_values, bool(_UNIT_RE.search(result.text)), confidence,
-                                 speech_engine.limits)
+        if reading is not None:
+            assessment = _assessment([reading["mg_dl"]], True, confidence, speech_engine.limits)
+            assessment.update(candidate_original_value=reading["original_value"],
+                              candidate_unit=reading["unit"], unit_inferred=reading["inferred"])
+        else:
+            assessment = _assessment(_audio_numeric_candidates(spoken_text),
+                                     bool(_UNIT_RE.search(spoken_text)), confidence, speech_engine.limits)
         return JSONResponse(
             {"correlation_id": correlation_id, "engine": result.engine, "elapsed_ms": result.elapsed_ms,
-             "language": result.language, "text": result.text, "confidence": confidence,
+             "language": result.language, "text": spoken_text, "confidence": confidence,
              "assessment": assessment},
             headers={"Cache-Control": "no-store"},
         )
