@@ -35,6 +35,7 @@ const artifactsDir = path.join(configDir, "e2e", ".artifacts");
 const backendEnv = {
   MYGLICO_APP_ENV: "e2e",
   MYGLICO_DEBUG: "false",
+  MYGLICO_GLICO_ENABLED: process.env.MYGLICO_E2E_GLICO_ENABLED ?? "true",
   MYGLICO_DATABASE_URL: databaseUrl,
   MYGLICO_ENCRYPTION_KEY_V1: encryptionKeyV1,
   MYGLICO_LOOKUP_HMAC_KEY: lookupHmacKey,
@@ -44,6 +45,7 @@ const backendEnv = {
 
 export default defineConfig({
   testDir: path.join(configDir, "e2e", "specs"),
+  testIgnore: ["**/13-glico-live-backend.spec.mjs"],
   outputDir: path.join(artifactsDir, "test-results"),
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

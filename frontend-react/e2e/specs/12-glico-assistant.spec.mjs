@@ -1,0 +1,399 @@
+import { expect, linkActive, test } from "../fixtures/test-fixtures.mjs";
+import { LANGS, t } from "../fixtures/i18n.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const GLICO = "/glico";
+const here = path.dirname(fileURLToPath(import.meta.url));
+
+// 1x1 transparent PNG: a real, decodable image for the upload path.
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64"
+);
+
+async function openAssistant(ui, { lang, viewport } = {}) {
+  if (lang) await ui.page.addInitScript((value) => window.localStorage.setItem("myglico.language", value), lang);
+  if (viewport) await ui.page.setViewportSize(viewport);
+  await ui.authenticateWithApi();
+  await ui.page.goto(GLICO);
+  await expect(ui.page.getByRole("heading", { level: 1, name: t("glicoAssistant.title", lang || "pt-BR") })).toBeVisible();
+}
+
+async function expectNoHorizontalOverflow(page) {
+  const dims = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, view: window.innerWidth }));
+  expect(dims.doc, `content exceeds ${dims.view}px viewport`).toBeLessThanOrEqual(dims.view);
+}
+
+// Network-level stubs are used ONLY where the backend cannot yet produce the state (photo/audio capabilities are
+// off in F1 until the media worker is provisioned). The UI and the browser are real.
+async function stubMediaCapabilities(page) {
+  await page.route("**/api/glico/capabilities*", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    await route.fulfill({ response, json: { ...body, photo: true, audio: true } });
+  });
+}
+
+test.describe("Glico assistant - locales", () => {
+  test("every glicoAssistant key exists in pt-BR, en-US and es", async () => {
+    const dir = path.resolve(here, "..", "..", "src", "locales");
+    const flatten = (node, prefix = "") =>
+      Object.entries(node).flatMap(([key, value]) =>
+        typeof value === "object" ? flatten(value, `${prefix}${key}.`) : [`${prefix}${key}`]
+      );
+    const keys = Object.fromEntries(
+      LANGS.map((lang) => [lang, flatten(JSON.parse(fs.readFileSync(path.join(dir, `${lang}.json`), "utf-8")).glicoAssistant).sort()])
+    );
+    expect(keys["en-US"]).toEqual(keys["pt-BR"]);
+    expect(keys.es).toEqual(keys["pt-BR"]);
+    expect(keys["pt-BR"].length).toBeGreaterThan(50);
+  });
+});
+
+test.describe("Glico assistant - patient", () => {
+  test("navigates from the shell, proposes, edits, confirms and shows a receipt", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await ui.authenticateWithApi();
+    await ui.page.goto("/dashboard");
+    await ui.page.getByRole("link", { name: t("appShell.nav.assistant") }).first().click();
+    await expect(ui.page).toHaveURL(/\/glico$/);
+
+    const message = ui.page.getByLabel(t("glicoAssistant.messageLabel"));
+    await expect(message).toBeEnabled();
+    await message.fill("glicose 110 mg/dL");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
+
+    const card = ui.page.getByTestId("glico-proposal");
+    await expect(card).toBeVisible();
+    await expect(card.getByLabel(t("glicoAssistant.valueLabel"))).toHaveValue("110");
+    const confirm = card.getByRole("button", { name: t("glicoAssistant.confirm") });
+    await expect(confirm).toBeDisabled();
+
+    await card.getByLabel(t("glicoAssistant.valueLabel")).fill("118");
+    const measuredAt = new Date();
+    const localDateTime = new Date(measuredAt.getTime() - measuredAt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    await card.getByLabel(t("glicoAssistant.measuredAtLabel")).fill(localDateTime);
+    await expect(confirm).toBeDisabled();
+    await card.getByRole("button", { name: t("glicoAssistant.saveCorrection") }).click();
+    await expect(card.getByLabel(t("glicoAssistant.valueLabel"))).toHaveValue("118");
+    await expect(confirm).toBeEnabled();
+
+    await confirm.click();
+    await expect(ui.page.getByTestId("glico-receipt")).toBeVisible();
+    await expect(ui.page.getByTestId("glico-proposal")).toHaveCount(0);
+  });
+
+  test("discarding a proposal removes the card", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await openAssistant(ui);
+    await ui.page.getByLabel(t("glicoAssistant.messageLabel")).fill("glicose 95 mg/dL");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
+    await expect(ui.page.getByTestId("glico-proposal")).toBeVisible();
+    await ui.page.getByRole("button", { name: t("glicoAssistant.discard") }).click();
+    await expect(ui.page.getByTestId("glico-proposal")).toHaveCount(0);
+    await expect(ui.page.getByText(t("glicoAssistant.cancelled"))).toBeVisible();
+  });
+
+  test("text without a reading gets localized help with a navigation link", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await openAssistant(ui);
+    await ui.page.getByLabel(t("glicoAssistant.messageLabel")).fill("oi, tudo bem?");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
+    await expect(ui.page.getByText(t("glicoAssistant.helpManual"))).toBeVisible();
+    await ui.page.getByRole("link", { name: t("glicoAssistant.goDashboard") }).first().click();
+    await expect(ui.page).toHaveURL(/\/dashboard$/);
+  });
+
+  for (const lang of LANGS) {
+    test(`FAQ answers deterministically in ${lang}`, async ({ actor, browserSession }) => {
+      await actor("patientA");
+      const ui = await browserSession("patientA", { locale: lang });
+      await openAssistant(ui, { lang });
+      await ui.page.getByRole("button", { name: t("glicoAssistant.faq.howLog.q", lang) }).click();
+      await expect(ui.page.getByText(t("glicoAssistant.faq.howLog.a", lang))).toBeVisible();
+      await expect(ui.page.getByText(t("glicoAssistant.notClinicalAdvice", lang))).toBeVisible();
+    });
+  }
+
+  test("remains usable without overflow at 390, 768 and 1440px in all locales", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await openAssistant(ui);
+    let currentLang = "pt-BR";
+    for (const lang of LANGS) {
+      if (lang !== currentLang) {
+        await ui.page.getByRole("button", { name: t("languageSwitcher.label", currentLang) }).click();
+        const languageName = lang === "en-US" ? /English/i : /Español/i;
+        await ui.page.getByRole("menuitemradio", { name: languageName }).click();
+        currentLang = lang;
+      }
+      for (const width of [390, 768, 1440]) {
+        await ui.page.setViewportSize({ width, height: 900 });
+        await expect(ui.page.getByRole("heading", { level: 1, name: t("glicoAssistant.title", lang) })).toBeVisible();
+        await expect(ui.page.locator("#glico-message")).toBeEnabled();
+        await expectNoHorizontalOverflow(ui.page);
+      }
+    }
+  });
+
+  test("opens a collaboration proposal for review and does not confirm it automatically", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    let posted;
+    await ui.page.route("**/api/glico/conversations/*/collaboration-proposals", async (route) => {
+      posted = route.request().postDataJSON();
+      await route.fulfill({ status: 201, json: { proposal: {
+        id: "22222222-2222-4222-8222-222222222222", kind: "investigation_open", version: 1,
+        context_version: 1, state: "READY", expires_at: new Date(Date.now() + 600000).toISOString(),
+        fields: { title: posted.title, content: posted.content }, missing_fields: [], warnings: [], origin: "glico_collaboration"
+      } } });
+    });
+    await openAssistant(ui);
+    await ui.page.locator("#glico-collaboration-kind").selectOption("investigation_open");
+    await ui.page.locator("#glico-collaboration-subject").fill("Reading question");
+    await ui.page.locator("#glico-collaboration-message").fill("Please review this reading");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.investigation.review") }).click();
+    const card = ui.page.getByTestId("glico-proposal");
+    await expect(card).toBeVisible();
+    await expect(card.getByRole("heading", { name: t("glicoAssistant.investigation.openTitle") })).toBeVisible();
+    await expect(card.getByRole("button", { name: t("glicoAssistant.confirm") })).toBeEnabled();
+    expect(posted).toMatchObject({ kind: "investigation_open", title: "Reading question", content: "Please review this reading" });
+  });
+
+  test("voice dictation reports unsupported browsers in the selected locale", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await ui.page.addInitScript(() => {
+      delete window.SpeechRecognition;
+      delete window.webkitSpeechRecognition;
+    });
+    await openAssistant(ui);
+    await ui.page.getByRole("button", { name: t("glicoAssistant.investigation.dictate") }).click();
+    await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.dictationUnavailable"));
+  });
+
+  test("renders accessible readings and a contextual patient PDF link for the selected period", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await ui.page.route("**/api/glico/conversations/*/messages", async (route) => {
+      const text = route.request().postDataJSON().text;
+      if (text.includes("leituras")) {
+        await route.fulfill({ json: { answer_key: "glico.query.readings", items: [{ glucose_mg_dl: 123, measured_at: "2025-06-12T08:30:00Z", context_label: "fasting" }] } });
+      } else {
+        await route.fulfill({ json: { answer_key: "glico.query.pdf" } });
+      }
+    });
+    await openAssistant(ui);
+    await ui.page.getByLabel(t("glicoAssistant.messageLabel")).fill("minhas leituras recentes");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
+    const list = ui.page.locator('[data-testid="glico-thread"] .glico__list');
+    await expect(list.getByRole("heading", { name: t("glicoAssistant.query.readingsTitle") })).toBeVisible();
+    await expect(list.locator("li")).toContainText("123 mg/dL");
+    await expect(list.locator("time")).toHaveAttribute("datetime", "2025-06-12T08:30:00Z");
+
+    await ui.page.getByLabel(t("glicoAssistant.period.startLabel")).fill("2025-06-01");
+    await ui.page.getByLabel(t("glicoAssistant.period.endLabel")).fill("2025-06-30");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.period.apply") }).click();
+    await expect(ui.page.getByLabel(t("glicoAssistant.period.startLabel"))).toHaveValue("2025-06-01");
+    await ui.page.getByLabel(t("glicoAssistant.messageLabel")).fill("gerar relatório pdf");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
+    const download = ui.page.getByRole("link", { name: t("glicoAssistant.query.pdfDownload") });
+    await expect(download).toBeVisible();
+    await expect(download).toHaveAttribute("href", /\/api\/patients\/[^/]+\/report\.pdf\?start_date=2025-06-01&end_date=2025-06-30&lang=pt-BR/);
+  });
+
+  test("logout clears the Glico draft and returning to the route does not restore it", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await openAssistant(ui);
+    const composer = ui.page.locator("#glico-message");
+    await composer.fill("private unsubmitted draft");
+    await ui.page.getByRole("button", { name: t("auth.logout") }).first().click();
+    await expect(ui.page).toHaveURL(/\/$|\/login$/);
+    await ui.page.goto(GLICO);
+    await expect(ui.page.locator("#glico-message")).toHaveCount(0);
+    await expect(ui.page.getByText("private unsubmitted draft")).toHaveCount(0);
+  });
+
+  test("photo and audio are disabled with an explanation when the backend flags them off", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await openAssistant(ui);
+    await expect(ui.page.getByRole("button", { name: t("glicoAssistant.media.photoButton") })).toBeDisabled();
+    await expect(ui.page.getByRole("button", { name: t("glicoAssistant.media.audioStart") })).toBeDisabled();
+    await expect(ui.page.getByText(t("glicoAssistant.media.disabledPhoto"))).toBeVisible();
+  });
+
+  test("fits a 390px mobile viewport and keeps 44px touch targets", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await openAssistant(ui, { viewport: { width: 390, height: 844 } });
+    await ui.page.getByLabel(t("glicoAssistant.messageLabel")).fill("glicose 110 mg/dL");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
+    await expect(ui.page.getByTestId("glico-proposal")).toBeVisible();
+    await expectNoHorizontalOverflow(ui.page);
+    for (const name of [t("glicoAssistant.confirm"), t("glicoAssistant.discard")]) {
+      const box = await ui.page.getByRole("button", { name }).boundingBox();
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  test("keyboard: composer, FAQ and actions are reachable and labelled", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await openAssistant(ui);
+    await expect(ui.page.getByRole("region", { name: t("glicoAssistant.chatLabel") })).toBeVisible();
+    await ui.page.getByLabel(t("glicoAssistant.messageLabel")).focus();
+    await expect(ui.page.getByLabel(t("glicoAssistant.messageLabel"))).toBeFocused();
+    await ui.page.getByRole("button", { name: t("glicoAssistant.faq.privacy.q") }).focus();
+    await ui.page.keyboard.press("Enter");
+    await expect(ui.page.getByText(t("glicoAssistant.faq.privacy.a"))).toBeVisible();
+  });
+});
+
+test.describe("Glico assistant - media states (UI against stubbed extract endpoints)", () => {
+  const cases = [
+    { status: 413, detail: "payload_too_large", key: "errors.tooLarge" },
+    { status: 415, detail: "unsupported_media_type", key: "errors.unsupported" },
+    { status: 422, detail: "ambiguous_reading", key: "errors.ambiguous" },
+    { status: 503, detail: "capability_unavailable", key: "errors.unavailable" },
+    { status: 504, detail: "processing_timeout", key: "errors.timeout" },
+    { status: 429, detail: "quota_exceeded", key: "errors.limitRetry", headers: { "Retry-After": "30" }, vars: { seconds: 30 } }
+  ];
+  for (const item of cases) {
+    test(`photo upload ${item.status} shows a localized message`, async ({ actor, browserSession }) => {
+      await actor("patientA");
+      const ui = await browserSession("patientA");
+      await stubMediaCapabilities(ui.page);
+      let received;
+      await ui.page.route("**/api/glico/conversations/*/extract/image", async (route) => {
+        received = route.request().headers();
+        await route.fulfill({ status: item.status, headers: item.headers || {}, json: { detail: item.detail } });
+      });
+      await openAssistant(ui);
+      await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "visor.png", mimeType: "image/png", buffer: PNG });
+      await expect(ui.page.getByTestId("glico-error")).toHaveText(t(`glicoAssistant.${item.key}`, "pt-BR", item.vars));
+      expect(received["content-type"]).toBe("application/octet-stream");
+      expect(received["x-glico-context-version"]).toBeTruthy();
+      expect(received["x-glico-request-id"]).toBeTruthy();
+      expect(received["x-myglico-csrf"]).toBeTruthy();
+    });
+  }
+
+  test("photo rejected client-side when the type is unsupported or the file is too large", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await stubMediaCapabilities(ui.page);
+    let calls = 0;
+    await ui.page.route("**/api/glico/conversations/*/extract/image", (route) => { calls += 1; return route.abort(); });
+    await openAssistant(ui);
+    await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "x.gif", mimeType: "image/gif", buffer: PNG });
+    await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.unsupported"));
+    await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "big.png", mimeType: "image/png", buffer: Buffer.alloc(3 * 1024 * 1024 + 1) });
+    await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.tooLarge"));
+    expect(calls).toBe(0);
+  });
+
+  test("an in-flight photo upload can be cancelled and nothing is kept", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await stubMediaCapabilities(ui.page);
+    await ui.page.route("**/api/glico/conversations/*/extract/image", () => {});
+    await openAssistant(ui);
+    await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "visor.png", mimeType: "image/png", buffer: PNG });
+    await expect(ui.page.getByText(t("glicoAssistant.media.processingPhoto"))).toBeVisible();
+    await ui.page.getByRole("button", { name: t("glicoAssistant.media.cancel") }).click();
+    await expect(ui.page.getByText(t("glicoAssistant.media.discarded"))).toBeVisible();
+    await expect(ui.page.getByText(t("glicoAssistant.media.processingPhoto"))).toHaveCount(0);
+  });
+
+  test("a photo proposal opens the review card and is never confirmed automatically", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await stubMediaCapabilities(ui.page);
+    let confirmCalls = 0;
+    await ui.page.route("**/api/glico/proposals/*/confirm", (route) => { confirmCalls += 1; return route.continue(); });
+    await ui.page.route("**/api/glico/conversations/*/extract/image", (route) =>
+      route.fulfill({
+        json: {
+          type: "proposal",
+          proposal: {
+            id: "11111111-1111-4111-8111-111111111111", kind: "glucose_single", version: 1, context_version: 1, state: "READY",
+            expires_at: new Date(Date.now() + 600000).toISOString(),
+            fields: { glucose_mg_dl: 132, measured_at: new Date().toISOString() }, missing_fields: [], warnings: [], origin: "glico_photo"
+          }
+        }
+      })
+    );
+    await openAssistant(ui);
+    await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "visor.png", mimeType: "image/png", buffer: PNG });
+    const card = ui.page.getByTestId("glico-proposal");
+    await expect(card.getByLabel(t("glicoAssistant.valueLabel"))).toHaveValue("132");
+    expect(confirmCalls).toBe(0);
+  });
+
+  test("microphone denied shows a localized error and never uploads", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await stubMediaCapabilities(ui.page);
+    await ui.page.addInitScript(() => {
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: { getUserMedia: () => Promise.reject(Object.assign(new Error("denied"), { name: "NotAllowedError" })) }
+      });
+    });
+    let uploads = 0;
+    await ui.page.route("**/api/glico/conversations/*/extract/audio", (route) => { uploads += 1; return route.abort(); });
+    await openAssistant(ui);
+    await ui.page.getByRole("button", { name: t("glicoAssistant.media.audioStart") }).click();
+    await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.micDenied"));
+    expect(uploads).toBe(0);
+  });
+});
+
+test.describe("Glico assistant - doctor", () => {
+  test("must pick a linked patient explicitly before chatting; cannot confirm glucose", async ({ actor, browserSession }) => {
+    const patient = await actor("patientA");
+    const doctor = await actor("doctorA");
+    await linkActive(patient, doctor);
+    const ui = await browserSession("doctorA");
+    await openAssistant(ui);
+
+    const message = ui.page.getByLabel(t("glicoAssistant.messageLabel"));
+    await expect(message).toBeDisabled();
+    await expect(ui.page.getByText(t("glicoAssistant.selectPatientRequired"))).toBeVisible();
+
+    await ui.page.getByLabel(t("glicoAssistant.selectPatient")).selectOption({ label: patient.profile?.display_name || "Paciente A (E2E)" });
+    await expect(message).toBeEnabled();
+
+    await message.fill("glicose 110 mg/dL");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
+    await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.notAllowed"));
+    await expect(ui.page.getByTestId("glico-proposal")).toHaveCount(0);
+  });
+
+  test("doctor without links sees an empty-state hint and the unrelated patient is never offered", async ({ actor, browserSession }) => {
+    await actor("patientB");
+    await actor("doctorB");
+    const ui = await browserSession("doctorB");
+    await openAssistant(ui);
+    await expect(ui.page.getByLabel(t("glicoAssistant.selectPatient")).locator("option").first()).toHaveText(t("glicoAssistant.selectPatientPlaceholder"));
+    const options = await ui.page.getByLabel(t("glicoAssistant.selectPatient")).locator("option").allTextContents();
+    expect(options).toEqual([t("glicoAssistant.selectPatientPlaceholder")]);
+    await expect(ui.page.getByText(t("glicoAssistant.noPatients"))).toBeVisible();
+  });
+
+  test("fits a 390px mobile viewport", async ({ actor, browserSession }) => {
+    const patient = await actor("patientA");
+    const doctor = await actor("doctorA");
+    await linkActive(patient, doctor);
+    const ui = await browserSession("doctorA");
+    await openAssistant(ui, { viewport: { width: 390, height: 844 } });
+    await expectNoHorizontalOverflow(ui.page);
+  });
+});

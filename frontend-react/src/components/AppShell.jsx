@@ -86,6 +86,9 @@ export default function AppShell({ children }) {
         >
           {t("appShell.nav.overview")}
         </NavLink>
+        <NavLink to="/glico" className={({ isActive }) => `${linkClass}${isActive ? " is-active" : ""}`}>
+          {t("appShell.nav.assistant")}
+        </NavLink>
         {session?.patient?.id ? (
           <NavLink to={`/patients/${session.patient.id}`} className={({ isActive }) => `${linkClass}${isActive ? " is-active" : ""}`}>
             {t("appShell.nav.myPanel")}

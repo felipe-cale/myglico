@@ -1,0 +1,428 @@
+.glico {
+  display: grid;
+  gap: 1rem;
+  max-width: 56rem;
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.glico > * {
+  min-width: 0;
+}
+
+.glico__header p,
+.glico-hint {
+  color: var(--react-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.glico__context,
+.glico__chat,
+.glico__disabled {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.glico__context label,
+.glico__composer label,
+.glico-card label {
+  font-weight: 600;
+  color: var(--react-text);
+}
+
+.glico__capabilities {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.glico__thread {
+  display: grid;
+  gap: 0.6rem;
+  max-height: 24rem;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+
+.glico__empty {
+  color: var(--react-muted);
+  margin: 0;
+}
+
+.glico__message {
+  max-width: min(100%, 38rem);
+  padding: 0.6rem 0.85rem;
+  border-radius: 14px;
+  overflow-wrap: anywhere;
+}
+
+.glico__message p {
+  margin: 0.15rem 0 0;
+}
+
+.glico__message--user {
+  justify-self: end;
+  background: var(--tint-blue-10);
+}
+
+.glico__message--assistant {
+  justify-self: start;
+  background: var(--tint-cyan-12);
+}
+
+.glico__author {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--react-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.glico__link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: var(--react-blue-deep);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.glico__link:focus-visible,
+.glico__proposal-wrap:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.glico__proposal-wrap {
+  outline-offset: 4px;
+}
+
+.glico-alert {
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--react-border);
+  overflow-wrap: anywhere;
+}
+
+.glico-alert p {
+  margin: 0.2rem 0 0;
+}
+
+.glico-alert--error {
+  background: rgba(227, 93, 115, 0.1);
+  border-color: rgba(227, 93, 115, 0.4);
+  color: var(--react-rose-text);
+}
+
+.glico-alert--success {
+  background: rgba(30, 171, 105, 0.1);
+  border-color: rgba(30, 171, 105, 0.4);
+  color: var(--react-green-deep);
+}
+
+.glico-card {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px solid var(--tint-blue-32);
+  border-radius: 16px;
+  background: var(--react-surface-solid);
+}
+
+.glico-card h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.glico-card > p {
+  margin: 0;
+}
+
+.glico-card__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.glico-card__form {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.glico-card__value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.glico-card__value .react-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.glico-card__actions,
+.glico__composer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.glico-card__actions {
+  justify-content: flex-start;
+  margin-top: 0.4rem;
+}
+
+.glico-card__actions .react-button {
+  min-height: 44px;
+}
+
+.glico__faq h2 {
+  font-size: 1rem;
+  margin: 0 0 0.4rem;
+}
+
+.glico__faq ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+}
+
+.glico__faq .react-button {
+  min-height: 44px;
+  white-space: normal;
+  text-align: left;
+}
+
+.glico__collaboration,
+.glico__collaboration-form {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.glico__collaboration h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.glico__collaboration-form label {
+  font-weight: 600;
+  color: var(--react-text);
+}
+
+.glico__collaboration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.glico__collaboration-actions .react-button {
+  min-height: 44px;
+}
+
+.glico__composer {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.glico__composer textarea,
+.glico-card textarea {
+  resize: vertical;
+}
+
+.glico__composer .react-button--primary {
+  min-height: 44px;
+}
+
+.glico-media {
+  display: grid;
+  gap: 0.6rem;
+  border-top: 1px solid var(--react-border);
+  padding-top: 0.75rem;
+}
+
+.glico-media__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.glico-media__item .react-button,
+.glico-media__progress .react-button {
+  min-height: 44px;
+}
+
+.glico-media__progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  background: var(--tint-blue-8);
+}
+
+.glico__disclaimer {
+  text-align: center;
+}
+
+.glico__list h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--react-text);
+}
+
+.glico__list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.glico__list li {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: var(--tint-blue-6);
+  border: 1px solid var(--react-border);
+}
+
+.glico__list li > * {
+  display: inline-block;
+  margin-right: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.glico__list li time {
+  color: var(--react-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.glico__list li strong {
+  color: var(--react-text);
+}
+
+.glico__context-label {
+  color: var(--react-muted);
+  font-size: 0.8rem;
+}
+
+.glico__period-form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.glico__period-fields {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.glico__period-fields label {
+  font-weight: 600;
+  color: var(--react-text);
+  font-size: 0.85rem;
+}
+
+.glico__period-fields .react-field {
+  min-height: 3rem;
+}
+
+.glico__period-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.glico__pdf {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: var(--tint-blue-8);
+  border: 1px solid var(--react-border);
+}
+
+.glico__pdf h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.glico__pdf p {
+  margin: 0;
+  color: var(--react-muted);
+}
+
+.glico__pdf .react-button {
+  justify-self: start;
+  min-height: 44px;
+}
+
+.glico__associated-days {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.glico__day-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  border-radius: 8px;
+  background: var(--tint-blue-6);
+  border: 1px solid var(--react-border);
+  cursor: pointer;
+}
+
+.glico__day-checkbox input {
+  accent-color: var(--react-blue);
+}
+
+@media (min-width: 48rem) {
+  .glico__thread {
+    max-height: 28rem;
+  }
+
+  .glico-card__form {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 1rem;
+  }
+
+  .glico-card__form > label[for$="-notes"],
+  .glico-card__form > textarea,
+  .glico-card__form > p,
+  .glico-card__actions {
+    grid-column: 1 / -1;
+  }
+
+  .glico-media {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .glico-media__progress {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glico * {
+    scroll-behavior: auto;
+    transition: none;
+    animation: none;
+  }
+}

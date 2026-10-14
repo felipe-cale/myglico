@@ -11,9 +11,13 @@ export const REQUEST_TIMEOUT_MS = 20000;
 // cancelled from it; polling and panels with their own inline loading state
 // pass { background: true }. Every request gives up after `timeout` ms with
 // error.code === "timeout"; a cancelled one rejects with error.code === "aborted".
-async function requestJson(path, { background = false, timeout = REQUEST_TIMEOUT_MS, ...options } = {}) {
+async function requestJson(path, { background = false, timeout = REQUEST_TIMEOUT_MS, signal: externalSignal, ...options } = {}) {
   const controller = new AbortController();
   let timedOut = false;
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
   const timer = timeout > 0 ? setTimeout(() => {
     timedOut = true;
     controller.abort();
@@ -46,6 +50,11 @@ async function sendJson(path, options) {
     if (response.status === 401) throw new Error("Unauthorized");
     const error = new Error(`Request failed ${path}: ${response.status}`);
     error.status = response.status;
+    // Machine-readable code (e.g. "context_changed") for callers that map errors to localized copy; never shown raw.
+    const body = await response.json().catch(() => null);
+    if (typeof body?.detail === "string") error.detail = body.detail;
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    if (Number.isFinite(retryAfter) && retryAfter > 0) error.retryAfter = retryAfter;
     throw error;
   }
   if (response.status === 204) return null;
@@ -60,6 +69,7 @@ export function login(email, password) {
   return requestJson("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
 }
 export function logout() {
+  resetGlicoCsrf();
   return requestJson("/api/auth/logout", { method: "POST" });
 }
 export function fetchSession() {
@@ -181,4 +191,103 @@ export function patientReportPdfUrl(patientId, { startDate, endDate, lang }) {
   const params = new URLSearchParams({ start_date: startDate, end_date: endDate });
   if (lang) params.set("lang", lang);
   return `/api/patients/${encodeURIComponent(patientId)}/report.pdf?${params.toString()}`;
+}
+
+// === GLICO ASSISTANT ===
+// Every Glico call is inline (background): the page shows its own busy and error states, and media uploads have their own cancel button.
+const GLICO_BACKGROUND = { background: true };
+let glicoCsrf = null;
+
+export function resetGlicoCsrf() {
+  glicoCsrf = null;
+}
+
+export function fetchGlicoCapabilities(locale) {
+  const query = new URLSearchParams({ locale });
+  return requestJson(`/api/glico/capabilities?${query}`, GLICO_BACKGROUND);
+}
+
+async function glicoCsrfToken() {
+  if (!glicoCsrf) glicoCsrf = (await requestJson("/api/glico/csrf", GLICO_BACKGROUND)).token;
+  return glicoCsrf;
+}
+
+// The CSRF token is bound to the session cookie. A rejected token (new login, rotated session) is refetched and the
+// request is retried once; csrf_failed is refused before anything executes, so the retry cannot duplicate an effect.
+async function glicoMutation(path, payload, { method = "POST", signal } = {}) {
+  const send = async () => requestJson(path, {
+    ...GLICO_BACKGROUND,
+    method,
+    signal,
+    headers: { "X-MyGlico-CSRF": await glicoCsrfToken() },
+    body: JSON.stringify(payload)
+  });
+  try {
+    return await send();
+  } catch (error) {
+    if (error?.status === 403 && error.detail === "csrf_failed") {
+      resetGlicoCsrf();
+      return send();
+    }
+    throw error;
+  }
+}
+
+export function createGlicoConversation(locale, client_request_id) {
+  return glicoMutation("/api/glico/conversations", { locale, client_request_id });
+}
+
+export function createGlicoCollaborationProposal(conversationId, payload) {
+  return glicoMutation(`/api/glico/conversations/${encodeURIComponent(conversationId)}/collaboration-proposals`, payload);
+}
+
+export function fetchGlicoConversation(id) {
+  return requestJson(`/api/glico/conversations/${encodeURIComponent(id)}`, GLICO_BACKGROUND);
+}
+
+export function updateGlicoContext(id, payload) {
+  return glicoMutation(`/api/glico/conversations/${encodeURIComponent(id)}/context`, payload, { method: "PATCH" });
+}
+
+export function sendGlicoMessage(id, payload, { signal } = {}) {
+  return glicoMutation(`/api/glico/conversations/${encodeURIComponent(id)}/messages`, payload, { signal });
+}
+
+export function editGlicoProposal(id, payload) {
+  return glicoMutation(`/api/glico/proposals/${encodeURIComponent(id)}`, payload, { method: "PATCH" });
+}
+
+export function confirmGlicoProposal(id, payload) {
+  return glicoMutation(`/api/glico/proposals/${encodeURIComponent(id)}/confirm`, payload);
+}
+
+export function cancelGlicoProposal(id, version) {
+  return glicoMutation(`/api/glico/proposals/${encodeURIComponent(id)}/cancel`, { version });
+}
+
+// Photo/audio go as one raw application/octet-stream body (never multipart). The gateway reads the context and the
+// request id from headers; the media is not echoed back and the caller drops its reference once this settles.
+export async function extractGlicoMedia(id, kind, blob, { contextVersion, clientRequestId, signal }) {
+  const send = async () => requestJson(`/api/glico/conversations/${encodeURIComponent(id)}/extract/${kind}`, {
+    ...GLICO_BACKGROUND,
+    timeout: 30000,
+    method: "POST",
+    signal,
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "X-MyGlico-CSRF": await glicoCsrfToken(),
+      "X-Glico-Context-Version": String(contextVersion),
+      "X-Glico-Request-Id": clientRequestId
+    },
+    body: blob
+  });
+  try {
+    return await send();
+  } catch (error) {
+    if (error?.status === 403 && error.detail === "csrf_failed") {
+      resetGlicoCsrf();
+      return send();
+    }
+    throw error;
+  }
 }

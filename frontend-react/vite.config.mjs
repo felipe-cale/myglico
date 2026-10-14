@@ -30,7 +30,8 @@ export default defineConfig(() => ({
     proxy: {
       "/api": {
         target: apiTarget,
-        changeOrigin: true
+        // Host must stay the browser's: /api/glico validates Origin against the request host (CSRF).
+        changeOrigin: false
       },
       "/artifacts": {
         target: apiTarget,

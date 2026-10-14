@@ -12,6 +12,7 @@ import { useAuth, AuthProvider } from "./contexts/AuthContext";
 const OverviewPage = lazy(() => import("./pages/OverviewPage"));
 const PatientDetailPage = lazy(() => import("./pages/PatientDetailPage"));
 const InvestigationPage = lazy(() => import("./pages/InvestigationPage"));
+const GlicoAssistantPage = lazy(() => import("./pages/GlicoAssistantPage"));
 
 function PageFallback() {
   useLoadingHold();
@@ -44,6 +45,7 @@ function MainRoutes() {
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
         <Route path="/investigations/:id" element={<ProtectedRoute><InvestigationPage /></ProtectedRoute>} />
+        <Route path="/glico" element={<ProtectedRoute><GlicoAssistantPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><OverviewPage /></ProtectedRoute>} />
         <Route path="/patients/:patientId" element={<ProtectedRoute><PatientDetailPage /></ProtectedRoute>} />
 
