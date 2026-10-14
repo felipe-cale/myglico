@@ -326,9 +326,13 @@ export default function GlicoAssistantPage() {
   };
 
   const showProposal = (next) => {
+    // A newer proposal replaces the one on screen: cancel the old one on the server too, so it
+    // cannot come back from a refresh after the newer one is confirmed.
+    if (proposal && proposal.id !== next.id) cancelGlicoProposal(proposal.id, proposal.version).catch(() => {});
     setReceipt(null);
     setConversation((current) => withProposal(current, next));
     addAssistant({ text: t("glicoAssistant.reviewPrompt") });
+    addAssistant({ type: "proposal", proposalId: next.id });
   };
 
   const handleResult = (result) => {
@@ -569,6 +573,15 @@ export default function GlicoAssistantPage() {
       });
       if (activeConversationId.current !== conversation.id) return;
       setReceipt(result?.receipt || null);
+      setMessages((current) => {
+        const turned = current.map((message) => (
+          message.type === "proposal" && message.proposalId === proposal.id
+            ? { ...message, type: "receipt", receipt: result?.receipt || null }
+            : message));
+        return turned.some((message) => message.type === "receipt" && message.receipt === (result?.receipt || null))
+          ? turned
+          : [...turned, { id: requestId(), role: "assistant", type: "receipt", receipt: result?.receipt || null }];
+      });
       setNotice("confirmed");
       setConversation((current) => ({ ...current, cards: (current?.cards || []).filter((card) => card.type !== "proposal") }));
       refreshConversation(conversation.id).catch(() => {});
@@ -589,6 +602,7 @@ export default function GlicoAssistantPage() {
       if (activeConversationId.current !== conversation.id) return;
       setConversation((current) => ({ ...current, cards: (current?.cards || []).filter((card) => card.type !== "proposal") }));
       setNotice("cancelled");
+      setMessages((current) => current.filter((message) => !(message.type === "proposal" && message.proposalId === proposal.id)));
       refreshConversation(conversation.id).catch(() => {});
     } catch (reason) {
       if (activeConversationId.current !== conversation.id) return;
@@ -709,12 +723,38 @@ export default function GlicoAssistantPage() {
       ? t("glicoAssistant.errors.limitRetry", { wait: formatWait(error.retryAfter) })
       : t(`glicoAssistant.errors.${error.key}`)
     : "";
-  const receiptTime = shownReceipt?.committed_at
-    ? new Intl.DateTimeFormat(i18n.language, { dateStyle: "short", timeStyle: "short" }).format(new Date(shownReceipt.committed_at))
-    : "";
-  const analyticsLabel = shownReceipt
-    ? t(`glicoAssistant.analytics.${shownReceipt.analytics_status}`, { defaultValue: t("glicoAssistant.analytics.unknown") })
-    : "";
+  const receiptBlock = (data) => {
+    const time = data?.committed_at
+      ? new Intl.DateTimeFormat(i18n.language, { dateStyle: "short", timeStyle: "short" }).format(new Date(data.committed_at))
+      : "";
+    const status = data
+      ? t(`glicoAssistant.analytics.${data.analytics_status}`, { defaultValue: t("glicoAssistant.analytics.unknown") })
+      : "";
+    return (
+      <div className="glico-alert glico-alert--success glico__receipt" role="status" data-testid="glico-receipt">
+        <strong>{t("glicoAssistant.receiptTitle")}</strong>
+        <p>{t("glicoAssistant.receiptBody", { time, status })}</p>
+        {isPatient && session_panel_link(conversation) ? (
+          <Link to={session_panel_link(conversation)} className="glico__link">{t("glicoAssistant.viewPatientPanel")}</Link>
+        ) : null}
+      </div>
+    );
+  };
+
+  const proposalBlock = (
+    <div ref={proposalWrap} tabIndex={-1} className="glico__proposal-wrap">
+      <GlicoProposalCard
+        proposal={proposal}
+        role={conversation?.role}
+        busy={busy}
+        onSave={saveProposal}
+        onConfirm={confirmProposal}
+        onDiscard={discardProposal}
+      />
+    </div>
+  );
+  const proposalInThread = Boolean(proposal) && messages.some((message) => message.type === "proposal" && message.proposalId === proposal.id);
+  const receiptInThread = messages.some((message) => message.type === "receipt");
 
   return (
     <section className="react-page glico glico--chat" aria-labelledby="glico-title">
@@ -779,9 +819,15 @@ export default function GlicoAssistantPage() {
             {messages.map((message) => (
               <article key={message.id} className={`glico__message glico__message--${message.role}`}>
                 {message.role === "assistant" ? <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" /> : null}
-                <div className="glico__bubble">
+                <div className={`glico__bubble${["proposal", "receipt"].includes(message.type) ? " glico__bubble--wide" : ""}`}>
                   <span className="react-visually-hidden">{t(message.role === "user" ? "glicoAssistant.userSaid" : "glicoAssistant.glicoSaid")}</span>
-                  {message.type === "period" ? (
+                  {message.type === "proposal" ? (
+                    proposal && proposal.id === message.proposalId
+                      ? proposalBlock
+                      : <p className="glico-hint">{t("glicoAssistant.proposalReplaced")}</p>
+                  ) : message.type === "receipt" ? (
+                    receiptBlock(message.receipt)
+                  ) : message.type === "period" ? (
                     <form onSubmit={updatePeriod} className="glico__period-form glico-card">
                       <h3>{t("glicoAssistant.period.label")}</h3>
                       <div className="glico__period-fields">
@@ -877,36 +923,17 @@ export default function GlicoAssistantPage() {
               </article>
             ))}
 
-            {shownReceipt ? (
+            {shownReceipt && !receipt && !receiptInThread ? (
               <article className="glico__message glico__message--assistant">
                 <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" />
-                <div className="glico__bubble glico__bubble--wide">
-                  <div className="glico-alert glico-alert--success glico__receipt" role="status" data-testid="glico-receipt">
-                    <strong>{t("glicoAssistant.receiptTitle")}</strong>
-                    <p>{t("glicoAssistant.receiptBody", { time: receiptTime, status: analyticsLabel })}</p>
-                    {isPatient && session_panel_link(conversation) ? (
-                      <Link to={session_panel_link(conversation)} className="glico__link">{t("glicoAssistant.viewPatientPanel")}</Link>
-                    ) : null}
-                  </div>
-                </div>
+                <div className="glico__bubble glico__bubble--wide">{receiptBlock(shownReceipt)}</div>
               </article>
             ) : null}
 
-            {proposal ? (
+            {proposal && !proposalInThread ? (
               <article className="glico__message glico__message--assistant">
                 <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" />
-                <div className="glico__bubble glico__bubble--wide">
-                  <div ref={proposalWrap} tabIndex={-1} className="glico__proposal-wrap">
-                    <GlicoProposalCard
-                      proposal={proposal}
-                      role={conversation?.role}
-                      busy={busy}
-                      onSave={saveProposal}
-                      onConfirm={confirmProposal}
-                      onDiscard={discardProposal}
-                    />
-                  </div>
-                </div>
+                <div className="glico__bubble glico__bubble--wide">{proposalBlock}</div>
               </article>
             ) : null}
 

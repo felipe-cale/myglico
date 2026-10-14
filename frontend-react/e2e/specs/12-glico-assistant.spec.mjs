@@ -456,3 +456,40 @@ test.describe("Glico assistant - usage limit message", () => {
     await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.limitRetry", "pt-BR", { wait: "9 h 57 min" }));
   });
 });
+
+test.describe("Glico assistant - conversation order", () => {
+  test("each proposal and receipt stays where it happened while new messages keep arriving below", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await openAssistant(ui);
+    const field = ui.page.getByLabel(t("glicoAssistant.messageLabel"));
+    const send = ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true });
+    const thread = ui.page.getByTestId("glico-thread");
+
+    await field.fill("52 mg/dL");
+    await send.click();
+    await expect(ui.page.getByTestId("glico-proposal")).toHaveCount(1);
+    await field.fill("94 mg/dL");
+    await send.click();
+    await expect(thread.getByText(t("glicoAssistant.proposalReplaced"))).toHaveCount(1);
+    await expect(ui.page.getByTestId("glico-proposal")).toHaveCount(1);
+
+    const order = await thread.locator("article").evaluateAll((nodes) => nodes.map((node) => {
+      if (node.querySelector('[data-testid="glico-proposal"]')) return "card";
+      if (/replaced|substitu|reemplaz/i.test(node.textContent)) return "old-card";
+      return node.classList.contains("glico__message--user") ? "user" : "glico";
+    }));
+    // user, glico text, (old card), user, glico text, live card
+    expect(order).toEqual(["user", "glico", "old-card", "user", "glico", "card"]);
+
+    await ui.page.getByTestId("glico-proposal").getByRole("button", { name: t("glicoAssistant.confirm") }).click();
+    await expect(ui.page.getByTestId("glico-receipt")).toHaveCount(1);
+    await expect(ui.page.getByTestId("glico-proposal")).toHaveCount(0);
+    await field.fill("minhas leituras recentes");
+    await send.click();
+    const after = await thread.locator("article").evaluateAll((nodes) => nodes.map((node) => (
+      node.querySelector('[data-testid="glico-receipt"]') ? "receipt" : node.classList.contains("glico__message--user") ? "user" : "glico")));
+    // the receipt stays above the newer exchange instead of sinking to the bottom
+    expect(after.indexOf("receipt")).toBeLessThan(after.lastIndexOf("user"));
+  });
+});

@@ -308,32 +308,66 @@ class PaddleReadingExtractor:
         return asyncio.run(one_request())
 
 
-def enhanced_variants(data: bytes) -> list[bytes]:
-    """Smoothed copies of a photo for a second OCR attempt.
+WORKING_SIDE = 800
 
-    LCD meters have a dotted texture that can make the recognizer read "106" as "1006". A light blur
-    or a smaller scale removes it. Everything stays in memory inside the worker.
+
+def _png(image) -> bytes:
+    import io
+
+    out = io.BytesIO()
+    image.save(out, "PNG")
+    return out.getvalue()
+
+
+def _open_rgb(data: bytes):
+    import io
+    from PIL import Image
+
+    image = Image.open(io.BytesIO(data))
+    image.load()
+    return image.convert("RGB")
+
+
+def prepare_for_ocr(data: bytes) -> bytes:
+    """Downscale (never upscale) to a working size: faster, and the dotted LCD texture of meters
+    stops confusing the recognizer (the same Accu-Chek photo goes from 0.70 to 0.83 confidence)."""
+    try:
+        from PIL import Image
+
+        image = _open_rgb(data)
+        if max(image.size) <= WORKING_SIDE:
+            return data
+        ratio = WORKING_SIDE / max(image.size)
+        return _png(image.resize((max(1, int(image.width * ratio)), max(1, int(image.height * ratio))), Image.LANCZOS))
+    except Exception:
+        return data
+
+
+def enhanced_variants(data: bytes) -> list[bytes]:
+    """Other views of the same photo for a retry when the first pass does not conclude.
+
+    The original resolution (capped) comes first when it was downscaled, then smaller scales, and a
+    light blur last because it can also merge digits ("106" -> "1106"). All in memory.
     """
     try:
-        import io
         from PIL import Image, ImageFilter
 
-        image = Image.open(io.BytesIO(data))
-        image.load()
-        image = image.convert("RGB")
-        if max(image.size) > 960:
-            ratio = 960 / max(image.size)
-            image = image.resize((max(1, int(image.width * ratio)), max(1, int(image.height * ratio))), Image.LANCZOS)
-        radius = min(4.0, max(1.2, 1.2 * min(image.size) / 240))
-        variants = [
-            image.filter(ImageFilter.GaussianBlur(radius)),
-            image.resize((max(1, int(image.width * 0.6)), max(1, int(image.height * 0.6))), Image.LANCZOS),
+        original = _open_rgb(data)
+        if max(original.size) > 1600:
+            ratio = 1600 / max(original.size)
+            original = original.resize((max(1, int(original.width * ratio)), max(1, int(original.height * ratio))), Image.LANCZOS)
+        working = original
+        if max(working.size) > WORKING_SIDE:
+            ratio = WORKING_SIDE / max(working.size)
+            working = working.resize((max(1, int(working.width * ratio)), max(1, int(working.height * ratio))), Image.LANCZOS)
+        radius = min(2.0, max(1.0, min(working.size) / 480))
+        views = []
+        if working is not original:
+            views.append(original)
+        views += [
+            working.resize((max(1, int(working.width * 0.6)), max(1, int(working.height * 0.6))), Image.LANCZOS),
+            working.filter(ImageFilter.GaussianBlur(radius)),
         ]
-        encoded = []
-        for variant in variants:
-            out = io.BytesIO()
-            variant.save(out, "PNG")
-            encoded.append(out.getvalue())
-        return encoded
+        return [_png(view) for view in views]
     except Exception:
         return []

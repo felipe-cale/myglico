@@ -144,3 +144,64 @@ def test_hi_lo_is_not_retried_and_still_never_becomes_a_value():
     response = _post_image(engine, image_bytes(size=(240, 240)), "J" * 24)
     assert response.json()["assessment"]["needs_clarification"] is True
     assert engine.calls == 1
+
+
+class _Scripted:
+    """Engine whose successive OCR passes return scripted (text, confidence) lists."""
+    limits = ImageLimits()
+
+    def __init__(self, passes):
+        self.passes, self.calls = passes, 0
+
+    async def extract_async(self, data):
+        from app.media_worker.image import Extraction, TextCandidate
+        texts = self.passes[min(self.calls, len(self.passes) - 1)]
+        self.calls += 1
+        return Extraction(tuple(TextCandidate(t, c, (0, 0, 40, 60)) for t, c in texts), "fake-test-only", 5)
+
+
+def test_two_reads_that_agree_are_trusted_even_below_the_single_pass_floor():
+    # the real Accu-Chek photo: 106 at 0.70, then 106 at 0.72 on a rescaled copy
+    engine = _Scripted([[("106", 0.70), ("mg/dL", 1.0)], [("106", 0.72), ("mg/dL", 1.0)]])
+    assessment = _post_image(engine, image_bytes(size=(240, 240)), "L" * 24).json()["assessment"]
+    assert assessment["needs_clarification"] is False
+    assert assessment["candidate_value_mg_dl"] == 106 and assessment["agreed_passes"] >= 2
+
+
+def test_reads_that_disagree_or_are_too_weak_still_ask_for_clarification():
+    disagree = _Scripted([[("106", 0.70)], [("108", 0.72)], [("1106", 0.9)]])
+    assert _post_image(disagree, image_bytes(size=(240, 240)), "M" * 24).json()["assessment"]["needs_clarification"] is True
+    weak = _Scripted([[("106", 0.40)], [("106", 0.45)], [("106", 0.30)]])
+    assert _post_image(weak, image_bytes(size=(240, 240)), "N" * 24).json()["assessment"]["needs_clarification"] is True
+    single = _Scripted([[("106", 0.70)], [("12", 0.9)], [("5", 0.9)]])
+    assert _post_image(single, image_bytes(size=(240, 240)), "P" * 24).json()["assessment"]["needs_clarification"] is True
+
+
+def test_the_gateway_accepts_an_agreed_read_but_not_a_weak_single_one():
+    from app.api.glico_routes import _trusted_worker_assessment
+
+    base = {"status": "review_required", "needs_clarification": False, "clarification_reasons": [],
+            "candidate_value_mg_dl": 106, "candidate_confidence": 0.70, "confidence_threshold": 0.6}
+    assert _trusted_worker_assessment({"assessment": {**base, "agreed_passes": 2}}, "image") == 106.0
+    assert _trusted_worker_assessment({"assessment": base}, "image") is None
+
+
+def test_large_photos_are_downscaled_for_ocr_and_small_ones_are_untouched():
+    from app.media_worker.image import WORKING_SIDE, prepare_for_ocr
+
+    large = image_bytes(size=(1600, 1200))
+    resized = Image.open(io.BytesIO(prepare_for_ocr(large)))
+    assert max(resized.size) == WORKING_SIDE and resized.size == (800, 600)
+    small = image_bytes(size=(300, 200))
+    assert prepare_for_ocr(small) == small
+    assert prepare_for_ocr(b"not an image") == b"not an image"
+
+
+def test_retry_views_start_with_the_original_resolution_when_it_was_downscaled():
+    from app.media_worker.image import enhanced_variants
+
+    views = [Image.open(io.BytesIO(blob)).size for blob in enhanced_variants(image_bytes(size=(1200, 900)))]
+    assert views[0] == (1200, 900) and len(views) == 3
+    assert max(views[1]) < 800 and views[2] == (800, 600)
+    # a photo already at working size has no separate "original" view
+    assert len(enhanced_variants(image_bytes(size=(600, 400)))) == 2

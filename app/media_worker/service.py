@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 
 from app.media_worker.auth import ReplayStore, WorkerSignature, verify_request
 from app.media_worker.audio import AudioLimits, FasterWhisperTranscriber
-from app.media_worker.image import ImageLimits, MediaError, PaddleReadingExtractor, enhanced_variants
+from app.media_worker.image import ImageLimits, MediaError, PaddleReadingExtractor, enhanced_variants, prepare_for_ocr
 from app.media_worker.spoken import normalize_spoken
 
 
@@ -121,8 +121,8 @@ def _dev_note_audio(path: Path | None, payload: dict) -> None:
         path.with_suffix(".json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _image_assessment(result, limits) -> dict:
-    """Assess one OCR pass: pick the display reading among the digit-only lines."""
+def _image_pick(result, limits) -> tuple[list[int], float | None]:
+    """Pick the display reading among the digit-only lines of one OCR pass."""
     # Only digit-only display lines qualify as candidate readings; separators
     # are excluded so dates and clock strings are not treated as glucose.
     readings = []
@@ -140,10 +140,36 @@ def _image_assessment(result, limits) -> dict:
             chosen = [ranked[0]]
     numeric = [r[0] for r in chosen] if chosen else [r[0] for r in readings]
     numeric_confidence = [r[1] for r in (chosen or readings) if r[1] is not None]
-    confidence = min(numeric_confidence) if numeric_confidence else None
-    # A missing unit is assumed mg/dL: the proposal is still reviewed and
-    # editable by the user before anything is written.
+    return numeric, (min(numeric_confidence) if numeric_confidence else None)
+
+
+def _image_assessment(result, limits) -> dict:
+    """Assess one OCR pass. A missing unit is assumed mg/dL: the proposal is still reviewed and
+    editable by the user before anything is written."""
+    numeric, confidence = _image_pick(result, limits)
     return _assessment(numeric, True, confidence, limits)
+
+
+def _agreed_assessment(passes, limits) -> tuple[object, dict] | None:
+    """Two independent reads of the same photo that give the same in-range value are trusted even
+    when each one's confidence is below the single-pass floor (but not below half of it)."""
+    floor = max(0.5, limits.min_confidence * 0.8)
+    votes: dict[int, list] = {}
+    for result in passes:
+        numeric, confidence = _image_pick(result, limits)
+        unique = list(dict.fromkeys(numeric))
+        if len(unique) == 1 and confidence is not None and confidence >= floor \
+                and limits.min_glucose_mg_dl <= unique[0] <= limits.max_glucose_mg_dl:
+            votes.setdefault(unique[0], []).append((result, confidence))
+    for value, entries in votes.items():
+        if len(entries) >= 2:
+            from dataclasses import replace
+            best = max(entries, key=lambda entry: entry[1])
+            agreed = _assessment([value], True, min(entry[1] for entry in entries), replace(limits, min_confidence=0.0))
+            agreed["confidence_threshold"] = floor
+            agreed["agreed_passes"] = len(entries)
+            return best[0], agreed
+    return None
 
 
 def _audio_numeric_candidates(text: str) -> list[int]:
@@ -236,7 +262,7 @@ def create_media_app(
                 max_skew_seconds=30,
             ):
                 raise HTTPException(status_code=401, detail={"code": "worker_authentication_failed"})
-            result = await engine.extract_async(body)
+            result = await engine.extract_async(prepare_for_ocr(body))
             retry_inputs: list[bytes] = []
             if (_image_assessment(result, engine.limits)["needs_clarification"]
                     and not any(re.fullmatch(r"\s*(hi|lo)\s*", item.text, re.I) for item in result.candidates)):
@@ -250,16 +276,23 @@ def create_media_app(
             chunks.clear()
             slots.release()
         assessment = _image_assessment(result, engine.limits)
-        # A first pass that does not conclude is retried on smoothed copies of the same photo.
+        # A first pass that does not conclude is retried on rescaled/smoothed copies of the same photo.
+        tried = [result]
         for variant in retry_inputs:
             try:
                 retry = await engine.extract_async(variant)
             except MediaError:
                 break
+            tried.append(retry)
             again = _image_assessment(retry, engine.limits)
             if not again["needs_clarification"]:
                 result, assessment = retry, again
                 break
+        else:
+            if assessment["needs_clarification"] and len(tried) > 1:
+                agreed = _agreed_assessment(tried, engine.limits)
+                if agreed is not None:
+                    result, assessment = agreed
         return JSONResponse(
             {
                 "correlation_id": correlation_id,

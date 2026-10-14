@@ -878,6 +878,7 @@
     "missingMeasuredAtHint": "Sin fecha y hora no se puede guardar la medición. Indica cuándo mediste.",
     "measuredAtAssumed": "Usé la fecha y la hora actuales. Ajústalas si mediste en otro momento.",
     "conversationReset": "La conversación se reinició para el nuevo idioma.",
+    "proposalReplaced": "Esta propuesta fue reemplazada por una más reciente.",
     "greetingBody": "Escribe el valor, habla o envía una foto del visor del glucómetro. Revisas todo antes de guardar.",
     "toolsButton": "Consultas y colaboración",
     "chips": {

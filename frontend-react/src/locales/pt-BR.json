@@ -878,6 +878,7 @@
     "missingMeasuredAtHint": "Sem data e hora, a medição não pode ser salva. Informe quando você mediu.",
     "measuredAtAssumed": "Usei a data e a hora de agora. Ajuste se a medição foi em outro momento.",
     "conversationReset": "A conversa foi reiniciada para o novo idioma.",
+    "proposalReplaced": "Esta proposta foi substituída por uma mais recente.",
     "greetingBody": "Escreva o valor, fale ou envie uma foto do visor do glicosímetro. Você revisa tudo antes de salvar.",
     "toolsButton": "Consultas e colaboração",
     "chips": {

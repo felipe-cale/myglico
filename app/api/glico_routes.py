@@ -133,7 +133,9 @@ def _trusted_worker_assessment(result: dict, media_kind: str) -> float | None:
     value = float(value)
     confidence = float(confidence)
     threshold = float(threshold)
-    minimum_confidence = 0.75 if media_kind == "image" else 0.55
+    # Two independent reads of one photo that agree on the value carry a lower per-read floor.
+    agreed = isinstance(assessment.get("agreed_passes"), int) and assessment["agreed_passes"] >= 2
+    minimum_confidence = 0.5 if agreed else (0.75 if media_kind == "image" else 0.55)
     if not (math.isfinite(value) and math.isfinite(confidence) and math.isfinite(threshold)
             and 20 <= value <= 600 and confidence >= max(threshold, minimum_confidence)):
         return None
