@@ -870,3 +870,43 @@ def test_worker_hmac_replay_store_is_atomic_under_concurrency_and_expires():
     assert verify_request(secret, "POST", "/internal/extract/image", body, fresh, store,
                           now=issued + 3, max_skew_seconds=2)
     assert len(store.entries) == 1
+
+
+@pytest.mark.parametrize("signal", ["HI", "lo"])
+def test_photo_with_meter_hi_lo_signal_is_never_recorded(world: World, monkeypatch, signal):
+    import json
+    from types import SimpleNamespace
+    from app.api import glico_routes
+
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    monkeypatch.setattr(glico_routes, "get_settings", lambda: SimpleNamespace(
+        glico_enabled=True, glico_audio_enabled=True, glico_photo_enabled=True,
+        glico_media_global_jobs=2, glico_media_worker_url="http://worker",
+        glico_media_worker_secret="m" * 32))
+    payload = {"engine": "fake-ocr", "candidates": [{"text": signal, "confidence": 0.97},
+               {"text": "mg/dL", "confidence": 0.95}],
+               "assessment": _worker_assessment(needs_clarification=True, reasons=["value_not_detected"])}
+
+    class FakeResponse:
+        status_code = 200
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return False
+        async def aiter_bytes(self):
+            yield json.dumps(payload).encode()
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return False
+        def stream(self, *args, **kwargs): return FakeResponse()
+
+    monkeypatch.setattr(glico_routes.httpx, "AsyncClient", FakeClient)
+    response = patient.client.post(
+        f"/api/glico/conversations/{conversation_id}/extract/image",
+        headers={**headers, "content-type": "application/octet-stream",
+                 "x-glico-context-version": str(version), "x-glico-request-id": str(uuid.uuid4())},
+        content=b"synthetic media")
+    assert response.status_code == 200, response.text
+    assert response.json() == {"type": "clarification", "answer_key": "glico.reading.unsupported_signal"}

@@ -896,6 +896,9 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
             raise HTTPException(status_code=409, detail="context_changed")
         text = " ".join(extracted_texts).strip()
         answer = _query_answer(db, current, text) if media_kind == "audio" and text else None
+        if media_kind == "image" and any(re.fullmatch(r"\s*(hi|lo)\s*", t, re.I) for t in extracted_texts):
+            # Meters print HI/LO outside their measuring range: never a numeric reading.
+            answer = {"type": "clarification", "answer_key": "glico.reading.unsupported_signal"}
         proposal_result = None
         if answer is None and media_kind == "audio" and current.patient_id is None:
             answer = {"type": "clarification", "answer_key": "glico.help.try_manual"}
@@ -906,10 +909,7 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
             # The worker already isolated the reading; parse that value, not the
             # surrounding OCR text (brand, date, clock), which reads as several values.
             if media_kind == "image":
-                if re.search(r"(hi|lo)", text, re.I):
-                    proposal_result = {"type": "clarification", "answer_key": "glico.reading.unsupported_signal"}
-                else:
-                    proposal_result = _make_proposal(db, current, f"{trusted_value:g} mg/dL")
+                proposal_result = _make_proposal(db, current, f"{trusted_value:g} mg/dL")
             else:
                 proposal_result = _make_proposal(db, current, text)
         if proposal_result and proposal_result.get("type") == "proposal":

@@ -26,7 +26,8 @@ const FAQ_NAVIGATE = { where: true };
 const KNOWN_ANSWERS = {
   "glico.help.try_manual": "helpManual",
   "glico.reading.unsupported_signal": "clarifySignal",
-  "glico.reading.multiple_values": "clarifyMultiple"
+  "glico.reading.multiple_values": "clarifyMultiple",
+  "glico.reading.ambiguous_image": "clarifyImage"
 };
 
 function formatDate(iso, locale) {
