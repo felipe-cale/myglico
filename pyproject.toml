@@ -9,6 +9,7 @@ description = "Academic MVP for MyGlico using the UCI Diabetes dataset."
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.116.0",
+    "httpx>=0.27.0",
     "pymysql>=1.1.1",
     "cryptography>=42.0.0",
     "pydantic-settings>=2.10.0",

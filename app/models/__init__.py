@@ -51,3 +51,6 @@ __all__ = [
     "UserAccount",
     "UserSession",
 ]
+
+from app.models.glico import GlicoConversation, GlicoExecution, GlicoProposal, GlicoProposalRevision, GlicoQuotaBucket
+

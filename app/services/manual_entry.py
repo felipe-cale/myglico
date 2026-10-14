@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime
 from hashlib import sha256
@@ -31,6 +31,8 @@ def create_manual_glucose_record(
     context_label: str | None = None,
     notes: str | None = None,
     actor_user_id: str | None = None,
+    commit: bool = True,
+    source_type: str = "manual",
 ) -> GlucoseRecord:
     measured_at_utc = local_datetime_to_utc_naive(measured_at, patient.timezone)
     try:
@@ -46,27 +48,27 @@ def create_manual_glucose_record(
 
         source = GlucoseRecordSource(
             glucose_record_id=glucose_record.id,
-            source_type="manual",
+            source_type=source_type,
             actor_user_id=actor_user_id,
             entered_at=datetime.utcnow(),
-            metadata_json={"channel": "api"},
+            metadata_json={"channel": source_type},
         )
         db.add(source)
 
         prov_payload = {
             "entity": {"glucose_record": glucose_record.id},
-            "activity": "manual_glucose_entry",
+            "activity": "glico_glucose_entry" if source_type.startswith("glico_") else "manual_glucose_entry",
             "agent": actor_user_id,
             "wasGeneratedBy": glucose_record.id,
             "wasAttributedTo": actor_user_id,
         }
         db.add(
             ProvenanceEvent(
-                activity_type="manual_glucose_entry",
+                activity_type="glico_glucose_entry" if source_type.startswith("glico_") else "manual_glucose_entry",
                 entity_type="glucose_record",
                 entity_id=glucose_record.id,
                 actor_user_id=actor_user_id,
-                source_type="manual",
+                source_type=source_type,
                 source_id=source.id,
                 occurred_at=datetime.utcnow(),
                 prov_json=prov_payload,
@@ -79,9 +81,15 @@ def create_manual_glucose_record(
         # The API cannot run the pandas/sklearn pipeline; keep the day's basic
         # indicators correct now and leave anomaly/cluster to the offline run.
         refresh_basic_daily_metrics(db, patient.id, patient.timezone, local_day)
-        db.commit()
-        db.refresh(glucose_record)
+        if commit:
+            db.commit()
+            db.refresh(glucose_record)
+        else:
+            db.flush()
         return glucose_record
     except Exception:
         db.rollback()
         raise
+
+
+

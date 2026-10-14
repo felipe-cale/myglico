@@ -1,4 +1,4 @@
-from functools import lru_cache
+﻿from functools import lru_cache
 from pathlib import Path
 import os
 
@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     encryption_key_v2: str | None = None
     lookup_hmac_key: str | None = None
     session_ttl_hours: int = Field(default=12, gt=0)
+    glico_enabled: bool = False
+    glico_photo_enabled: bool = False
+    glico_audio_enabled: bool = False
+    glico_external_language_enabled: bool = False
+    glico_media_worker_url: str | None = None
+    glico_media_worker_secret: str | None = None
+    glico_media_global_jobs: int = Field(default=0, ge=0)
     # "loop" drains the notification outbox in a background task of a
     # long-running server; "off" leaves it to scripts/notification_outbox.py.
     # Serverless functions are frozen between invocations, so Vercel defaults

@@ -1,15 +1,15 @@
-"""Shared setup for the backend integration suite.
+﻿"""Shared setup for the backend integration suite.
 
 Isolation rules enforced here (PROMPT-ORCA.md, "Testes end-to-end e
-evidências obrigatórias"):
+evidÃªncias obrigatÃ³rias"):
 
 * the suite always targets a dedicated SQLite file under ``data/`` (matched by
-  the root ``.gitignore`` pattern ``data/*.db``) — never the dev/production
+  the root ``.gitignore`` pattern ``data/*.db``) â€” never the dev/production
   URL. An explicit ``MYGLICO_INTEGRATION_DATABASE_URL`` can point the suite at
   another disposable database, but ``MYGLICO_DATABASE_URL`` from the shell is
   deliberately overridden so a dev/MySQL URL can never be reached by accident;
 * key material is generated at runtime (or taken from the environment) and
-  only lives in process env vars — no secret is written to a versioned file;
+  only lives in process env vars â€” no secret is written to a versioned file;
 * provenance/raw-data directories point at a throw-away temp dir so the
   importer never writes into the versioned ``artifacts/`` tree;
 * the env vars are set at conftest import time, *before* any ``app.*`` module
@@ -75,6 +75,7 @@ os.environ.setdefault("MYGLICO_APP_ENV", "test")
 os.environ.setdefault("MYGLICO_DEBUG", "false")
 # Tests drive the outbox explicitly; no background drain racing assertions.
 os.environ["MYGLICO_NOTIFICATION_DISPATCHER"] = "off"
+os.environ["MYGLICO_GLICO_ENABLED"] = "true"
 
 if "app.core.config" in sys.modules:
     sys.modules["app.core.config"].get_settings.cache_clear()
@@ -249,7 +250,9 @@ class World:
         # treats actors independently, as real browsers on different hosts would.
         self._ip_counter = getattr(self, "_ip_counter", 0) + 1
         address = (f"10.{(id(self) >> 8) % 250}.{self._ip_counter // 250}.{self._ip_counter % 250 + 1}", 50000)
-        client = TestClient(self.app, base_url=BASE_URL, raise_server_exceptions=False, client=address)
+        raise_server_exceptions = os.environ.get("MYGLICO_INTEGRATION_RAISE_SERVER_EXCEPTIONS") == "true"
+        client = TestClient(self.app, base_url=BASE_URL,
+                            raise_server_exceptions=raise_server_exceptions, client=address)
         self._clients.append(client)
         return client
 
@@ -467,3 +470,4 @@ def world(app) -> Iterator[World]:
 def pytest_configure(config):
     # The backend uses datetime.utcnow() widely; keep the integration output readable.
     config.addinivalue_line("filterwarnings", "ignore::DeprecationWarning")
+

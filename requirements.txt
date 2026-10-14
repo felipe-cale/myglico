@@ -7,6 +7,7 @@
 # them here blew the function past Vercel's 500 MB limit (~621 MB) for no
 # runtime benefit. If you add an import to the live API path, mirror it here too.
 fastapi>=0.116.0
+httpx>=0.27.0
 sqlalchemy>=2.0.41
 pymysql>=1.1.1
 cryptography>=42.0.0

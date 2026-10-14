@@ -43,6 +43,13 @@ def _base_document() -> ProvDocument:
     return document
 
 
+def _serialize(document: ProvDocument, path: Path, **kwargs) -> None:
+    # prov parses str(path) as a URL and drops the drive letter on Windows.
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as stream:
+        document.serialize(stream, **kwargs)
+
+
 def _register_artifact(
     db: Session,
     owner_type: str,
@@ -108,8 +115,8 @@ def write_import_provenance(db: Session, import_batch: ImportBatch) -> tuple[str
 
     json_path = settings.provenance_dir / f"import-{import_batch.id}.json"
     ttl_path = settings.provenance_dir / f"import-{import_batch.id}.ttl"
-    document.serialize(json_path, format="json")
-    document.serialize(ttl_path, format="rdf", rdf_format="ttl")
+    _serialize(document, json_path, format="json")
+    _serialize(document, ttl_path, format="rdf", rdf_format="ttl")
     _register_artifact(db, "import_batch", import_batch.id, "provenance", "json", str(json_path))
     _register_artifact(db, "import_batch", import_batch.id, "provenance", "ttl", str(ttl_path))
     return str(json_path), str(ttl_path)
@@ -149,8 +156,8 @@ def write_analytics_provenance(db: Session, analytics_run: AnalysisRun) -> tuple
 
     json_path = settings.provenance_dir / f"analytics-{analytics_run.id}.json"
     ttl_path = settings.provenance_dir / f"analytics-{analytics_run.id}.ttl"
-    document.serialize(json_path, format="json")
-    document.serialize(ttl_path, format="rdf", rdf_format="ttl")
+    _serialize(document, json_path, format="json")
+    _serialize(document, ttl_path, format="rdf", rdf_format="ttl")
     _register_artifact(db, "analysis_run", analytics_run.id, "provenance", "json", str(json_path))
     _register_artifact(db, "analysis_run", analytics_run.id, "provenance", "ttl", str(ttl_path))
     return str(json_path), str(ttl_path)

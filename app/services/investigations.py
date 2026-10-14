@@ -115,6 +115,7 @@ def open_investigation(
     db: Session, principal: SessionPrincipal, *, doctor_id: str | None,
     patient_id: str | None, atypical_day_event_id: str | None,
     title: str, initial_message: str, atypical_day_event_ids: list[str] | None = None,
+    commit: bool = True,
 ) -> Investigation:
     role, domain_id = _actor(principal)
     if role == "PATIENT":
@@ -187,11 +188,15 @@ def open_investigation(
         payload={"investigation_id": investigation.id}, cause_event=opened_event,
     )
     try:
-        db.commit()
-        db.refresh(investigation)
+        if commit:
+            db.commit()
+            db.refresh(investigation)
+        else:
+            db.flush()
         return investigation
     except Exception:
-        db.rollback()
+        if commit:
+            db.rollback()
         raise
 
 
@@ -279,6 +284,7 @@ def investigation_detail(
 def append_message(
     db: Session, investigation_id: str, principal: SessionPrincipal,
     content: str, idempotency_key: str | None,
+    *, commit: bool = True,
 ) -> InvestigationMessage:
     if not content.strip() or len(content) > 10000:
         raise ValueError("Message must contain 1 to 10000 characters")
@@ -329,10 +335,15 @@ def append_message(
         payload={"investigation_id": investigation.id, "sequence": sequence}, cause_event=event,
     )
     try:
-        db.commit()
-        db.refresh(message)
+        if commit:
+            db.commit()
+            db.refresh(message)
+        else:
+            db.flush()
         return message
     except IntegrityError:
+        if not commit:
+            raise
         db.rollback()
         if idempotency_key:
             replay = db.scalar(select(InvestigationMessage).where(
@@ -345,7 +356,8 @@ def append_message(
                 return replay
         raise InvestigationConflict("Message conflicted with a concurrent update")
     except Exception:
-        db.rollback()
+        if commit:
+            db.rollback()
         raise
 
 

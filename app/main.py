@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
+from app.api.glico_routes import router as glico_router
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.services.notification_outbox import drain_notification_outbox
@@ -27,6 +28,7 @@ if _artifacts_dir.is_dir():
     app.mount("/artifacts", StaticFiles(directory=str(_artifacts_dir)), name="artifacts")
 
 app.include_router(router)
+app.include_router(glico_router)
 
 
 logger = logging.getLogger(__name__)
@@ -78,7 +80,7 @@ async def prevent_private_api_caching(request: Request, call_next):
     path = request.url.path
     if path.startswith((
         "/api/auth/", "/api/patients", "/api/doctors/search",
-        "/api/investigations", "/api/notifications", "/api/doctor-links",
+        "/api/investigations", "/api/notifications", "/api/doctor-links", "/api/glico/",
     )):
         response.headers["Cache-Control"] = "no-store, private"
     return response
@@ -89,3 +91,7 @@ async def scrub_validation_inputs(request: Request, exc: RequestValidationError)
     # FastAPI's default validation payload can echo submitted values. Keep
     # passwords and other personal fields out of error responses.
     return JSONResponse(status_code=422, content={"detail": "Invalid request."})
+
+
+
+
