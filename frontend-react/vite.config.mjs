@@ -35,8 +35,17 @@ export default defineConfig(() => ({
         target: apiTarget,
         // Host must stay the browser's: /api/glico validates Origin against the request host (CSRF).
         changeOrigin: false,
-        // Phone-testing tunnels end TLS before this server: tell the API the browser used https.
-        ...(process.env.VITE_TUNNEL_HTTPS ? { headers: { "x-forwarded-proto": "https" } } : {})
+        // Phone-testing tunnels end TLS before this server: tell the API which scheme the browser
+        // really used (https through an allowed tunnel host, http for direct local access).
+        ...(process.env.VITE_TUNNEL_HTTPS ? {
+          configure(proxy) {
+            proxy.on("proxyReq", (proxyReq, req) => {
+              const host = String(req.headers.host || "").split(":")[0].toLowerCase();
+              const tunneled = (allowedHosts || []).some((entry) => entry.startsWith(".") ? host.endsWith(entry) : host === entry);
+              proxyReq.setHeader("x-forwarded-proto", tunneled ? "https" : "http");
+            });
+          }
+        } : {})
       },
       "/artifacts": {
         target: apiTarget,
