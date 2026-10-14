@@ -1103,3 +1103,31 @@
   50% { transform: rotate(5deg) translateY(0); }
   75% { transform: rotate(0deg) translateY(-4px); }
 }
+
+/* Photo and audio in progress: the mascot looks closer at the photo or leans in to listen. */
+.glico-attach__avatar {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .glico-attach__avatar--look {
+    animation: glico-look 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+
+  .glico-attach__avatar--listen {
+    animation: glico-listen 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+}
+
+@keyframes glico-look {
+  0%, 100% { transform: scale(1) translateX(0); }
+  40%, 60% { transform: scale(1.18) translateX(2px); }
+}
+
+@keyframes glico-listen {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(7deg) scale(1.06); }
+}

@@ -184,7 +184,7 @@ export default function GlicoMediaCapture({ capabilities, enabled, processing, o
 
         {processing ? (
           <div className="glico-attach__progress" role="status">
-            <span className="glico-spinner" aria-hidden="true" />
+            <img src="/img/mascote-avatar-96.webp" alt="" className={`glico-attach__avatar glico-attach__avatar--${processing === "image" ? "look" : "listen"}`} width="36" height="36" />
             <span>{t(processing === "image" ? "glicoAssistant.media.processingPhoto" : "glicoAssistant.media.processingAudio")}</span>
             <button type="button" className="react-button react-button--quiet react-button--compact" onClick={onCancel}>
               {t("glicoAssistant.media.cancel")}
