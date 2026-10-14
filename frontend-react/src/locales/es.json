@@ -1077,7 +1077,7 @@
     "errors": {
       "unavailable": "Esta función no está disponible por ahora. Use texto o el registro manual.",
       "limit": "Alcanzó el límite de uso. Inténtelo de nuevo en unos instantes.",
-      "limitRetry": "Alcanzó el límite de uso. Inténtelo de nuevo en {{seconds}} s.",
+      "limitRetry": "Alcanzó el límite de uso. Inténtelo de nuevo en {{wait}}.",
       "contextChanged": "El contexto cambió y la propuesta fue invalidada. Envíe de nuevo.",
       "versionConflict": "La propuesta cambió en otro lugar. Actualizamos la pantalla; revise e inténtelo de nuevo.",
       "idempotency": "Esta confirmación entra en conflicto con una anterior. Actualice y revise.",

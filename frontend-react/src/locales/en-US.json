@@ -1077,7 +1077,7 @@
     "errors": {
       "unavailable": "This feature is unavailable right now. Use text or manual entry.",
       "limit": "You reached the usage limit. Try again in a moment.",
-      "limitRetry": "You reached the usage limit. Try again in {{seconds}} s.",
+      "limitRetry": "You reached the usage limit. Try again in {{wait}}.",
       "contextChanged": "The context changed and the proposal was invalidated. Please send again.",
       "versionConflict": "The proposal was changed elsewhere. We refreshed the screen; review and try again.",
       "idempotency": "This confirmation conflicts with an earlier one. Refresh and review.",

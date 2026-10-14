@@ -305,6 +305,18 @@ def _make_proposal(db: Session, conversation: GlicoConversation, text: str):
     return None
 
 
+def _confident_reading(db: Session, conversation: GlicoConversation, principal: SessionPrincipal,
+                       text: str) -> dict | None:
+    """A message that is just one value with its unit needs no language model: record it directly."""
+    from app.services.glico_llm import is_dose_question
+    if conversation.patient_id is None or principal.doctor is not None or is_dose_question(text):
+        return None
+    if not re.search(r"\d\s*(mg\s*/?\s*dl|mmol\s*/?\s*l)" + chr(92) + "b", text, re.I):
+        return None
+    result = _make_proposal(db, conversation, text)
+    return result if result and result.get("type") == "proposal" else None
+
+
 _LLM_QUERY_KEYWORD = {
     "query_readings": "leituras", "query_metrics": "resumo", "query_atypical_days": "atípicos",
     "query_investigations": "questionamentos", "query_linked_patients": "meus pacientes",
@@ -569,7 +581,9 @@ def send_message(conversation_id: str, payload: MessageRequest, request: Request
     replay = _replay_response(db, principal, "message", payload.client_request_id, conversation_id, digest)
     if replay is not None:
         return replay
-    result = _language_model_result(db, item, principal, text, payload.history)
+    result = _confident_reading(db, item, principal, text)
+    if result is None:
+        result = _language_model_result(db, item, principal, text, payload.history)
     if result is None:
         result = _query_answer(db, item, text)
     if result is None:
@@ -581,7 +595,9 @@ def send_message(conversation_id: str, payload: MessageRequest, request: Request
     if result is None:
         result = {"type": "help", "answer_key": "glico.help.try_manual",
                   "links": ["/", "/patients"]}
-    consume_quota(db, principal.account.id, "messages_minute", 10)
+    per_minute = getattr(get_settings(), "glico_messages_per_minute", 10)
+    if per_minute > 0:  # 0 = no limit (local testing)
+        consume_quota(db, principal.account.id, "messages_minute", per_minute)
     _save_replay(db, principal, item, "message", payload.client_request_id, digest, result)
     db.commit()
     return result
@@ -920,7 +936,9 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
         replay = _replay_response(db, principal, media_kind, request_id, conversation_id, body_digest)
         if replay is not None:
             return replay
-        reserve_media_job(db, principal.account.id, media_kind, settings.glico_media_global_jobs)
+        reserve_media_job(db, principal.account.id, media_kind, settings.glico_media_global_jobs,
+                          daily_limit=getattr(settings, "glico_audio_daily_limit", 30) if media_kind == "audio"
+                          else getattr(settings, "glico_image_daily_limit", 20))
         db.commit()
         media_reserved = True
         url = settings.glico_media_worker_url.rstrip("/") + f"/internal/extract/{media_kind}"

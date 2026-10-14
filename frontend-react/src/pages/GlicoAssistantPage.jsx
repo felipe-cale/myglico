@@ -38,6 +38,16 @@ function formatDate(iso, locale) {
   return new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
+// 35794 -> "9 h 56 min"; short waits stay in seconds.
+function formatWait(seconds) {
+  const total = Math.max(1, Math.round(Number(seconds) || 0));
+  if (total < 90) return `${total} s`;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.ceil((total % 3600) / 60);
+  if (hours === 0) return `${minutes} min`;
+  return minutes === 60 ? `${hours + 1} h` : `${hours} h ${String(minutes).padStart(2, "0")} min`;
+}
+
 function requestId() {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -696,7 +706,7 @@ export default function GlicoAssistantPage() {
 
   const errorText = error
     ? error.key === "limit" && error.retryAfter
-      ? t("glicoAssistant.errors.limitRetry", { seconds: error.retryAfter })
+      ? t("glicoAssistant.errors.limitRetry", { wait: formatWait(error.retryAfter) })
       : t(`glicoAssistant.errors.${error.key}`)
     : "";
   const receiptTime = shownReceipt?.committed_at

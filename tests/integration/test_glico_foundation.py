@@ -1115,3 +1115,49 @@ def test_audio_gateway_sends_the_interface_language_hint_and_a_longer_deadline(w
     assert response.status_code == 200, response.text
     assert seen["headers"]["x-glico-language"] == "pt"
     assert seen["timeout"].read == 48.0
+
+
+def test_a_plain_value_with_unit_is_recorded_without_calling_the_language_model(llm, monkeypatch):
+    from app.services import glico_llm
+
+    def must_not_run(**kwargs):
+        raise AssertionError("the model must not be consulted for an unambiguous reading")
+
+    monkeypatch.setattr(glico_llm, "interpret", must_not_run)
+    response = _post_text(llm.patient, llm.headers, llm.conversation_id, llm.version, "glicemia 110 mg/dL")
+    assert response.json()["type"] == "proposal"
+    # free language still goes to the model, and a dose question is never short-circuited into a reading
+    monkeypatch.setattr(glico_llm, "interpret", lambda **kwargs: {"intent": "answer", "reply": "x"})
+    dose = _post_text(llm.patient, llm.headers, llm.conversation_id, llm.version,
+                      "tomo 250 mg/dL, quantas unidades de insulina?")
+    assert dose.json()["type"] == "message" and "médico" in dose.json()["text"]
+
+
+def test_audio_daily_limit_defaults_to_30_and_zero_disables_it(world: World):
+    from app.core.config import Settings
+    from app.db.session import SessionLocal
+    from app.services.glico import reserve_media_job, release_media_job
+
+    assert Settings().glico_audio_daily_limit == 30
+    owner = world.account_id(world.patient())
+    with SessionLocal() as db:
+        for _ in range(35):  # well past the default of 30: 0 means unlimited
+            reserve_media_job(db, owner, "audio", 100, daily_limit=0)
+            release_media_job(db, owner, "audio")
+        db.commit()
+
+
+def test_a_positive_audio_daily_limit_is_enforced(world: World):
+    from fastapi import HTTPException
+    from app.db.session import SessionLocal
+    from app.services.glico import reserve_media_job, release_media_job
+
+    owner = world.account_id(world.patient())
+    with SessionLocal() as db:
+        for _ in range(3):
+            reserve_media_job(db, owner, "audio", 100, daily_limit=3)
+            release_media_job(db, owner, "audio")
+        with pytest.raises(HTTPException) as caught:
+            reserve_media_job(db, owner, "audio", 100, daily_limit=3)
+        assert caught.value.status_code == 429
+        db.rollback()

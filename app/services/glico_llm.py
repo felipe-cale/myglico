@@ -19,6 +19,12 @@ import httpx
 
 logger = logging.getLogger("myglico.glico.llm")
 
+# Per-model cooldown after the API says it is exhausted or overloaded. While it lasts the model is
+# skipped without a network call, so the keyword fallback is instant instead of waiting on errors.
+_COOLDOWN: dict[str, float] = {}
+_COOLDOWN_SECONDS = {429: 90.0, 503: 20.0, 500: 20.0, 504: 20.0}
+_COOLDOWN_CONFIG_ERROR = 300.0
+
 _API = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 INTENTS = (
@@ -136,12 +142,17 @@ def interpret(*, api_key: str, model: str, timeout: float, text: str, history: l
         left = deadline - time.monotonic()
         if left <= 0.5:
             break
+        if _COOLDOWN.get(name, 0.0) > time.monotonic():
+            continue
         try:
             with httpx.Client(timeout=httpx.Timeout(min(timeout, left), connect=3.0), follow_redirects=False) as client:
                 response = client.post(_API.format(model=name), json=payload,
                                        headers={"x-goog-api-key": api_key, "content-type": "application/json"})
             if response.status_code != 200:
                 logger.warning("gemini unavailable model=%s status=%s", name, response.status_code)
+                pause = _COOLDOWN_SECONDS.get(response.status_code,
+                                              _COOLDOWN_CONFIG_ERROR if 400 <= response.status_code < 500 else 20.0)
+                _COOLDOWN[name] = time.monotonic() + pause
                 continue
             parts = response.json()["candidates"][0]["content"]["parts"]
             raw = json.loads("".join(part.get("text", "") for part in parts))

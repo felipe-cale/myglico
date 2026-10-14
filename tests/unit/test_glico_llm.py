@@ -6,6 +6,13 @@ import pytest
 from app.services import glico_llm
 
 
+@pytest.fixture(autouse=True)
+def _fresh_cooldowns():
+    glico_llm._COOLDOWN.clear()
+    yield
+    glico_llm._COOLDOWN.clear()
+
+
 class _Response:
     def __init__(self, status=200, body=None):
         self.status_code = status
@@ -92,3 +99,31 @@ def test_vague_time_is_dropped_and_reply_is_sanitized(monkeypatch):
 ])
 def test_dose_questions_are_caught_without_the_model(text, expected):
     assert glico_llm.is_dose_question(text) is expected
+
+
+def test_an_exhausted_model_is_skipped_without_any_network_call_until_its_cooldown_ends(monkeypatch):
+    first, sent = _call(monkeypatch, _Response(429, {}))
+    assert first is None and sent.get("url")
+    sent.clear()
+    second, sent_again = _call(monkeypatch, _gemini({"intent": "answer", "reply": "oi"}))
+    assert second is None and not sent_again  # instant fallback: the API was not even contacted
+    glico_llm._COOLDOWN.clear()
+    third, _ = _call(monkeypatch, _gemini({"intent": "answer", "reply": "oi"}))
+    assert third["reply"] == "oi"
+
+
+def test_next_model_is_tried_when_the_first_is_exhausted(monkeypatch):
+    calls = []
+
+    class Client:
+        def __init__(self, *args, **kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def post(self, url, json=None, headers=None):
+            calls.append(url)
+            return _Response(429, {}) if "model-a" in url else _gemini({"intent": "answer", "reply": "ok"})
+
+    monkeypatch.setattr(glico_llm.httpx, "Client", Client)
+    result = glico_llm.interpret(api_key="k", model="model-a,model-b", timeout=5, text="oi", history=[],
+                                 locale="pt-BR", role="patient", now_iso="2026-10-14 09:00", timezone="UTC")
+    assert result["reply"] == "ok" and len(calls) == 2

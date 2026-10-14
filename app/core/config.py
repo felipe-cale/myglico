@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     glico_media_worker_url: str | None = None
     glico_media_worker_secret: str | None = None
     glico_media_global_jobs: int = Field(default=0, ge=0)
+    # Per-account abuse limits (MYGLICO_GLICO_AUDIO_DAILY_LIMIT, ..._IMAGE_DAILY_LIMIT,
+    # ..._MESSAGES_PER_MINUTE). 0 disables a limit, which is meant for local testing only.
+    glico_audio_daily_limit: int = Field(default=30, ge=0)
+    glico_image_daily_limit: int = Field(default=20, ge=0)
+    glico_messages_per_minute: int = Field(default=10, ge=0)
     # Optional language model for the chat. Unset keeps the deterministic assistant.
     # Only the user's own typed words are sent; never stored data or identifiers.
     gemini_api_key: str | None = None

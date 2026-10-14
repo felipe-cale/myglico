@@ -303,7 +303,7 @@ test.describe("Glico assistant - media states (UI against stubbed extract endpoi
     { status: 422, detail: "ambiguous_reading", key: "errors.ambiguous" },
     { status: 503, detail: "capability_unavailable", key: "errors.unavailable" },
     { status: 504, detail: "processing_timeout", key: "errors.timeout" },
-    { status: 429, detail: "quota_exceeded", key: "errors.limitRetry", headers: { "Retry-After": "30" }, vars: { seconds: 30 } }
+    { status: 429, detail: "quota_exceeded", key: "errors.limitRetry", headers: { "Retry-After": "30" }, vars: { wait: "30 s" } }
   ];
   for (const item of cases) {
     test(`photo upload ${item.status} shows a localized message`, async ({ actor, browserSession }) => {
@@ -438,5 +438,21 @@ test.describe("Glico assistant - doctor", () => {
     const ui = await browserSession("doctorA");
     await openAssistant(ui, { viewport: { width: 390, height: 844 } });
     await expectNoHorizontalOverflow(ui.page);
+  });
+});
+
+test.describe("Glico assistant - usage limit message", () => {
+  test("a long wait is shown as hours and minutes, not raw seconds", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await stubMediaCapabilities(ui.page);
+    await ui.page.route("**/api/glico/conversations/*/extract/audio", (route) => route.fulfill({
+      status: 429, headers: { "Retry-After": "35794" }, json: { detail: "quota_exceeded" } }));
+    await openAssistant(ui);
+    await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "v.png", mimeType: "image/png", buffer: PNG });
+    await ui.page.route("**/api/glico/conversations/*/extract/image", (route) => route.fulfill({
+      status: 429, headers: { "Retry-After": "35794" }, json: { detail: "quota_exceeded" } }));
+    await sendPickedPhoto(ui);
+    await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.limitRetry", "pt-BR", { wait: "9 h 57 min" }));
   });
 });

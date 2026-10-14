@@ -1077,7 +1077,7 @@
     "errors": {
       "unavailable": "Este recurso está indisponível no momento. Use o texto ou o registro manual.",
       "limit": "Você atingiu o limite de uso. Tente novamente em alguns instantes.",
-      "limitRetry": "Você atingiu o limite de uso. Tente novamente em {{seconds}} s.",
+      "limitRetry": "Você atingiu o limite de uso. Tente novamente em {{wait}}.",
       "contextChanged": "O contexto mudou e a proposta foi invalidada. Envie de novo.",
       "versionConflict": "A proposta foi alterada em outro lugar. Atualizamos a tela; revise e tente de novo.",
       "idempotency": "Esta confirmação conflita com outra anterior. Atualize a tela e revise.",

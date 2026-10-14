@@ -196,7 +196,8 @@ def consume_quota(db: Session, owner_id: str, bucket_name: str, limit: int, *, w
     bucket.used += 1
 
 
-def reserve_media_job(db: Session, owner_id: str, media_kind: str, global_limit: int) -> None:
+def reserve_media_job(db: Session, owner_id: str, media_kind: str, global_limit: int,
+                      daily_limit: int | None = None) -> None:
     """Charge the shared daily allowance and atomically enforce one live job per account."""
     if global_limit < 1:
         raise HTTPException(status_code=503, detail="capability_unavailable")
@@ -209,8 +210,10 @@ def reserve_media_job(db: Session, owner_id: str, media_kind: str, global_limit:
     if global_row.reserved >= global_limit:
         raise HTTPException(status_code=429, detail="quota_exceeded", headers={"Retry-After": "5"})
     global_row.reserved += 1
-    daily_limit = 20 if media_kind == "image" else 5
-    consume_quota(db, owner_id, f"glico_{media_kind}_day", daily_limit, window_seconds=86400)
+    if daily_limit is None:
+        daily_limit = 20 if media_kind == "image" else 30
+    if daily_limit > 0:  # 0 = no per-account limit (local testing)
+        consume_quota(db, owner_id, f"glico_{media_kind}_day", daily_limit, window_seconds=86400)
     marker = datetime(2000, 1, 1)
     active = db.scalar(select(GlicoQuotaBucket).where(
         GlicoQuotaBucket.owner_account_id == owner_id,
