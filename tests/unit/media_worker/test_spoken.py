@@ -28,7 +28,11 @@ from app.media_worker.spoken import normalize_spoken
     ("es", "doscientos cincuenta y uno", "251"),
     ("es", "noventa y ocho", "98"),
     ("es", "cinco coma seis milimoles por litro", "5.6 mmol/L"),
+    ("es", "La lectura fue de 90 y 5 mg/dL.", "La lectura fue de 95 mg/dL."),
+    ("pt", "deu 100 e 20 mg/dL", "deu 120 mg/dL"),
+    ("en", "it was 90 and 5 mg per deciliter", "it was 95 mg/dL"),
     ("pt", "128 mg/dL", "128 mg/dL"),
+    ("pt", "deu 120 e 140", "deu 120 e 140"),
     ("pt", "medi hoje de manhã", "medi hoje de manhã"),
 ])
 def test_spoken_numbers_and_units_become_digits(language, text, expected):

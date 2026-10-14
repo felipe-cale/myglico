@@ -68,6 +68,16 @@ _MMOL_L = re.compile(
     r"\b(?:milimol(?:es)?|millimol(?:es)?|mmol)\s*(?:por|per|/)\s*(?:litros?|liters?|litres?|l)\b", re.I)
 
 
+# Whisper sometimes mixes digits and connectors: "90 y 5", "100 e 20".
+_TENS_PLUS_UNIT = re.compile(r"(?<![\d.,])([2-9]0)\s+(?:y|e|and)\s+([1-9])(?![\d.,])")
+_HUNDRED_PLUS = re.compile(r"(?<![\d.,])([1-9]00)\s+(?:y|e|and)\s+([1-9]\d?)(?![\d.,])")
+
+
+def _join_mixed(text: str) -> str:
+    text = _TENS_PLUS_UNIT.sub(lambda m: str(int(m.group(1)) + int(m.group(2))), text)
+    return _HUNDRED_PLUS.sub(lambda m: str(int(m.group(1)) + int(m.group(2))), text)
+
+
 def _fold(word: str) -> str:
     word = unicodedata.normalize("NFKD", word.lower())
     return "".join(ch for ch in word if not unicodedata.combining(ch))
@@ -182,6 +192,6 @@ def normalize_spoken(text: str, language: str | None = None) -> str:
         converted, changed = _convert(code, words)
         if changed > best_changed:
             best, best_changed = converted, changed
-    result = " ".join(best)
+    result = _join_mixed(" ".join(best))
     result = _MG_DL.sub("mg/dL", result)
     return _MMOL_L.sub("mmol/L", result)
