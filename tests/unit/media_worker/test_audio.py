@@ -301,3 +301,17 @@ def test_a_low_confidence_reading_is_flagged_and_the_gateway_carries_the_warning
     assert _trusted_worker_assessment({"assessment": flagged}, "image") is None
     assert _trusted_worker_assessment({"assessment": {**flagged, "low_confidence": False,
                                                        "confidence_threshold": 0.5}}, "audio") is None
+
+
+@pytest.mark.parametrize("sentence,digits,retry", [
+    ([0.43], [0.63], False),   # informal speech, the number is confident: the hinted language was right
+    ([0.50], [], False),       # decent confidence, no number said: nothing to doubt
+    ([0.40], [], True),        # poor and no number at all: maybe another language
+    ([0.20], [0.30], True),    # poor everywhere
+    ([0.20], [0.80], False),   # a confident number wins over a poor average
+    ([], [], False),
+])
+def test_language_is_only_rechecked_when_the_hinted_result_looks_wrong(sentence, digits, retry):
+    from app.media_worker.audio import wrong_language_suspected
+
+    assert wrong_language_suspected(sentence, digits) is retry

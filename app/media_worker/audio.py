@@ -40,6 +40,21 @@ class Transcription:
     digit_confidence: float | None = None
 
 
+def wrong_language_suspected(sentence_marks: list[float], digit_marks: list[float]) -> bool:
+    """Is the result with the interface language's hint so poor that the speaker may be using another one?
+
+    Informal speech has a low average confidence even when the number was understood, so a confident
+    digit token means the language was right. Re-running costs ~10 s (automatic language detection), so
+    it is only for results that are bad overall or that found no number at all.
+    """
+    if not sentence_marks:
+        return False
+    average = sum(sentence_marks) / len(sentence_marks)
+    if any(mark >= 0.5 for mark in digit_marks):
+        return False
+    return average < 0.25 or (average < 0.45 and not digit_marks)
+
+
 def _decode_audio(data: bytes, limits: AudioLimits):
     if not data or len(data) > limits.max_bytes:
         raise MediaError("payload_too_large" if data else "invalid_audio")
@@ -124,7 +139,7 @@ def _run_whisper(connection, limits: AudioLimits, model_dir: str, max_rss_bytes:
                 # The interface language skips Whisper's ~5 s language detection. If the result is
                 # unsure (someone spoke another language), run once more with automatic detection.
                 first = transcribe_once(hint if hint in limits.allowed_languages else None)
-                if first is not None and hint in limits.allowed_languages and first[2] and sum(first[2]) / len(first[2]) < 0.45:
+                if first is not None and hint in limits.allowed_languages and wrong_language_suspected(first[2], first[4]):
                     first = transcribe_once(None)
                 if first is None:
                     connection.send(("error", request_id, "transcript_too_long", True)); return

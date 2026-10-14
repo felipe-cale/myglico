@@ -1038,7 +1038,9 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
                     proposal_result, llm_proposal = spoken_result, True
                 else:
                     answer = spoken_result
-            else:
+            elif trusted_value is None:
+                # Only when the worker found no reading: a transcript with a trusted value is a
+                # reading to record, even if it contains words like "glicemia" that mean "query".
                 answer = _query_answer(db, current, text)
         if media_kind == "image" and any(re.fullmatch(r"\s*(hi|lo)\s*", t, re.I) for t in extracted_texts):
             # Meters print HI/LO outside their measuring range: never a numeric reading.
