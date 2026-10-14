@@ -758,11 +758,8 @@ export default function GlicoAssistantPage() {
 
   return (
     <section className="react-page glico glico--chat" aria-labelledby="glico-title">
+      <h1 id="glico-title" className="react-visually-hidden">{t("glicoAssistant.title")}</h1>
       <header className="glico-bar">
-        <div className="glico-bar__title">
-          <img src="/img/mascote-avatar-96.webp" alt="" className="glico-bar__mark" width="40" height="40" />
-          <h1 id="glico-title">{t("glicoAssistant.title")}</h1>
-        </div>
         {isDoctor ? (
           <div className="glico-bar__patient">
             <label htmlFor="glico-patient" className="react-visually-hidden">{t("glicoAssistant.selectPatient")}</label>

@@ -1131,3 +1131,7 @@
   0%, 100% { transform: rotate(-7deg); }
   50% { transform: rotate(7deg) scale(1.06); }
 }
+
+.glico-bar:empty {
+  display: none;
+}
