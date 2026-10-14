@@ -110,10 +110,13 @@ def _run_whisper(connection, limits: AudioLimits, model_dir: str, max_rss_bytes:
         while True:
             message = connection.recv()
             if message[0] == "stop": return
-            request_id, data = message[1], message[2]
+            request_id, audio = message[1], message[2]
             hint = message[3] if len(message) > 3 else None
             try:
-                audio = _decode_audio(data, limits)
+                # The parent already decoded and validated the media once; the child only re-checks
+                # that what arrived is a bounded mono waveform (defence in depth), it does not decode again.
+                if getattr(audio, "ndim", 0) != 1 or len(audio) > int(limits.max_seconds * 16000):
+                    connection.send(("error", request_id, "invalid_audio", False)); continue
 
                 def transcribe_once(forced):
                     import math
@@ -228,14 +231,15 @@ class FasterWhisperTranscriber:
             self._discard()
 
     async def transcribe_async(self, data: bytes, language: str | None = None) -> Transcription:
-        _decode_audio(data, self.limits)
+        # Decode and validate once, here, before the model process is involved; the waveform is sent as is.
+        audio = _decode_audio(data, self.limits)
         started = time.monotonic()
         async with self._lock:
             await self._ensure_started()
             connection, process = self._connection, self._process
             self._request_id += 1
             request_id = self._request_id
-            connection.send(("run", request_id, data, language))
+            connection.send(("run", request_id, audio, language))
             deadline = time.monotonic() + self.limits.deadline_seconds
             try:
                 while not connection.poll():
