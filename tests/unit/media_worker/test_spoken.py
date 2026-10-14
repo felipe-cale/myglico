@@ -50,3 +50,12 @@ def test_a_plain_article_or_connector_is_not_turned_into_a_number():
     assert normalize_spoken("uma glicose de cento e vinte", "pt") == "uma glicose de 120"
     assert normalize_spoken("una medición de ciento diez", "es") == "una medición de 110"
     assert normalize_spoken("glicose normal", "pt") == "glicose normal"
+
+
+@pytest.mark.parametrize("text", [
+    "mi glucosa fue 128 miligramos por deciditro",
+    "128 miligramos por decilítro",
+    "128 milligrams per deciliters",
+])
+def test_misspelled_deciliter_still_normalizes_to_mg_dl(text):
+    assert normalize_spoken(text).startswith("mi glucosa fue 128 mg/dL") or normalize_spoken(text).startswith("128 mg/dL")

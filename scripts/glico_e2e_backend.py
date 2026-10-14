@@ -75,7 +75,8 @@ def main() -> None:
         worker_env = {**os.environ, "PADDLE_PDX_MODEL_SOURCE": "LOCAL", "HF_HUB_OFFLINE": "1",
                       "TRANSFORMERS_OFFLINE": "1", "PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK": "True"}
         worker_proc = subprocess.Popen([str(worker_python), str(ROOT / "scripts/media/run_local_worker.py"),
-            "--models", str(ROOT / args.models), "--secret", media_secret, "--port", str(args.worker_port)],
+            "--models", str(ROOT / args.models), "--secret", media_secret, "--port", str(args.worker_port),
+            *(["--whisper-dir", os.environ["GLICO_WHISPER_DIR"]] if os.environ.get("GLICO_WHISPER_DIR") else [])],
             cwd=ROOT, env=worker_env)
         env.update({
             "MYGLICO_GLICO_PHOTO_ENABLED": "true", "MYGLICO_GLICO_AUDIO_ENABLED": "true",

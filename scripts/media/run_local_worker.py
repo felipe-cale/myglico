@@ -38,6 +38,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", required=True)
     parser.add_argument("--secret", required=True)
+    parser.add_argument("--whisper-dir", default=None, help="faster-whisper model dir (default: <models>/whisper)")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8400)
     args = parser.parse_args()
@@ -49,7 +50,7 @@ def main() -> None:
         secret,
         LocalReplayStore(),
         PaddleReadingExtractor(str(models / "paddle-det"), str(models / "paddle-rec")),
-        transcriber=FasterWhisperTranscriber(str(models / "whisper")),
+        transcriber=FasterWhisperTranscriber(args.whisper_dir or str(models / "whisper")),
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 

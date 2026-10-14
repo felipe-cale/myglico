@@ -154,3 +154,27 @@ def test_unrelated_ambiguous_or_out_of_range_speech_still_needs_clarification(sp
     assessment = _spoken_assessment(spoken)["assessment"]
     assert assessment["needs_clarification"] is True
     assert assessment["candidate_value_mg_dl"] is None
+
+
+@pytest.mark.parametrize("header,expected", [("pt", "pt"), ("EN", "en"), ("es", "es"), ("fr", None), ("", None)])
+def test_language_hint_header_reaches_the_engine_only_when_allowed(header, expected):
+    seen = {}
+
+    class Hinted:
+        limits = AudioLimits()
+
+        async def transcribe_async(self, data, language=None):
+            seen["language"] = language
+            return Transcription("minha glicose 120 mg/dL", "pt", 4, "fake-test-only", 0.95)
+
+    body = wav_bytes()
+    signed = sign_request(b"w" * 32, "POST", "/internal/extract/audio", str(int(time.time())), "F" * 24, body)
+    headers = {
+        "content-type": "application/octet-stream", "x-correlation-id": "syntheticCorrelation123",
+        "x-worker-timestamp": signed.timestamp, "x-worker-nonce": signed.nonce,
+        "x-worker-content-sha256": signed.body_sha256, "x-worker-signature": signed.signature,
+        "x-glico-language": header,
+    }
+    client = TestClient(create_media_app(b"w" * 32, ReplayStore(), transcriber=Hinted()))
+    assert client.post("/internal/extract/audio", content=body, headers=headers).status_code == 200
+    assert seen["language"] == expected

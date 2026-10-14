@@ -92,25 +92,37 @@ def _run_whisper(connection, limits: AudioLimits, model_dir: str, max_rss_bytes:
         while True:
             message = connection.recv()
             if message[0] == "stop": return
-            _, request_id, data = message
+            request_id, data = message[1], message[2]
+            hint = message[3] if len(message) > 3 else None
             try:
                 audio = _decode_audio(data, limits)
-                segments, info = model.transcribe(audio, beam_size=1, vad_filter=True, language=None)
-                language = str(info.language)
+
+                def transcribe_once(forced):
+                    import math
+                    segments, info = model.transcribe(audio, beam_size=1, vad_filter=True, language=forced)
+                    found, marks, seconds = [], [], 0.0
+                    for segment in segments:
+                        segment_text = " ".join(str(segment.text).split())
+                        if segment_text:
+                            found.append(segment_text)
+                            seconds += max(0.0, float(segment.end) - float(segment.start))
+                            try:
+                                marks.append(max(0.0, min(1.0, math.exp(float(segment.avg_logprob)))))
+                            except Exception: pass
+                        if sum(map(len, found)) > limits.max_text_chars:
+                            return None
+                    return str(info.language), found, marks, seconds
+
+                # The interface language skips Whisper's ~5 s language detection. If the result is
+                # unsure (someone spoke another language), run once more with automatic detection.
+                first = transcribe_once(hint if hint in limits.allowed_languages else None)
+                if first is not None and hint in limits.allowed_languages and first[2] and sum(first[2]) / len(first[2]) < 0.45:
+                    first = transcribe_once(None)
+                if first is None:
+                    connection.send(("error", request_id, "transcript_too_long", True)); return
+                language, text_parts, scores, speech_seconds = first
                 if language not in limits.allowed_languages:
                     connection.send(("error", request_id, "language_not_supported", True)); return
-                text_parts, scores, speech_seconds = [], [], 0.0
-                for segment in segments:
-                    segment_text = " ".join(str(segment.text).split())
-                    if segment_text:
-                        text_parts.append(segment_text)
-                        speech_seconds += max(0.0, float(segment.end) - float(segment.start))
-                        try:
-                            import math
-                            scores.append(max(0.0, min(1.0, math.exp(float(segment.avg_logprob)))))
-                        except Exception: pass
-                    if sum(map(len, text_parts)) > limits.max_text_chars:
-                        connection.send(("error", request_id, "transcript_too_long", True)); return
                 text = " ".join(text_parts).strip()
                 if not text or speech_seconds < limits.min_speech_seconds:
                     connection.send(("error", request_id, "speech_not_detected", False)); continue
@@ -191,7 +203,7 @@ class FasterWhisperTranscriber:
                 except Exception: pass
             self._discard()
 
-    async def transcribe_async(self, data: bytes) -> Transcription:
+    async def transcribe_async(self, data: bytes, language: str | None = None) -> Transcription:
         _decode_audio(data, self.limits)
         started = time.monotonic()
         async with self._lock:
@@ -199,7 +211,7 @@ class FasterWhisperTranscriber:
             connection, process = self._connection, self._process
             self._request_id += 1
             request_id = self._request_id
-            connection.send(("run", request_id, data))
+            connection.send(("run", request_id, data, language))
             deadline = time.monotonic() + self.limits.deadline_seconds
             try:
                 while not connection.poll():

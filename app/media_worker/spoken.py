@@ -62,8 +62,7 @@ _AND = {"pt": {"e"}, "en": {"and"}, "es": {"y"}}
 _POINT = {"pt": {"virgula", "ponto"}, "en": {"point", "dot"}, "es": {"coma", "punto"}}
 
 _MG_DL = re.compile(
-    r"\b(?:miligramas?|milligrams?|miligramos?|mg)\s*(?:por|per|/)\s*(?:decilitros?|deciliters?|decilitres?|dl)\b",
-    re.I)
+    r"\b(?:miligramas?|milligrams?|miligramos?|mg)\s*(?:por|per|/)\s*(?:deci\w*|dl)\b", re.I)
 _MMOL_L = re.compile(
     r"\b(?:milimol(?:es)?|millimol(?:es)?|mmol)\s*(?:por|per|/)\s*(?:litros?|liters?|litres?|l)\b", re.I)
 

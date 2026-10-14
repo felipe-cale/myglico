@@ -270,7 +270,7 @@ export function cancelGlicoProposal(id, version) {
 export async function extractGlicoMedia(id, kind, blob, { contextVersion, clientRequestId, signal }) {
   const send = async () => requestJson(`/api/glico/conversations/${encodeURIComponent(id)}/extract/${kind}`, {
     ...GLICO_BACKGROUND,
-    timeout: 30000,
+    timeout: kind === "audio" ? 55000 : 30000,
     method: "POST",
     signal,
     headers: {

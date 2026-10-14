@@ -1074,3 +1074,44 @@ def test_reading_without_date_defaults_to_now_and_says_so_while_a_stated_time_is
     stated = _post_text(patient, headers, conversation_id, version, "glicemia 110 mg/dL 2026-10-13 8:05").json()["proposal"]
     assert stated["fields"]["measured_at"].startswith("2026-10-13T08:05")
     assert "measured_at_assumed" not in stated["warnings"]
+
+
+def test_audio_gateway_sends_the_interface_language_hint_and_a_longer_deadline(world: World, monkeypatch):
+    import json
+    from types import SimpleNamespace
+    from app.api import glico_routes
+
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    monkeypatch.setattr(glico_routes, "get_settings", lambda: SimpleNamespace(
+        glico_enabled=True, glico_audio_enabled=True, glico_photo_enabled=False, glico_media_global_jobs=2,
+        glico_media_worker_url="http://worker", glico_media_worker_secret="m" * 32))
+    seen = {}
+    payload = {"text": "oi", "language": "pt", "engine": "fake-asr",
+               "assessment": _worker_assessment(needs_clarification=True, reasons=["value_not_detected"])}
+
+    class FakeResponse:
+        status_code = 200
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return False
+        async def aiter_bytes(self):
+            yield json.dumps(payload).encode()
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs): seen["timeout"] = kwargs.get("timeout")
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return False
+        def stream(self, *args, **kwargs):
+            seen["headers"] = kwargs.get("headers", {})
+            return FakeResponse()
+
+    monkeypatch.setattr(glico_routes.httpx, "AsyncClient", FakeClient)
+    response = patient.client.post(
+        f"/api/glico/conversations/{conversation_id}/extract/audio",
+        headers={**headers, "content-type": "application/octet-stream",
+                 "x-glico-context-version": str(version), "x-glico-request-id": str(uuid.uuid4())},
+        content=b"synthetic media")
+    assert response.status_code == 200, response.text
+    assert seen["headers"]["x-glico-language"] == "pt"
+    assert seen["timeout"].read == 48.0

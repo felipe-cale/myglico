@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import asyncio
+import inspect
 from contextlib import asynccontextmanager
 from typing import Protocol
 
@@ -242,7 +243,12 @@ def create_media_app(
             )
             if not verify_request(secret, request.method, request.url.path, body, headers, replay_store, max_skew_seconds=30):
                 raise HTTPException(status_code=401, detail={"code": "worker_authentication_failed"})
-            result = await speech_engine.transcribe_async(body)
+            hint = request.headers.get("x-glico-language", "").strip().lower()
+            hint = hint if hint in {"pt", "en", "es"} else None
+            if hint and "language" in inspect.signature(speech_engine.transcribe_async).parameters:
+                result = await speech_engine.transcribe_async(body, language=hint)
+            else:
+                result = await speech_engine.transcribe_async(body)
         except MediaError as exc:
             status = 504 if exc.code == "processing_timeout" else 503 if exc.code == "capability_unavailable" else 422
             raise HTTPException(status_code=status, detail={"code": exc.code}) from None

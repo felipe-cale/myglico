@@ -935,8 +935,11 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
             "x-worker-timestamp": timestamp, "x-worker-nonce": nonce,
             "x-worker-content-sha256": body_digest, "x-worker-signature": signature,
         }
+        if media_kind == "audio":
+            # The interface language is only a hint that spares the worker its language detection.
+            worker_headers["x-glico-language"] = conversation.locale.split("-")[0]
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(21.0, connect=2.0), follow_redirects=False) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(21.0 if media_kind == "image" else 48.0, connect=2.0), follow_redirects=False) as client:
                 async with client.stream("POST", url, content=body, headers=worker_headers) as worker_response:
                     response_parts: list[bytes] = []
                     response_size = 0
@@ -987,10 +990,11 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
         proposal_result = None
         llm_proposal = False
         if media_kind == "audio" and text:
-            # With the language model on, the transcript is understood like typed text and takes
-            # precedence over the keyword matcher; any failure falls back to the matcher.
+            # With the language model on, an unclear transcript is understood like typed text and
+            # takes precedence over the keyword matcher; any failure falls back to the matcher.
             spoken_result = None
-            if (current.patient_id is not None
+            # A clear worker reading (value and glucose context) needs no model round trip.
+            if (trusted_value is None and current.patient_id is not None
                     and getattr(get_settings(), "gemini_api_key", None)):
                 try:
                     spoken_result = _language_model_result(db, current, principal, text, [], spoken=True)
