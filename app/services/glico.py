@@ -44,9 +44,14 @@ def require_csrf(request: Request, principal: SessionPrincipal) -> None:
     referer = request.headers.get("referer")
     source = origin or referer
     expected = urlsplit(str(request.base_url))
+    expected_scheme = expected.scheme
+    if get_settings().trust_forwarded_proto:
+        forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+        if forwarded in {"http", "https"}:
+            expected_scheme = forwarded
     actual = urlsplit(source or "")
     same_origin = (actual.scheme in {"https", "http"}
-                   and actual.scheme == expected.scheme
+                   and actual.scheme == expected_scheme
                    and actual.netloc.lower() == expected.netloc.lower())
     if not same_origin or not secrets.compare_digest(supplied, csrf_token(cookie)):
         raise HTTPException(status_code=403, detail="csrf_failed")

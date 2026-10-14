@@ -1161,3 +1161,35 @@ def test_a_positive_audio_daily_limit_is_enforced(world: World):
             reserve_media_job(db, owner, "audio", 100, daily_limit=3)
         assert caught.value.status_code == 429
         db.rollback()
+
+
+def test_forwarded_proto_is_ignored_unless_explicitly_trusted(world: World, monkeypatch):
+    from app.services import glico
+
+    patient = world.patient()
+    headers = _csrf(patient)
+    # The test client talks https://testserver; this mimics the reverse case (a proxy scheme that
+    # differs from the app's), which only the explicit trust switch may reconcile.
+    mismatch = {**headers, "origin": "http://testserver", "x-forwarded-proto": "http"}
+
+    def attempt(extra=None):
+        return patient.client.post("/api/glico/conversations", headers={**mismatch, **(extra or {})},
+                                   json={"locale": "pt-BR", "client_request_id": str(uuid.uuid4())})
+
+    refused = attempt()
+    assert refused.status_code == 403 and refused.json()["detail"] == "csrf_failed"
+
+    real = glico.get_settings
+    monkeypatch.setattr(glico, "get_settings", lambda: _TrustingSettings(real()))
+    assert attempt().status_code == 201
+    # A cross-site origin is still refused even when forwarding is trusted.
+    assert attempt({"origin": "http://evil.example"}).status_code == 403
+
+
+class _TrustingSettings:
+    """Real settings with the forwarded-proto switch turned on."""
+    def __init__(self, real):
+        self._real = real
+
+    def __getattr__(self, name):
+        return True if name == "trust_forwarded_proto" else getattr(self._real, name)

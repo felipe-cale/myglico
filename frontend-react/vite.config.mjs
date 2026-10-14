@@ -2,6 +2,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 const apiTarget = process.env.VITE_API_TARGET || "http://localhost:8001";
+// Temporary tunnels (phone testing) are allowed only through an explicit, comma-separated list.
+const allowedHosts = process.env.VITE_ALLOWED_HOSTS ? process.env.VITE_ALLOWED_HOSTS.split(",").map((host) => host.trim()).filter(Boolean) : undefined;
 
 export default defineConfig(() => ({
   base: "/",
@@ -24,6 +26,7 @@ export default defineConfig(() => ({
     host: "0.0.0.0",
     port: 8000,
     strictPort: true,
+    ...(allowedHosts ? { allowedHosts } : {}),
     watch: {
       usePolling: true
     },
@@ -31,7 +34,9 @@ export default defineConfig(() => ({
       "/api": {
         target: apiTarget,
         // Host must stay the browser's: /api/glico validates Origin against the request host (CSRF).
-        changeOrigin: false
+        changeOrigin: false,
+        // Phone-testing tunnels end TLS before this server: tell the API the browser used https.
+        ...(process.env.VITE_TUNNEL_HTTPS ? { headers: { "x-forwarded-proto": "https" } } : {})
       },
       "/artifacts": {
         target: apiTarget,

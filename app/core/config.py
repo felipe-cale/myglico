@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     glico_media_worker_url: str | None = None
     glico_media_worker_secret: str | None = None
     glico_media_global_jobs: int = Field(default=0, ge=0)
+    # Behind a TLS-terminating proxy or tunnel the app sees http while the browser used https.
+    # Only enable (MYGLICO_TRUST_FORWARDED_PROTO=true) when every request really comes through
+    # such a proxy; it lets the CSRF origin check use X-Forwarded-Proto.
+    trust_forwarded_proto: bool = False
     # Per-account abuse limits (MYGLICO_GLICO_AUDIO_DAILY_LIMIT, ..._IMAGE_DAILY_LIMIT,
     # ..._MESSAGES_PER_MINUTE). 0 disables a limit, which is meant for local testing only.
     glico_audio_daily_limit: int = Field(default=30, ge=0)
