@@ -5,6 +5,10 @@ from __future__ import annotations
 import re
 import asyncio
 import inspect
+import json
+import os
+import time
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Protocol
 
@@ -84,6 +88,37 @@ def _audio_reading(text: str) -> dict | None:
         return None
     mg_dl = round(value * 18.0182, 1) if unit == "mmol/L" else value
     return {"original_value": value, "unit": unit, "inferred": inferred, "mg_dl": mg_dl}
+
+
+def _dev_save_audio(body: bytes) -> Path | None:
+    """Development only: keep received audio for offline evaluation (GLICO_DEV_SAVE_AUDIO_DIR).
+
+    Off by default. Production never persists media; this exists so recordings made while testing
+    locally can be replayed against different models.
+    """
+    folder = os.environ.get("GLICO_DEV_SAVE_AUDIO_DIR")
+    if not folder:
+        return None
+    if body[:4] == b"RIFF":
+        suffix = ".wav"
+    elif body[:4] == b"OggS":
+        suffix = ".ogg"
+    elif body[:4] == b"\x1a\x45\xdf\xa3":
+        suffix = ".webm"
+    elif body[4:8] == b"ftyp":
+        suffix = ".m4a"
+    else:
+        suffix = ".bin"
+    target = Path(folder)
+    target.mkdir(parents=True, exist_ok=True)
+    path = target / f"{time.strftime('%Y%m%d-%H%M%S')}-{len(list(target.glob('*.json'))) + 1:03d}{suffix}"
+    path.write_bytes(body)
+    return path
+
+
+def _dev_note_audio(path: Path | None, payload: dict) -> None:
+    if path is not None:
+        path.with_suffix(".json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _image_assessment(result, limits) -> dict:
@@ -276,6 +311,7 @@ def create_media_app(
                 result = await speech_engine.transcribe_async(body, language=hint)
             else:
                 result = await speech_engine.transcribe_async(body)
+            saved_audio = _dev_save_audio(body)
         except MediaError as exc:
             status = 504 if exc.code == "processing_timeout" else 503 if exc.code == "capability_unavailable" else 422
             raise HTTPException(status_code=status, detail={"code": exc.code}) from None
@@ -288,6 +324,11 @@ def create_media_app(
         spoken_text = normalize_spoken(result.text, result.language)
         reading = _audio_reading(spoken_text)
         confidence = getattr(result, "confidence", None)
+        # When the number came out as digits, its own probability decides; garbled words around it
+        # ("Fisidate e Deus 75") must not veto a number the model is sure of.
+        digit_confidence = getattr(result, "digit_confidence", None)
+        if digit_confidence is not None:
+            confidence = digit_confidence
         if reading is not None:
             assessment = _assessment([reading["mg_dl"]], True, confidence, speech_engine.limits)
             assessment.update(candidate_original_value=reading["original_value"],
@@ -295,6 +336,12 @@ def create_media_app(
         else:
             assessment = _assessment(_audio_numeric_candidates(spoken_text),
                                      bool(_UNIT_RE.search(spoken_text)), confidence, speech_engine.limits)
+        _dev_note_audio(saved_audio, {
+            "transcript": spoken_text, "raw_transcript": result.text, "language": result.language,
+            "language_hint": hint, "confidence": getattr(result, "confidence", None),
+            "digit_confidence": getattr(result, "digit_confidence", None), "assessment": assessment,
+            "elapsed_ms": result.elapsed_ms, "engine": result.engine,
+            "expected": "(preencher: o que foi dito)"})
         return JSONResponse(
             {"correlation_id": correlation_id, "engine": result.engine, "elapsed_ms": result.elapsed_ms,
              "language": result.language, "text": spoken_text, "confidence": confidence,

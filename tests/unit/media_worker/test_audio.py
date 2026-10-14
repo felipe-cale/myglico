@@ -207,3 +207,55 @@ def test_short_phrase_with_one_plausible_number_is_a_reading_with_inferred_unit(
 def test_times_durations_and_long_sentences_never_become_a_reading(spoken):
     assessment = _spoken_assessment(spoken)["assessment"]
     assert assessment["needs_clarification"] is True
+
+
+@pytest.mark.parametrize("overall,digits,clear", [
+    (0.30, 0.92, True),    # garbled words around a number the model is sure of
+    (0.95, 0.30, False),   # clean sentence but unsure about the number itself
+    (0.40, None, False),   # number came as words: only the overall confidence is available
+])
+def test_the_numbers_own_confidence_decides_when_it_is_known(overall, digits, clear):
+    class Fuzzy:
+        limits = AudioLimits()
+
+        async def transcribe_async(self, data, language=None):
+            return Transcription("Fisidate e Deus 75.", "pt", 4, "fake-test-only", overall, digits)
+
+    body = wav_bytes()
+    signed = sign_request(b"w" * 32, "POST", "/internal/extract/audio", str(int(time.time())), "K" * 24, body)
+    headers = {
+        "content-type": "application/octet-stream", "x-correlation-id": "syntheticCorrelation123",
+        "x-worker-timestamp": signed.timestamp, "x-worker-nonce": signed.nonce,
+        "x-worker-content-sha256": signed.body_sha256, "x-worker-signature": signed.signature,
+    }
+    client = TestClient(create_media_app(b"w" * 32, ReplayStore(), transcriber=Fuzzy()))
+    assessment = client.post("/internal/extract/audio", content=body, headers=headers).json()["assessment"]
+    assert (assessment["needs_clarification"] is False) is clear, assessment
+    if clear:
+        assert assessment["candidate_value_mg_dl"] == 75
+
+
+def _opus_in_ogg(seconds=1):
+    import av
+    import numpy as np
+
+    buffer = io.BytesIO()
+    with av.open(buffer, mode="w", format="ogg") as container:
+        stream = container.add_stream("libopus", rate=48000)
+        stream.layout = "mono"
+        samples = (np.sin(np.arange(48000 * seconds) * (2 * np.pi * 440 / 48000)) * 0.2 * 32767).astype("<i2")
+        frame_size = 960
+        for start in range(0, len(samples) - frame_size + 1, frame_size):
+            frame = av.AudioFrame.from_ndarray(samples[start:start + frame_size].reshape(1, -1), format="s16", layout="mono")
+            frame.sample_rate = 48000
+            frame.pts = start
+            for packet in stream.encode(frame):
+                container.mux(packet)
+        for packet in stream.encode(None):
+            container.mux(packet)
+    return buffer.getvalue()
+
+
+def test_ogg_opus_recordings_such_as_whatsapp_voice_notes_are_accepted():
+    audio = _decode_audio(_opus_in_ogg(), AudioLimits())
+    assert 15000 <= len(audio) <= 17000  # ~1 s resampled to 16 kHz mono

@@ -25,7 +25,7 @@ class AudioLimits:
     recycle_after_requests: int = 25
     min_glucose_mg_dl: int = int(os.environ.get("GLICO_MEDIA_MIN_GLUCOSE_MG_DL", "20"))
     max_glucose_mg_dl: int = int(os.environ.get("GLICO_MEDIA_MAX_GLUCOSE_MG_DL", "600"))
-    min_confidence: float = float(os.environ.get("GLICO_MEDIA_MIN_ASR_CONFIDENCE", "0.75"))
+    min_confidence: float = float(os.environ.get("GLICO_MEDIA_MIN_ASR_CONFIDENCE", "0.55"))
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,9 @@ class Transcription:
     elapsed_ms: int
     engine: str
     confidence: float | None = None
+    # Lowest word probability among the tokens that contain digits: how sure the model is of the
+    # number itself, which matters more than the other words of a short sentence.
+    digit_confidence: float | None = None
 
 
 def _decode_audio(data: bytes, limits: AudioLimits):
@@ -46,7 +49,7 @@ def _decode_audio(data: bytes, limits: AudioLimits):
 
         with av.open(io.BytesIO(data), mode="r") as container:
             formats = set(container.format.name.split(","))
-            if not formats.intersection({"wav", "matroska", "webm", "mov", "mp4"}):
+            if not formats.intersection({"wav", "matroska", "webm", "ogg", "mov", "mp4"}):
                 raise MediaError("unsupported_media_type")
             streams = [stream for stream in container.streams if stream.type == "audio"]
             if len(streams) != 1:
@@ -99,8 +102,9 @@ def _run_whisper(connection, limits: AudioLimits, model_dir: str, max_rss_bytes:
 
                 def transcribe_once(forced):
                     import math
-                    segments, info = model.transcribe(audio, beam_size=1, vad_filter=True, language=forced)
-                    found, marks, seconds = [], [], 0.0
+                    segments, info = model.transcribe(audio, beam_size=1, vad_filter=True, language=forced,
+                                                      word_timestamps=True)
+                    found, marks, seconds, digit_marks = [], [], 0.0, []
                     for segment in segments:
                         segment_text = " ".join(str(segment.text).split())
                         if segment_text:
@@ -109,9 +113,13 @@ def _run_whisper(connection, limits: AudioLimits, model_dir: str, max_rss_bytes:
                             try:
                                 marks.append(max(0.0, min(1.0, math.exp(float(segment.avg_logprob)))))
                             except Exception: pass
+                            for word in (getattr(segment, "words", None) or []):
+                                if any(ch.isdigit() for ch in str(word.word)):
+                                    try: digit_marks.append(float(word.probability))
+                                    except Exception: pass
                         if sum(map(len, found)) > limits.max_text_chars:
                             return None
-                    return str(info.language), found, marks, seconds
+                    return str(info.language), found, marks, seconds, digit_marks
 
                 # The interface language skips Whisper's ~5 s language detection. If the result is
                 # unsure (someone spoke another language), run once more with automatic detection.
@@ -120,7 +128,7 @@ def _run_whisper(connection, limits: AudioLimits, model_dir: str, max_rss_bytes:
                     first = transcribe_once(None)
                 if first is None:
                     connection.send(("error", request_id, "transcript_too_long", True)); return
-                language, text_parts, scores, speech_seconds = first
+                language, text_parts, scores, speech_seconds, digit_marks = first
                 if language not in limits.allowed_languages:
                     connection.send(("error", request_id, "language_not_supported", True)); return
                 text = " ".join(text_parts).strip()
@@ -133,7 +141,8 @@ def _run_whisper(connection, limits: AudioLimits, model_dir: str, max_rss_bytes:
                 except Exception: rss = 0
                 requests += 1
                 recycle = requests >= limits.recycle_after_requests or (max_rss_bytes > 0 and rss > max_rss_bytes)
-                connection.send(("ok", request_id, text, language, confidence, recycle))
+                digit_confidence = min(digit_marks) if digit_marks else None
+                connection.send(("ok", request_id, text, language, confidence, recycle, digit_confidence))
                 if recycle: return
             except MediaError as exc:
                 connection.send(("error", request_id, exc.code, False))
@@ -223,9 +232,11 @@ class FasterWhisperTranscriber:
                     code = message[2]
                     if message[3]: self._discard()
                     raise MediaError(code)
-                _, returned_id, text, language, confidence, recycle = message
+                _, returned_id, text, language, confidence, recycle = message[:6]
+                digit_confidence = message[6] if len(message) > 6 else None
                 if returned_id != request_id: raise MediaError("processing_failed")
-                result = Transcription(text, language, int((time.monotonic() - started) * 1000), self.engine_version, confidence)
+                result = Transcription(text, language, int((time.monotonic() - started) * 1000), self.engine_version, confidence,
+                                       digit_confidence)
                 if recycle: self._discard()
                 return result
             except asyncio.CancelledError:
