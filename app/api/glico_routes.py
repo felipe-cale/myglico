@@ -971,7 +971,7 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
             # The interface language is only a hint that spares the worker its language detection.
             worker_headers["x-glico-language"] = conversation.locale.split("-")[0]
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(28.0 if media_kind == "image" else 48.0, connect=2.0), follow_redirects=False) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(40.0 if media_kind == "image" else 48.0, connect=2.0), follow_redirects=False) as client:
                 async with client.stream("POST", url, content=body, headers=worker_headers) as worker_response:
                     response_parts: list[bytes] = []
                     response_size = 0

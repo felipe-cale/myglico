@@ -197,11 +197,29 @@ def test_large_photos_are_downscaled_for_ocr_and_small_ones_are_untouched():
     assert prepare_for_ocr(b"not an image") == b"not an image"
 
 
-def test_retry_views_start_with_the_original_resolution_when_it_was_downscaled():
+def test_retry_views_are_cheap_first_and_the_original_resolution_is_last():
     from app.media_worker.image import enhanced_variants
 
     views = [Image.open(io.BytesIO(blob)).size for blob in enhanced_variants(image_bytes(size=(1200, 900)))]
-    assert views[0] == (1200, 900) and len(views) == 3
-    assert max(views[1]) < 800 and views[2] == (800, 600)
+    assert len(views) == 4
+    assert max(views[0]) < 800 and max(views[1]) < max(views[0]) and views[2] == (800, 600)
+    assert views[3] == (1200, 900)  # the slowest view comes last
+    # a very large photo is capped before it is ever used as a retry
+    assert max(Image.open(io.BytesIO(enhanced_variants(image_bytes(size=(3000, 2000)))[-1])).size) == 1280
     # a photo already at working size has no separate "original" view
-    assert len(enhanced_variants(image_bytes(size=(600, 400)))) == 2
+    assert len(enhanced_variants(image_bytes(size=(600, 400)))) == 3
+
+
+def test_dev_capture_is_off_by_default_and_keeps_photo_and_diagnosis_when_enabled(tmp_path, monkeypatch):
+    monkeypatch.delenv("GLICO_DEV_SAVE_IMAGE_DIR", raising=False)
+    engine = _Engine(["106", "mg/dL"], ["106"])
+    assert _post_image(engine, image_bytes(size=(240, 240)), "Q" * 24).status_code == 200
+    assert list(tmp_path.iterdir()) == []
+
+    monkeypatch.setenv("GLICO_DEV_SAVE_IMAGE_DIR", str(tmp_path))
+    assert _post_image(_Engine(["106", "mg/dL"], ["106"]), image_bytes(size=(240, 240)), "R" * 24).status_code == 200
+    saved = sorted(path.name for path in tmp_path.iterdir())
+    assert len(saved) == 2 and saved[0].endswith(".json") and saved[1].endswith(".png")
+    import json
+    note = json.loads((tmp_path / saved[0]).read_text(encoding="utf-8"))
+    assert note["assessment"]["candidate_value_mg_dl"] == 106 and note["passes"] == 1

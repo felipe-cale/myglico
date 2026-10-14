@@ -346,28 +346,29 @@ def prepare_for_ocr(data: bytes) -> bytes:
 def enhanced_variants(data: bytes) -> list[bytes]:
     """Other views of the same photo for a retry when the first pass does not conclude.
 
-    The original resolution (capped) comes first when it was downscaled, then smaller scales, and a
-    light blur last because it can also merge digits ("106" -> "1106"). All in memory.
+    Cheap, smaller scales first (a few seconds each); a light blur next because it can also merge
+    digits ("106" -> "1106"); the original resolution last, since it can take 10 s or more. All
+    in memory.
     """
     try:
         from PIL import Image, ImageFilter
 
         original = _open_rgb(data)
-        if max(original.size) > 1600:
-            ratio = 1600 / max(original.size)
+        if max(original.size) > 1280:
+            ratio = 1280 / max(original.size)
             original = original.resize((max(1, int(original.width * ratio)), max(1, int(original.height * ratio))), Image.LANCZOS)
         working = original
         if max(working.size) > WORKING_SIDE:
             ratio = WORKING_SIDE / max(working.size)
             working = working.resize((max(1, int(working.width * ratio)), max(1, int(working.height * ratio))), Image.LANCZOS)
         radius = min(2.0, max(1.0, min(working.size) / 480))
-        views = []
+
+        def scaled(factor):
+            return working.resize((max(1, int(working.width * factor)), max(1, int(working.height * factor))), Image.LANCZOS)
+
+        views = [scaled(0.6), scaled(0.45), working.filter(ImageFilter.GaussianBlur(radius))]
         if working is not original:
             views.append(original)
-        views += [
-            working.resize((max(1, int(working.width * 0.6)), max(1, int(working.height * 0.6))), Image.LANCZOS),
-            working.filter(ImageFilter.GaussianBlur(radius)),
-        ]
         return [_png(view) for view in views]
     except Exception:
         return []

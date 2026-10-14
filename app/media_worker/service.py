@@ -116,9 +116,32 @@ def _dev_save_audio(body: bytes) -> Path | None:
     return path
 
 
+def _dev_save_image(body: bytes) -> Path | None:
+    """Development only (GLICO_DEV_SAVE_IMAGE_DIR): keep received photos for offline evaluation."""
+    folder = os.environ.get("GLICO_DEV_SAVE_IMAGE_DIR")
+    if not folder:
+        return None
+    if body[:3] == b"\xff\xd8\xff":
+        suffix = ".jpg"
+    elif body[:4] == b"\x89PNG":
+        suffix = ".png"
+    elif body[:4] == b"RIFF" and body[8:12] == b"WEBP":
+        suffix = ".webp"
+    else:
+        suffix = ".bin"
+    target = Path(folder)
+    target.mkdir(parents=True, exist_ok=True)
+    path = target / f"{time.strftime('%Y%m%d-%H%M%S')}-{len(list(target.glob('*.json'))) + 1:03d}{suffix}"
+    path.write_bytes(body)
+    return path
+
+
 def _dev_note_audio(path: Path | None, payload: dict) -> None:
     if path is not None:
         path.with_suffix(".json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+RETRY_BUDGET_SECONDS = 10.0
 
 
 def _image_pick(result, limits) -> tuple[list[int], float | None]:
@@ -262,6 +285,8 @@ def create_media_app(
                 max_skew_seconds=30,
             ):
                 raise HTTPException(status_code=401, detail={"code": "worker_authentication_failed"})
+            saved_image = _dev_save_image(body)
+            started_image = time.monotonic()
             result = await engine.extract_async(prepare_for_ocr(body))
             retry_inputs: list[bytes] = []
             if (_image_assessment(result, engine.limits)["needs_clarification"]
@@ -278,7 +303,11 @@ def create_media_app(
         assessment = _image_assessment(result, engine.limits)
         # A first pass that does not conclude is retried on rescaled/smoothed copies of the same photo.
         tried = [result]
+        retry_started = time.monotonic()
         for variant in retry_inputs:
+            # Extra passes must never push the answer past the gateway's own deadline.
+            if time.monotonic() - retry_started > RETRY_BUDGET_SECONDS:
+                break
             try:
                 retry = await engine.extract_async(variant)
             except MediaError:
@@ -293,6 +322,10 @@ def create_media_app(
                 agreed = _agreed_assessment(tried, engine.limits)
                 if agreed is not None:
                     result, assessment = agreed
+        _dev_note_audio(saved_image, {
+            "assessment": assessment, "passes": len(tried), "total_seconds": round(time.monotonic() - started_image, 1),
+            "candidates": [{"text": item.text, "confidence": item.confidence, "box": item.box} for item in result.candidates],
+            "expected": "(preencher: o valor que o visor mostrava)"})
         return JSONResponse(
             {
                 "correlation_id": correlation_id,
