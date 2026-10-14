@@ -311,7 +311,19 @@ def _confident_reading(db: Session, conversation: GlicoConversation, principal: 
     from app.services.glico_llm import is_dose_question
     if conversation.patient_id is None or principal.doctor is not None or is_dose_question(text):
         return None
-    if not re.search(r"\d\s*(mg\s*/?\s*dl|mmol\s*/?\s*l)" + chr(92) + "b", text, re.I):
+    bare = re.fullmatch(r"\s*(\d{1,3}(?:[.,]\d{1,2})?)\s*[.!]?\s*", text)
+    if bare is not None:
+        # Just a number in the glucose chat: decimals read as mmol/L, integers as mg/dL.
+        raw = bare.group(1)
+        value = float(raw.replace(",", "."))
+        decimal = "." in raw or "," in raw
+        if decimal and 2.0 <= value <= 33.3:
+            text = f"{raw} mmol/L"
+        elif not decimal and 20 <= value <= 600:
+            text = f"{raw} mg/dL"
+        else:
+            return None
+    elif not re.search(r"\d\s*(mg\s*/?\s*dl|mmol\s*/?\s*l)" + chr(92) + "b", text, re.I):
         return None
     result = _make_proposal(db, conversation, text)
     return result if result and result.get("type") == "proposal" else None
@@ -957,7 +969,7 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
             # The interface language is only a hint that spares the worker its language detection.
             worker_headers["x-glico-language"] = conversation.locale.split("-")[0]
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(21.0 if media_kind == "image" else 48.0, connect=2.0), follow_redirects=False) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(28.0 if media_kind == "image" else 48.0, connect=2.0), follow_redirects=False) as client:
                 async with client.stream("POST", url, content=body, headers=worker_headers) as worker_response:
                     response_parts: list[bytes] = []
                     response_size = 0

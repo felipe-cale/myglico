@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 
 from app.media_worker.auth import ReplayStore, WorkerSignature, verify_request
 from app.media_worker.audio import AudioLimits, FasterWhisperTranscriber
-from app.media_worker.image import ImageLimits, MediaError, PaddleReadingExtractor
+from app.media_worker.image import ImageLimits, MediaError, PaddleReadingExtractor, enhanced_variants
 from app.media_worker.spoken import normalize_spoken
 
 
@@ -52,6 +52,12 @@ _GLUCOSE_CONTEXT = re.compile(
     r"|marcou|deu |mostrou|show|reading|lectura|leitura|lectur", re.I)
 
 
+# Times, dates and durations must never become a reading just because the phrase is short.
+_NOT_A_READING = re.compile(
+    r"hora|minut|segund|\bdias?\b|semana|m[eê]s|\bano|vez(?:es)?\b|consulta|reuni|\bs\b|\bàs\b|\bas\b\s+\d"
+    r"|hour|minute|second|\bdays?\b|week|month|year|times?\b|o'clock|\d\s*[:/h]\s*\d|\d\s*h\b", re.I)
+
+
 def _audio_reading(text: str) -> dict | None:
     """Single number in the transcript -> value in mg/dL with the unit explicit or inferred.
 
@@ -70,10 +76,39 @@ def _audio_reading(text: str) -> dict | None:
         unit, inferred = "mg/dL", False
     elif _GLUCOSE_CONTEXT.search(text):
         unit, inferred = ("mmol/L" if (decimal or value < 20) else "mg/dL"), True
+    elif len(text.split()) <= 6 and not _NOT_A_READING.search(text) and (
+            (decimal and 2.0 <= value <= 33.3) or (not decimal and 20 <= value <= 600)):
+        # "Fiz o teste de 53", "53": a short phrase with one plausible number, in a glucose chat.
+        unit, inferred = ("mmol/L" if decimal else "mg/dL"), True
     else:
         return None
     mg_dl = round(value * 18.0182, 1) if unit == "mmol/L" else value
     return {"original_value": value, "unit": unit, "inferred": inferred, "mg_dl": mg_dl}
+
+
+def _image_assessment(result, limits) -> dict:
+    """Assess one OCR pass: pick the display reading among the digit-only lines."""
+    # Only digit-only display lines qualify as candidate readings; separators
+    # are excluded so dates and clock strings are not treated as glucose.
+    readings = []
+    for item in result.candidates:
+        if re.fullmatch(r"\s*\d{2,4}\s*", item.text):
+            height = (item.box[3] - item.box[1]) if item.box else 0
+            readings.append((int(item.text.strip()), item.confidence, height))
+    in_range = [r for r in readings if limits.min_glucose_mg_dl <= r[0] <= limits.max_glucose_mg_dl]
+    # Meters print the result in the largest digits; with several plausible
+    # numbers (time, date, memory slot) take the clearly tallest one.
+    chosen = in_range
+    if len(in_range) > 1:
+        ranked = sorted(in_range, key=lambda r: r[2], reverse=True)
+        if ranked[0][2] > 0 and ranked[0][2] >= 1.25 * ranked[1][2]:
+            chosen = [ranked[0]]
+    numeric = [r[0] for r in chosen] if chosen else [r[0] for r in readings]
+    numeric_confidence = [r[1] for r in (chosen or readings) if r[1] is not None]
+    confidence = min(numeric_confidence) if numeric_confidence else None
+    # A missing unit is assumed mg/dL: the proposal is still reviewed and
+    # editable by the user before anything is written.
+    return _assessment(numeric, True, confidence, limits)
 
 
 def _audio_numeric_candidates(text: str) -> list[int]:
@@ -167,6 +202,10 @@ def create_media_app(
             ):
                 raise HTTPException(status_code=401, detail={"code": "worker_authentication_failed"})
             result = await engine.extract_async(body)
+            retry_inputs: list[bytes] = []
+            if (_image_assessment(result, engine.limits)["needs_clarification"]
+                    and not any(re.fullmatch(r"\s*(hi|lo)\s*", item.text, re.I) for item in result.candidates)):
+                retry_inputs = enhanced_variants(body)
         except MediaError as exc:
             status = 504 if exc.code == "processing_timeout" else 503 if exc.code == "capability_unavailable" else 422
             raise HTTPException(status_code=status, detail={"code": exc.code}) from None
@@ -175,29 +214,17 @@ def create_media_app(
             del body
             chunks.clear()
             slots.release()
-        texts = [item.text for item in result.candidates[: engine.limits.max_candidates]]
-        # Only digit-only display lines qualify as candidate readings; separators
-        # are excluded so dates and clock strings are not treated as glucose.
-        readings = []
-        for item in result.candidates:
-            if re.fullmatch(r"\s*\d{2,4}\s*", item.text):
-                height = (item.box[3] - item.box[1]) if item.box else 0
-                readings.append((int(item.text.strip()), item.confidence, height))
-        in_range = [r for r in readings
-                    if engine.limits.min_glucose_mg_dl <= r[0] <= engine.limits.max_glucose_mg_dl]
-        # Meters print the result in the largest digits; with several plausible
-        # numbers (time, date, memory slot) take the clearly tallest one.
-        chosen = in_range
-        if len(in_range) > 1:
-            ranked = sorted(in_range, key=lambda r: r[2], reverse=True)
-            if ranked[0][2] > 0 and ranked[0][2] >= 1.25 * ranked[1][2]:
-                chosen = [ranked[0]]
-        numeric = [r[0] for r in chosen] if chosen else [r[0] for r in readings]
-        numeric_confidence = [r[1] for r in (chosen or readings) if r[1] is not None]
-        confidence = min(numeric_confidence) if numeric_confidence else None
-        # A missing unit is assumed mg/dL: the proposal is still reviewed and
-        # editable by the user before anything is written.
-        assessment = _assessment(numeric, True, confidence, engine.limits)
+        assessment = _image_assessment(result, engine.limits)
+        # A first pass that does not conclude is retried on smoothed copies of the same photo.
+        for variant in retry_inputs:
+            try:
+                retry = await engine.extract_async(variant)
+            except MediaError:
+                break
+            again = _image_assessment(retry, engine.limits)
+            if not again["needs_clarification"]:
+                result, assessment = retry, again
+                break
         return JSONResponse(
             {
                 "correlation_id": correlation_id,

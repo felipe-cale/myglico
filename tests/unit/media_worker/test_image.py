@@ -81,3 +81,66 @@ def test_assessment_requires_unit_and_confidence_before_returning_single_value()
     assert "unit_missing" in missing_unit["clarification_reasons"]
     assert missing_unit["candidate_value_mg_dl"] is None
     assert "confidence_unavailable" in missing_confidence["clarification_reasons"]
+
+
+class _Replay:
+    def __init__(self):
+        self.used = set()
+
+    def consume_once(self, nonce, expires_at):
+        if nonce in self.used:
+            return False
+        self.used.add(nonce)
+        return True
+
+
+def _post_image(engine, body, nonce="G" * 24):
+    import time
+    from fastapi.testclient import TestClient
+    from app.media_worker.auth import sign_request
+    from app.media_worker.service import create_media_app
+
+    signed = sign_request(b"w" * 32, "POST", "/internal/extract/image", str(int(time.time())), nonce, body)
+    headers = {
+        "content-type": "application/octet-stream", "x-correlation-id": "syntheticCorrelation123",
+        "x-worker-timestamp": signed.timestamp, "x-worker-nonce": signed.nonce,
+        "x-worker-content-sha256": signed.body_sha256, "x-worker-signature": signed.signature,
+    }
+    client = TestClient(create_media_app(b"w" * 32, _Replay(), engine))
+    return client.post("/internal/extract/image", content=body, headers=headers)
+
+
+class _Engine:
+    """First pass misreads the LCD as 1006; smoothed copies read 106 (what the real OCR does)."""
+    limits = ImageLimits()
+
+    def __init__(self, first, later):
+        self.first, self.later, self.calls = first, later, 0
+
+    async def extract_async(self, data):
+        from app.media_worker.image import Extraction, TextCandidate
+        self.calls += 1
+        texts = self.first if self.calls == 1 else self.later
+        return Extraction(tuple(TextCandidate(t, 0.9, (0, 0, 40, 60)) for t in texts), "fake-test-only", 5)
+
+
+def test_a_first_pass_that_does_not_conclude_is_retried_on_smoothed_copies():
+    engine = _Engine(["1006", "mg/dL"], ["106", "mg/dL"])
+    response = _post_image(engine, image_bytes(size=(240, 240)))
+    assert response.status_code == 200
+    assessment = response.json()["assessment"]
+    assert assessment["candidate_value_mg_dl"] == 106 and assessment["needs_clarification"] is False
+    assert engine.calls == 2
+
+
+def test_a_conclusive_first_pass_is_never_retried():
+    engine = _Engine(["106", "mg/dL"], ["999"])
+    assert _post_image(engine, image_bytes(size=(240, 240)), "H" * 24).json()["assessment"]["candidate_value_mg_dl"] == 106
+    assert engine.calls == 1
+
+
+def test_hi_lo_is_not_retried_and_still_never_becomes_a_value():
+    engine = _Engine(["HI"], ["120"])
+    response = _post_image(engine, image_bytes(size=(240, 240)), "J" * 24)
+    assert response.json()["assessment"]["needs_clarification"] is True
+    assert engine.calls == 1

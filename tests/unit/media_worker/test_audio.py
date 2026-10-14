@@ -178,3 +178,32 @@ def test_language_hint_header_reaches_the_engine_only_when_allowed(header, expec
     client = TestClient(create_media_app(b"w" * 32, ReplayStore(), transcriber=Hinted()))
     assert client.post("/internal/extract/audio", content=body, headers=headers).status_code == 200
     assert seen["language"] == expected
+
+
+@pytest.mark.parametrize("spoken,mg_dl,unit", [
+    ("Fiz o teste de 53.", 53, "mg/dL"),
+    ("53", 53, "mg/dL"),
+    ("35", 35, "mg/dL"),
+    ("Minha iglesia me está 80.", 80, "mg/dL"),   # Whisper misheard "glicemia"; still one plausible number
+    ("deu 5,6", 100.9, "mmol/L"),
+])
+def test_short_phrase_with_one_plausible_number_is_a_reading_with_inferred_unit(spoken, mg_dl, unit):
+    assessment = _spoken_assessment(spoken)["assessment"]
+    assert assessment["needs_clarification"] is False, assessment
+    assert assessment["candidate_value_mg_dl"] == mg_dl
+    assert assessment["candidate_unit"] == unit and assessment["unit_inferred"] is True
+
+
+@pytest.mark.parametrize("spoken", [
+    "faz 30 dias",
+    "reunião às 8",
+    "voltei às 10 horas",
+    "daqui a 45 minutos",
+    "são 14:30",
+    "tenho 2 consultas",
+    "foi há 3 meses",
+    "one hundred and eighty people came to the meeting yesterday afternoon",
+])
+def test_times_durations_and_long_sentences_never_become_a_reading(spoken):
+    assessment = _spoken_assessment(spoken)["assessment"]
+    assert assessment["needs_clarification"] is True

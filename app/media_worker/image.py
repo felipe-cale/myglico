@@ -306,3 +306,34 @@ class PaddleReadingExtractor:
                 await self.aclose()
 
         return asyncio.run(one_request())
+
+
+def enhanced_variants(data: bytes) -> list[bytes]:
+    """Smoothed copies of a photo for a second OCR attempt.
+
+    LCD meters have a dotted texture that can make the recognizer read "106" as "1006". A light blur
+    or a smaller scale removes it. Everything stays in memory inside the worker.
+    """
+    try:
+        import io
+        from PIL import Image, ImageFilter
+
+        image = Image.open(io.BytesIO(data))
+        image.load()
+        image = image.convert("RGB")
+        if max(image.size) > 960:
+            ratio = 960 / max(image.size)
+            image = image.resize((max(1, int(image.width * ratio)), max(1, int(image.height * ratio))), Image.LANCZOS)
+        radius = min(4.0, max(1.2, 1.2 * min(image.size) / 240))
+        variants = [
+            image.filter(ImageFilter.GaussianBlur(radius)),
+            image.resize((max(1, int(image.width * 0.6)), max(1, int(image.height * 0.6))), Image.LANCZOS),
+        ]
+        encoded = []
+        for variant in variants:
+            out = io.BytesIO()
+            variant.save(out, "PNG")
+            encoded.append(out.getvalue())
+        return encoded
+    except Exception:
+        return []

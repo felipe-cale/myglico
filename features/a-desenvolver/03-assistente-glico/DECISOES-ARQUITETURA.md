@@ -15,7 +15,7 @@
 
 ## Modelo de linguagem opcional (Gemini) — 14/10/2026
 
-Autorizado pelo responsável pelo produto como evolução fora do SDD original. Ativado somente se `MYGLICO_GEMINI_API_KEY` estiver definida no ambiente (nunca em arquivo versionado); sem ela o assistente permanece determinístico. `MYGLICO_GEMINI_MODEL` aceita uma lista separada por vírgula, tentada em ordem (padrão: `gemini-3.5-flash,gemini-3.1-flash-lite,gemini-3.8-flash`); `MYGLICO_GEMINI_TIMEOUT_SECONDS` limita cada tentativa.
+Autorizado pelo responsável pelo produto como evolução fora do SDD original. Ativado somente se `MYGLICO_GEMINI_API_KEY` estiver definida no ambiente (nunca em arquivo versionado); sem ela o assistente permanece determinístico. `MYGLICO_GEMINI_MODEL` aceita uma lista separada por vírgula, tentada em ordem (padrão: `gemini-3.5-flash,gemini-3.1-flash-lite`); `MYGLICO_GEMINI_TIMEOUT_SECONDS` limita cada tentativa.
 
 - O modelo só converte a fala do usuário em uma intenção estruturada (`app/services/glico_llm.py`). Recebe apenas o texto digitado e até 6 turnos curtos de histórico; nunca recebe leituras, métricas, nomes ou identificadores.
 - Nada é executado pelo modelo: a intenção é mapeada para os mesmos tratadores determinísticos e propostas com revisão e confirmação. Valor numérico que não esteja no texto digitado é descartado.

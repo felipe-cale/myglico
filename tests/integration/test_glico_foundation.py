@@ -1193,3 +1193,20 @@ class _TrustingSettings:
 
     def __getattr__(self, name):
         return True if name == "trust_forwarded_proto" else getattr(self._real, name)
+
+
+@pytest.mark.parametrize("text,mg_dl", [("53", 53.0), ("35", 35.0), (" 118. ", 118.0), ("5,6", 100.9)])
+def test_a_bare_number_in_the_glucose_chat_is_a_reading_with_inferred_unit(world: World, text, mg_dl):
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    body = _post_text(patient, headers, conversation_id, version, text).json()
+    assert body["type"] == "proposal" and body["proposal"]["fields"]["glucose_mg_dl"] == mg_dl
+
+
+@pytest.mark.parametrize("text", ["2", "700", "30 dias", "faz 30 dias", "1.2.3"])
+def test_other_short_texts_are_not_turned_into_readings(world: World, text):
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    assert _post_text(patient, headers, conversation_id, version, text).json()["type"] != "proposal"
