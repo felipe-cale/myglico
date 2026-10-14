@@ -12,3 +12,13 @@
 8. **Banco e migrações:** migrations novas com DDL explícito e reversível, preservando revisões antigas; SQLite FK ON e verificação MySQL 8 obrigatória.
 9. **Ownership:** Codex é owner de backend/segurança e arquivos compartilhados nesta rodada. Frontend fica reservado ao Claude se disponível; mídia/infra ao Antigravity se disponível. Integração posterior deve ocorrer por patches/commits explícitos, nunca sobrescrever alterações locais.
 10. **Status de aceite:** matriz só muda com evidência realmente executada. Sem MySQL 8, navegador, modelos reais e revisor novo, respectivos critérios continuam não executados/parciais e fase não aprovada.
+
+## Modelo de linguagem opcional (Gemini) — 14/10/2026
+
+Autorizado pelo responsável pelo produto como evolução fora do SDD original. Ativado somente se `MYGLICO_GEMINI_API_KEY` estiver definida no ambiente (nunca em arquivo versionado); sem ela o assistente permanece determinístico. `MYGLICO_GEMINI_MODEL` aceita uma lista separada por vírgula, tentada em ordem (padrão: `gemini-3.5-flash,gemini-3.1-flash-lite,gemini-3.8-flash`); `MYGLICO_GEMINI_TIMEOUT_SECONDS` limita cada tentativa.
+
+- O modelo só converte a fala do usuário em uma intenção estruturada (`app/services/glico_llm.py`). Recebe apenas o texto digitado e até 6 turnos curtos de histórico; nunca recebe leituras, métricas, nomes ou identificadores.
+- Nada é executado pelo modelo: a intenção é mapeada para os mesmos tratadores determinísticos e propostas com revisão e confirmação. Valor numérico que não esteja no texto digitado é descartado.
+- Perguntas sobre dose ou medicação são recusadas por regra determinística, antes do modelo.
+- Qualquer falha, timeout ou saída inválida cai silenciosamente no assistente por palavras-chave.
+- A interface informa ao usuário que o que ele digita é enviado ao Gemini (Google) quando o recurso está ativo (`capabilities.language_model`).

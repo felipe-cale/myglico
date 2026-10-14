@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import secrets
 import time
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -58,9 +59,16 @@ class ContextUpdate(BaseModel):
     period_end: date | None = None
 
 
+class HistoryTurn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: Literal["user", "assistant"]
+    text: str = Field(min_length=1, max_length=600)
+
+
 class MessageRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     text: str = Field(min_length=1, max_length=2000)
+    history: list[HistoryTurn] = Field(default_factory=list, max_length=6)
     context_version: int = Field(ge=1)
     client_request_id: str = Field(min_length=36, max_length=36)
 
@@ -172,6 +180,7 @@ def _capabilities(principal: SessionPrincipal) -> dict:
                   and len(settings.glico_media_worker_secret.encode()) >= 32
                   and settings.glico_media_global_jobs > 0)
     return {"text": settings.glico_enabled, "faq": settings.glico_enabled,
+            "language_model": bool(settings.glico_enabled and settings.gemini_api_key),
             "photo": bool(settings.glico_enabled and settings.glico_photo_enabled and worker
                           and principal.doctor is None),
             "audio": bool(settings.glico_enabled and settings.glico_audio_enabled and worker)}
@@ -279,6 +288,62 @@ def _make_proposal(db: Session, conversation: GlicoConversation, text: str):
         if revision:
             revision.payload_encrypted = proposal.payload_encrypted
         return {"type": "proposal", "proposal": serialize_proposal(proposal)}
+    return None
+
+
+_LLM_QUERY_KEYWORD = {
+    "query_readings": "leituras", "query_metrics": "resumo", "query_atypical_days": "atípicos",
+    "query_investigations": "questionamentos", "query_linked_patients": "meus pacientes",
+}
+
+
+def _language_model_result(db: Session, conversation: GlicoConversation, principal: SessionPrincipal,
+                           text: str, history: list) -> dict | None:
+    """Let the optional model pick an intent; execution stays on the deterministic handlers.
+
+    Returns None whenever the model is off, unavailable, or its output cannot be trusted, so the
+    caller falls back to the keyword assistant. Nothing here is written without a proposal review.
+    """
+    settings = get_settings()
+    if not settings.gemini_api_key or conversation.patient_id is None:
+        return None
+    from zoneinfo import ZoneInfo
+    from app.services.glico_llm import DOSE_REFUSAL, interpret, is_dose_question
+    if is_dose_question(text):
+        return {"type": "message", "text": DOSE_REFUSAL.get(conversation.locale, DOSE_REFUSAL["pt-BR"])}
+    patient = db.get(Patient, conversation.patient_id)
+    zone = patient.timezone if patient and patient.timezone else "UTC"
+    try:
+        now = datetime.now(ZoneInfo(zone))
+    except (KeyError, ValueError):
+        zone, now = "UTC", datetime.utcnow()
+    intent = interpret(
+        api_key=settings.gemini_api_key, model=settings.gemini_model,
+        timeout=settings.gemini_timeout_seconds, text=text,
+        history=[{"role": turn.role, "text": turn.text} for turn in history],
+        locale=conversation.locale, role=conversation.role,
+        now_iso=now.strftime("%Y-%m-%d %H:%M"), timezone=zone)
+    if intent is None:
+        return None
+    kind = intent["intent"]
+    if kind == "record_reading":
+        if principal.doctor is not None:
+            raise HTTPException(status_code=403, detail="operation_not_allowed")
+        value = intent["glucose_value"]
+        # The model must not invent numbers: the value has to be present in what the user typed.
+        typed = text.replace(",", ".")
+        if not re.search(rf"(?<!\d){re.escape(format(value, 'g'))}(?!\d)", typed):
+            return None
+        parts = [f"{format(value, 'g')} {intent['unit']}"]
+        if intent.get("measured_date"):
+            parts.append(f"{intent['measured_date']} {intent['measured_time']}")
+        return _make_proposal(db, conversation, " ".join(parts))
+    if kind in _LLM_QUERY_KEYWORD:
+        return _query_answer(db, conversation, _LLM_QUERY_KEYWORD[kind])
+    if kind == "pdf_report":
+        return {"type": "answer", "answer_key": "glico.query.pdf"}
+    if kind == "answer" and intent["reply"]:
+        return {"type": "message", "text": intent["reply"]}
     return None
 
 
@@ -390,7 +455,7 @@ def glico_capabilities(locale: str = "pt-BR", principal: SessionPrincipal = Depe
     if locale not in LOCALES:
         raise HTTPException(status_code=422, detail="invalid_fields")
     flags = _capabilities(principal)
-    return {"locale": locale, "phase": "F1", **flags, "external_language_provider": False,
+    return {"locale": locale, "phase": "F1", **flags, "external_language_provider": bool(get_settings().gemini_api_key),
             "limits": {"text_chars": 2000, "photo_bytes": 3145728, "audio_bytes": 3145728,
                        "audio_seconds": 60, "proposal_ttl_seconds": 900}}
 
@@ -483,7 +548,9 @@ def send_message(conversation_id: str, payload: MessageRequest, request: Request
     replay = _replay_response(db, principal, "message", payload.client_request_id, conversation_id, digest)
     if replay is not None:
         return replay
-    result = _query_answer(db, item, text)
+    result = _language_model_result(db, item, principal, text, payload.history)
+    if result is None:
+        result = _query_answer(db, item, text)
     if result is None:
         if item.patient_id is None:
             raise HTTPException(status_code=409, detail="context_changed")

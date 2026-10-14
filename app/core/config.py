@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     glico_media_worker_url: str | None = None
     glico_media_worker_secret: str | None = None
     glico_media_global_jobs: int = Field(default=0, ge=0)
+    # Optional language model for the chat. Unset keeps the deterministic assistant.
+    # Only the user's own typed words are sent; never stored data or identifiers.
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.5-flash,gemini-3.1-flash-lite,gemini-3.8-flash"
+    gemini_timeout_seconds: float = Field(default=6.0, gt=0, le=30)
     # "loop" drains the notification outbox in a background task of a
     # long-running server; "off" leaves it to scripts/notification_outbox.py.
     # Serverless functions are frozen between invocations, so Vercel defaults

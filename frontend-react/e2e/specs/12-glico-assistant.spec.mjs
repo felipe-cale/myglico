@@ -44,6 +44,37 @@ async function stubMediaCapabilities(page) {
   });
 }
 
+test.describe("Glico assistant - language model", () => {
+  test("shows the privacy note, sends short history and renders the model's reply as plain text", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await ui.page.route("**/api/glico/capabilities*", async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      await route.fulfill({ response, json: { ...body, language_model: true } });
+    });
+    const bodies = [];
+    await ui.page.route("**/api/glico/conversations/*/messages", async (route) => {
+      bodies.push(route.request().postDataJSON());
+      await route.fulfill({ status: 200, json: { type: "message", text: "Oi! <b>Como</b> posso ajudar?" } });
+    });
+    await openAssistant(ui);
+    await expect(ui.page.getByTestId("glico-llm-note")).toHaveText(t("glicoAssistant.llmNote"));
+    const field = ui.page.getByLabel(t("glicoAssistant.messageLabel"));
+    await field.fill("oi");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
+    await expect(ui.page.getByText("Oi! <b>Como</b> posso ajudar?")).toBeVisible();
+    await field.fill("e agora?");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
+    await expect.poll(() => bodies.length).toBe(2);
+    expect(bodies[0].history).toBeUndefined();
+    expect(bodies[1].history).toEqual([
+      { role: "user", text: "oi" },
+      { role: "assistant", text: "Oi! <b>Como</b> posso ajudar?" }
+    ]);
+  });
+});
+
 test.describe("Glico assistant - locales", () => {
   test("every glicoAssistant key exists in pt-BR, en-US and es", async () => {
     const dir = path.resolve(here, "..", "..", "src", "locales");

@@ -874,6 +874,7 @@
   "glicoAssistant": {
     "title": "Asistente Glico",
     "greeting": "¿Cómo puedo ayudarte hoy?",
+    "llmNote": "Lo que escribes se envía a Gemini (Google) solo para entender tu solicitud; tus datos guardados no se envían. Nada se guarda sin tu confirmación.",
     "greetingBody": "Escribe el valor, habla o envía una foto del visor del glucómetro. Revisas todo antes de guardar.",
     "toolsButton": "Consultas y colaboración",
     "chips": {

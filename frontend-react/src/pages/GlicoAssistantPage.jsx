@@ -322,6 +322,10 @@ export default function GlicoAssistantPage() {
   };
 
   const handleResult = (result) => {
+    if (result?.type === "message" && typeof result.text === "string" && result.text.trim()) {
+      addAssistant({ text: result.text });
+      return;
+    }
     if (result?.type === "proposal" && result.proposal) {
       showProposal(result.proposal);
       return;
@@ -448,10 +452,16 @@ export default function GlicoAssistantPage() {
     setMessages((current) => [...current, { id: requestId(), role: "user", text }]);
     setBusy(true);
     try {
+      // Short plain-text context so a language model can follow up ("and yesterday?").
+      const history = capabilities?.language_model
+        ? messages.filter((message) => typeof message.text === "string" && message.text).slice(-6)
+            .map((message) => ({ role: message.role, text: message.text.slice(0, 600) }))
+        : [];
       const result = await sendGlicoMessage(conversation.id, {
         text,
         context_version: conversation.context_version,
-        client_request_id: requestId()
+        client_request_id: requestId(),
+        ...(history.length ? { history } : {})
       });
       if (activeConversationId.current === conversation.id) handleResult(result);
       return result;
@@ -965,6 +975,7 @@ export default function GlicoAssistantPage() {
         </section>
       ) : null}
 
+      {capabilities?.language_model ? <p className="glico-hint glico__disclaimer" data-testid="glico-llm-note">{t("glicoAssistant.llmNote")}</p> : null}
       <p className="glico-hint glico__disclaimer">{t("glicoAssistant.notClinicalAdvice")}</p>
       <p className="glico-hint glico__disclaimer">{t("glicoAssistant.privacyNote")}</p>
     </section>

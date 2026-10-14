@@ -874,6 +874,7 @@
   "glicoAssistant": {
     "title": "Glico Assistant",
     "greeting": "How can I help today?",
+    "llmNote": "What you type is sent to Gemini (Google) only to understand your request; your saved data is not sent. Nothing is saved without your confirmation.",
     "greetingBody": "Type a value, speak, or send a photo of your meter's display. You review everything before it is saved.",
     "toolsButton": "Queries and collaboration",
     "chips": {

@@ -910,3 +910,88 @@ def test_photo_with_meter_hi_lo_signal_is_never_recorded(world: World, monkeypat
         content=b"synthetic media")
     assert response.status_code == 200, response.text
     assert response.json() == {"type": "clarification", "answer_key": "glico.reading.unsupported_signal"}
+
+
+def _llm_settings():
+    from types import SimpleNamespace
+    return SimpleNamespace(
+        glico_enabled=True, glico_audio_enabled=False, glico_photo_enabled=False, glico_media_global_jobs=0,
+        glico_media_worker_url=None, glico_media_worker_secret=None,
+        gemini_api_key="test-key", gemini_model="m", gemini_timeout_seconds=5)
+
+
+def _post_text(patient, headers, conversation_id, version, text):
+    return patient.client.post(f"/api/glico/conversations/{conversation_id}/messages", headers=headers,
+        json={"text": text, "context_version": version, "client_request_id": str(uuid.uuid4()),
+              "history": [{"role": "user", "text": "oi"}, {"role": "assistant", "text": "olá"}]})
+
+
+@pytest.fixture
+def llm(world: World, monkeypatch):
+    from app.api import glico_routes
+    from app.services import glico_llm
+    answers: dict = {"next": None}
+    monkeypatch.setattr(glico_routes, "get_settings", _llm_settings)
+    monkeypatch.setattr(glico_llm, "interpret", lambda **kwargs: answers["next"])
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    return SimpleNamespaceBox(patient, headers, conversation_id, version, answers)
+
+
+class SimpleNamespaceBox:
+    def __init__(self, patient, headers, conversation_id, version, answers):
+        self.patient, self.headers, self.conversation_id, self.version, self.answers = (
+            patient, headers, conversation_id, version, answers)
+
+    def say(self, text, intent):
+        self.answers["next"] = intent
+        return _post_text(self.patient, self.headers, self.conversation_id, self.version, text)
+
+
+def test_model_reading_intent_still_ends_in_a_reviewable_proposal(llm):
+    response = llm.say("minha glicose deu 132 hoje às 8h", {
+        "intent": "record_reading", "glucose_value": 132.0, "unit": "mg/dL",
+        "measured_date": "2026-10-14", "measured_time": "08:00", "reply": ""})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["type"] == "proposal" and body["proposal"]["fields"]["glucose_mg_dl"] == 132.0
+    assert body["proposal"]["state"] in {"DRAFT", "READY"}
+
+
+def test_model_cannot_invent_a_value_the_user_did_not_type(llm):
+    response = llm.say("minha glicose deu 132", {
+        "intent": "record_reading", "glucose_value": 150.0, "unit": "mg/dL", "reply": ""})
+    assert response.status_code == 200
+    assert response.json()["type"] != "proposal"
+
+
+def test_model_reply_is_plain_text_and_failure_falls_back_to_keywords(llm):
+    said = llm.say("oi, tudo bem?", {"intent": "answer", "reply": "Oi! Como posso ajudar?"})
+    assert said.json() == {"type": "message", "text": "Oi! Como posso ajudar?"}
+    fallback = llm.say("128 mg/dL", None)
+    assert fallback.json()["type"] == "proposal"
+
+
+def test_model_pdf_intent_and_capability_flag(llm):
+    assert llm.say("quero o relatório", {"intent": "pdf_report", "reply": ""}).json() == {
+        "type": "answer", "answer_key": "glico.query.pdf"}
+    caps = llm.patient.client.get("/api/glico/capabilities")
+    assert caps.json()["language_model"] is True and caps.json()["external_language_provider"] is True
+
+
+def test_without_a_key_the_assistant_stays_deterministic(world: World):
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    caps = patient.client.get("/api/glico/capabilities").json()
+    assert caps["language_model"] is False and caps["external_language_provider"] is False
+    response = _post_text(patient, headers, conversation_id, version, "128 mg/dL")
+    assert response.json()["type"] == "proposal"
+
+
+def test_dose_question_is_refused_even_if_the_model_misclassifies_it(llm):
+    response = llm.say("tenho que tomar quantas unidades de insulina com 250?",
+                       {"intent": "pdf_report", "reply": ""})
+    body = response.json()
+    assert body["type"] == "message" and "médico" in body["text"]

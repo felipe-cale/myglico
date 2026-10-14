@@ -68,7 +68,7 @@ def test_real_http_glico_review_commit_cancel_replay_and_authz(live_backend: dic
             "locale": "pt-BR", "client_request_id": request_id})
         assert created.status_code == 201, created.text
         conversation = created.json()
-        assert conversation["capabilities"] == {"text": True, "faq": True, "photo": False, "audio": False}
+        assert conversation["capabilities"] == {"text": True, "faq": True, "photo": False, "audio": False, "language_model": False}
         duplicate = patient.post("/api/glico/conversations", headers=headers, json={
             "locale": "pt-BR", "client_request_id": request_id})
         assert duplicate.status_code == 201, duplicate.text
