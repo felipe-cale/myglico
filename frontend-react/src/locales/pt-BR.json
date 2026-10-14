@@ -876,6 +876,25 @@
     "greeting": "Como posso ajudar hoje?",
     "greetingBody": "Escreva o valor, fale ou envie uma foto do visor do glicosímetro. Você revisa tudo antes de salvar.",
     "toolsButton": "Consultas e colaboração",
+    "chips": {
+      "title": "Atalhos",
+      "readings": "Minhas leituras recentes",
+      "atypical": "Dias atípicos",
+      "pdf": "Relatório em PDF",
+      "period": "Definir período",
+      "open": "Abrir questionamento",
+      "reply": "Responder questionamento",
+      "investigations": "Meus questionamentos"
+    },
+    "collab": {
+      "placeholder": "Escreva sua pergunta ou mensagem…",
+      "openPrompt": "Escreva o que você quer perguntar ao seu médico sobre este paciente. Eu preparo o questionamento para você revisar antes de enviar.",
+      "replyPrompt": "Toque em “Responder” no questionamento que você quer responder e escreva a mensagem.",
+      "reply": "Responder",
+      "replyingTo": "Respondendo ao questionamento {{id}}",
+      "pickHint": "Escolha um questionamento da lista acima",
+      "cancel": "Cancelar questionamento"
+    },
     "toolsClose": "Fechar painel",
     "toolsTitle": "Consultas e colaboração",
     "composerPlaceholder": "Escreva uma medição ou pergunte algo…",
@@ -1047,7 +1066,9 @@
       "apply": "Aplicar",
       "clear": "Limpar",
       "maxRange": "Máximo de 366 dias",
-      "invalidRange": "A data inicial não pode ser maior que a data final."
+      "invalidRange": "A data inicial não pode ser maior que a data final.",
+      "applied": "Período definido: {{range}}.",
+      "cleared": "Período removido."
     },
     "errors": {
       "unavailable": "Este recurso está indisponível no momento. Use o texto ou o registro manual.",
@@ -1066,6 +1087,7 @@
       "ambiguous": "Não consegui ler um valor com segurança. Tente outra foto/áudio ou digite o valor.",
       "invalidFields": "Verifique os campos: a glicemia deve estar entre 20 e 600 mg/dL e a data é obrigatória.",
       "dictationUnavailable": "O ditado por voz não está disponível neste navegador.",
+      "pickInvestigation": "Escolha o questionamento que você quer responder.",
       "dictationError": "Não foi possível concluir o ditado. Você pode digitar a mensagem.",
       "micDenied": "O acesso ao microfone foi negado. Permita o microfone no navegador ou use texto.",
       "micUnsupported": "Este navegador não permite gravar áudio. Use texto ou foto.",

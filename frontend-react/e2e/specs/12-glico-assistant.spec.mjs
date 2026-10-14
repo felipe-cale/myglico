@@ -21,8 +21,8 @@ async function openAssistant(ui, { lang, viewport } = {}) {
   await expect(ui.page.getByRole("heading", { level: 1, name: t("glicoAssistant.title", lang || "pt-BR") })).toBeVisible();
 }
 
-async function openTools(ui) {
-  await ui.page.getByRole("button", { name: t("glicoAssistant.toolsButton") }).click();
+async function chip(ui, key) {
+  await ui.page.getByRole("button", { name: t(`glicoAssistant.chips.${key}`) }).click();
 }
 
 async function sendPickedPhoto(ui) {
@@ -162,16 +162,15 @@ test.describe("Glico assistant - patient", () => {
       } } });
     });
     await openAssistant(ui);
-    await openTools(ui);
-    await ui.page.locator("#glico-collaboration-kind").selectOption("investigation_open");
-    await ui.page.locator("#glico-collaboration-subject").fill("Reading question");
-    await ui.page.locator("#glico-collaboration-message").fill("Please review this reading");
-    await ui.page.getByRole("button", { name: t("glicoAssistant.investigation.review") }).click();
+    await chip(ui, "open");
+    await expect(ui.page.getByText(t("glicoAssistant.collab.openPrompt"))).toBeVisible();
+    await ui.page.getByLabel(t("glicoAssistant.messageLabel")).fill("Reading question");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
     const card = ui.page.getByTestId("glico-proposal");
     await expect(card).toBeVisible();
     await expect(card.getByRole("heading", { name: t("glicoAssistant.investigation.openTitle") })).toBeVisible();
     await expect(card.getByRole("button", { name: t("glicoAssistant.confirm") })).toBeEnabled();
-    expect(posted).toMatchObject({ kind: "investigation_open", title: "Reading question", content: "Please review this reading" });
+    expect(posted).toMatchObject({ kind: "investigation_open", title: "Reading question", content: "Reading question" });
   });
 
   test("voice dictation reports unsupported browsers in the selected locale", async ({ actor, browserSession }) => {
@@ -182,7 +181,7 @@ test.describe("Glico assistant - patient", () => {
       delete window.webkitSpeechRecognition;
     });
     await openAssistant(ui);
-    await openTools(ui);
+    await chip(ui, "open");
     await ui.page.getByRole("button", { name: t("glicoAssistant.investigation.dictate") }).click();
     await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.dictationUnavailable"));
   });
@@ -206,7 +205,7 @@ test.describe("Glico assistant - patient", () => {
     await expect(list.locator("li")).toContainText("123 mg/dL");
     await expect(list.locator("time")).toHaveAttribute("datetime", "2025-06-12T08:30:00Z");
 
-    await openTools(ui);
+    await chip(ui, "period");
     await ui.page.getByLabel(t("glicoAssistant.period.startLabel")).fill("2025-06-01");
     await ui.page.getByLabel(t("glicoAssistant.period.endLabel")).fill("2025-06-30");
     await ui.page.getByRole("button", { name: t("glicoAssistant.period.apply") }).click();

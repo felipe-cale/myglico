@@ -297,6 +297,7 @@
 .glico__composer {
   display: grid;
   grid-template-areas:
+    "mode mode mode"
     "strip strip strip"
     "field field field"
     "tools help send";
@@ -811,4 +812,143 @@
 .glico-card .react-field:disabled {
   background: var(--state-disabled-bg, rgba(82, 100, 122, 0.16));
   color: var(--react-muted);
+}
+
+/* Shortcut chips */
+.glico-suggestions--faq {
+  margin-top: 0.25rem;
+}
+
+.glico-chip--quiet {
+  border-color: transparent;
+  background: var(--tint-blue-6);
+  color: var(--react-muted);
+}
+
+.glico-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.glico-chips {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.1rem 0.15rem 0.35rem;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.glico-chips li {
+  flex: none;
+}
+
+.glico-chip--row {
+  width: auto;
+  min-height: 40px;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.glico-chip--inline {
+  width: auto;
+  margin-top: 0.5rem;
+  border-radius: 999px;
+}
+
+/* Composer mode (opening or answering an investigation) */
+.glico-mode {
+  grid-area: mode;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.8rem;
+  margin-bottom: 0.25rem;
+  border-radius: 18px;
+  background: var(--tint-blue-8);
+  color: var(--react-blue-deep);
+}
+
+.glico-mode__label {
+  margin-right: auto;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.glico-mode .react-button {
+  gap: 0.4rem;
+  min-height: 40px;
+}
+
+.glico-icon-button--small {
+  width: 40px;
+  height: 40px;
+}
+
+/* Period card and pickable investigations inside the thread */
+.glico__bubble .glico-card.glico__period-form {
+  max-width: 28rem;
+}
+
+.glico__list li.is-pickable {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.glico__pick {
+  min-height: 36px;
+  padding: 0.2rem 0.8rem;
+  border: 1px solid var(--tint-blue-32);
+  border-radius: 999px;
+  background: var(--react-surface-solid);
+  color: var(--react-blue-deep);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.glico__pick[aria-pressed="true"] {
+  background: var(--react-action-start);
+  border-color: var(--react-action-start);
+  color: #fff;
+}
+
+.glico__pick:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.glico__period-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.glico__period-fields .react-field {
+  min-width: 0;
+  padding-inline: 0.6rem;
+}
+
+.glico-mode {
+  flex-wrap: nowrap;
+}
+
+.glico-mode__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .glico-mode__text {
+    display: none;
+  }
+
+  .glico-mode .react-button {
+    min-width: 40px;
+    padding-inline: 0.6rem;
+  }
 }

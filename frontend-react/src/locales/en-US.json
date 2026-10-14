@@ -876,6 +876,25 @@
     "greeting": "How can I help today?",
     "greetingBody": "Type a value, speak, or send a photo of your meter's display. You review everything before it is saved.",
     "toolsButton": "Queries and collaboration",
+    "chips": {
+      "title": "Shortcuts",
+      "readings": "My recent readings",
+      "atypical": "Atypical days",
+      "pdf": "PDF report",
+      "period": "Set period",
+      "open": "Open an investigation",
+      "reply": "Reply to an investigation",
+      "investigations": "My investigations"
+    },
+    "collab": {
+      "placeholder": "Write your question or message…",
+      "openPrompt": "Write what you want to ask about this patient. I will prepare the investigation for you to review before sending.",
+      "replyPrompt": "Tap “Reply” on the investigation you want to answer and write your message.",
+      "reply": "Reply",
+      "replyingTo": "Replying to investigation {{id}}",
+      "pickHint": "Pick an investigation from the list above",
+      "cancel": "Cancel investigation"
+    },
     "toolsClose": "Close panel",
     "toolsTitle": "Queries and collaboration",
     "composerPlaceholder": "Type a reading or ask something…",
@@ -1047,7 +1066,9 @@
       "apply": "Apply",
       "clear": "Clear",
       "maxRange": "Maximum 366 days",
-      "invalidRange": "Start date cannot be later than end date."
+      "invalidRange": "Start date cannot be later than end date.",
+      "applied": "Period set: {{range}}.",
+      "cleared": "Period cleared."
     },
     "errors": {
       "unavailable": "This feature is unavailable right now. Use text or manual entry.",
@@ -1066,6 +1087,7 @@
       "ambiguous": "I could not read a value with confidence. Try another photo/audio or type the value.",
       "invalidFields": "Check the fields: glucose must be between 20 and 600 mg/dL and the date is required.",
       "dictationUnavailable": "Voice dictation is unavailable in this browser.",
+      "pickInvestigation": "Pick the investigation you want to reply to.",
       "dictationError": "Dictation could not be completed. You can type your message.",
       "micDenied": "Microphone access was denied. Allow the microphone in your browser or use text.",
       "micUnsupported": "This browser cannot record audio. Use text or photo.",
