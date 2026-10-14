@@ -875,6 +875,9 @@
     "title": "Assistente Glico",
     "greeting": "Como posso ajudar hoje?",
     "llmNote": "O que você digita é enviado ao Gemini (Google) só para entender o pedido; seus dados salvos não são enviados. Nada é gravado sem a sua confirmação.",
+    "missingMeasuredAtHint": "Sem data e hora, a medição não pode ser salva. Informe quando você mediu.",
+    "measuredAtAssumed": "Usei a data e a hora de agora. Ajuste se a medição foi em outro momento.",
+    "conversationReset": "A conversa foi reiniciada para o novo idioma.",
     "greetingBody": "Escreva o valor, fale ou envie uma foto do visor do glicosímetro. Você revisa tudo antes de salvar.",
     "toolsButton": "Consultas e colaboração",
     "chips": {

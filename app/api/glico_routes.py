@@ -255,20 +255,33 @@ def _make_proposal(db: Session, conversation: GlicoConversation, text: str):
         else:
             mg_dl = value
             normalized_unit = "mg/dL"
-        measured_at = None
         patient = db.get(Patient, conversation.patient_id) if conversation.patient_id else None
-        if iso_date and clock:
-            try:
-                from zoneinfo import ZoneInfo
-                local = datetime.fromisoformat(f"{iso_date.group(1)}T{clock.group(0)}:00").replace(
-                    tzinfo=ZoneInfo(patient.timezone if patient else "UTC"))
-                measured_at = local.isoformat()
-            except (ValueError, KeyError):
-                measured_at = None
-        missing = [] if measured_at else ["measured_at"]
+        from zoneinfo import ZoneInfo
+        zone_name = patient.timezone if patient and patient.timezone else "UTC"
+        try:
+            zone = ZoneInfo(zone_name)
+        except (KeyError, ValueError):
+            zone_name, zone = "UTC", ZoneInfo("UTC")
+        now = datetime.now(zone).replace(second=0, microsecond=0)
+        # People record a reading as it happens: without a stated date/time use now, and say so.
+        assumed = False
+        try:
+            if clock:
+                hour, minute = int(clock.group(1)), int(clock.group(2))
+                day = date.fromisoformat(iso_date.group(1)) if iso_date else now.date()
+                moment = datetime(day.year, day.month, day.day, hour, minute, tzinfo=zone)
+            else:
+                day = date.fromisoformat(iso_date.group(1)) if iso_date else now.date()
+                moment = now.replace(year=day.year, month=day.month, day=day.day)
+                assumed = True
+            measured_at = moment.isoformat()
+        except (ValueError, KeyError):
+            measured_at, assumed = now.isoformat(), True
+        missing = []
+        warnings = ["measured_at_assumed"] if assumed else []
         fields = {"glucose_mg_dl": mg_dl, "original_value": value,
                   "original_unit": normalized_unit if source_unit.startswith("mg") else "mmol/L",
-                  "measured_at": measured_at, "timezone": patient.timezone if patient else "UTC",
+                  "measured_at": measured_at, "timezone": zone_name,
                   "context_label": None, "notes": None}
         valid = 20 <= mg_dl <= 600
         if not valid:
@@ -277,6 +290,7 @@ def _make_proposal(db: Session, conversation: GlicoConversation, text: str):
                                    origin="glico_text", ready=valid and not missing)
         payload = proposal_payload(proposal)
         payload["missing_fields"] = missing
+        payload["warnings"] = warnings
         from app.core.crypto import encrypt_field
         import json
         proposal.payload_encrypted = encrypt_field(

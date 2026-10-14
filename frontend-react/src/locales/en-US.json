@@ -875,6 +875,9 @@
     "title": "Glico Assistant",
     "greeting": "How can I help today?",
     "llmNote": "What you type is sent to Gemini (Google) only to understand your request; your saved data is not sent. Nothing is saved without your confirmation.",
+    "missingMeasuredAtHint": "Without a date and time the reading can't be saved. Enter when you measured.",
+    "measuredAtAssumed": "I used the current date and time. Adjust it if you measured at another time.",
+    "conversationReset": "The conversation was restarted for the new language.",
     "greetingBody": "Type a value, speak, or send a photo of your meter's display. You review everything before it is saved.",
     "toolsButton": "Queries and collaboration",
     "chips": {

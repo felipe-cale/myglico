@@ -36,7 +36,9 @@ def _draft(actor, headers, conversation_id, context_version):
     assert response.status_code == 200, response.text
     assert response.json()["type"] == "proposal"
     proposal = response.json()["proposal"]
-    assert proposal["state"] == "DRAFT"
+    # No date/time stated: the reading defaults to now and is ready for review.
+    assert proposal["state"] == "READY"
+    assert proposal["fields"]["measured_at"]
     edit = actor.client.patch(f"/api/glico/proposals/{proposal['id']}", headers=headers,
         json={"version": proposal["version"], "context_version": context_version,
               "fields": {"measured_at": "2026-10-13T08:00:00-03:00", "timezone": "America/Sao_Paulo"}})
@@ -1058,3 +1060,17 @@ def test_a_value_with_unit_is_recorded_not_treated_as_a_readings_query(world: Wo
     response = _post_text(patient, headers, conversation_id, version, text)
     assert response.status_code == 200, response.text
     assert response.json()["type"] == "proposal"
+
+
+def test_reading_without_date_defaults_to_now_and_says_so_while_a_stated_time_is_respected(world: World):
+    from datetime import datetime, timedelta
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    assumed = _post_text(patient, headers, conversation_id, version, "glicemia 110 mg/dL").json()["proposal"]
+    moment = datetime.fromisoformat(assumed["fields"]["measured_at"])
+    assert abs(datetime.now(moment.tzinfo) - moment) < timedelta(minutes=2)
+    assert assumed["state"] == "READY" and "measured_at_assumed" in assumed["warnings"]
+    stated = _post_text(patient, headers, conversation_id, version, "glicemia 110 mg/dL 2026-10-13 8:05").json()["proposal"]
+    assert stated["fields"]["measured_at"].startswith("2026-10-13T08:05")
+    assert "measured_at_assumed" not in stated["warnings"]

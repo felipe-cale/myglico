@@ -109,13 +109,12 @@ test.describe("Glico assistant - patient", () => {
     await expect(card).toBeVisible();
     await expect(card.getByLabel(t("glicoAssistant.valueLabel"))).toHaveValue("110");
     const confirm = card.getByRole("button", { name: t("glicoAssistant.confirm") });
-    await expect(confirm).toBeDisabled();
+    // No date/time was typed: the reading defaults to now, says so, and is ready for review.
+    await expect(card.getByLabel(t("glicoAssistant.measuredAtLabel"))).not.toHaveValue("");
+    await expect(card.getByText(t("glicoAssistant.measuredAtAssumed"))).toBeVisible();
+    await expect(confirm).toBeEnabled();
 
     await card.getByLabel(t("glicoAssistant.valueLabel")).fill("118");
-    const measuredAt = new Date();
-    const localDateTime = new Date(measuredAt.getTime() - measuredAt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    await card.getByLabel(t("glicoAssistant.measuredAtLabel")).fill(localDateTime);
-    await expect(confirm).toBeDisabled();
     await card.getByRole("button", { name: t("glicoAssistant.saveCorrection") }).click();
     await expect(card.getByLabel(t("glicoAssistant.valueLabel"))).toHaveValue("118");
     await expect(confirm).toBeEnabled();
