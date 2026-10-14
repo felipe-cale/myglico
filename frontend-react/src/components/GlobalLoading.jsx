@@ -10,19 +10,22 @@ const MIN_VISIBLE_MS = 450;
 const CANCEL_AFTER_MS = 8000;
 
 function GlucometerAnimation() {
+  const base = import.meta.env.BASE_URL;
   return (
-    <svg className="react-loading__art" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
-      <path className="react-loading__drop" d="M60 6c-6 9-11 15-11 21a11 11 0 0 0 22 0c0-6-5-12-11-21z" />
-      <rect className="react-loading__strip" x="52" y="40" width="16" height="22" rx="3" />
-      <rect className="react-loading__meter" x="26" y="56" width="68" height="58" rx="18" />
-      <rect className="react-loading__screen" x="38" y="68" width="44" height="24" rx="7" />
-      <g className="react-loading__digits">
-        <circle cx="50" cy="80" r="3" />
-        <circle cx="60" cy="80" r="3" />
-        <circle cx="70" cy="80" r="3" />
-      </g>
-      <circle className="react-loading__button" cx="60" cy="103" r="4" />
-    </svg>
+    <div className="react-loading__art" aria-hidden="true">
+      <svg className="react-loading__drop-art" viewBox="0 0 24 32" focusable="false">
+        <path className="react-loading__drop" d="M12 2c-4 6-7 10-7 14a7 7 0 0 0 14 0c0-4-3-8-7-14z" />
+      </svg>
+      <img
+        className="react-loading__mascot"
+        src={`${base}img/mascote-avatar-192.webp`}
+        srcSet={`${base}img/mascote-avatar-192.webp 1x, ${base}img/mascote-avatar-420.webp 2x`}
+        alt=""
+        width="112"
+        height="112"
+      />
+      <span className="react-loading__shadow" />
+    </div>
   );
 }
 
