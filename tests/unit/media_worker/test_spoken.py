@@ -59,3 +59,34 @@ def test_a_plain_article_or_connector_is_not_turned_into_a_number():
 ])
 def test_misspelled_deciliter_still_normalizes_to_mg_dl(text):
     assert normalize_spoken(text).startswith("mi glucosa fue 128 mg/dL") or normalize_spoken(text).startswith("128 mg/dL")
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("meia quatro", "64"),
+    ("minha glicemia está meia quatro agora", "minha glicemia está 64 agora"),
+    ("meu teste de glicemia deu meia sete", "meu teste de glicemia deu 67"),
+    ("deu oito meia", "deu 86"),                 # a digit and "meia" next to each other
+    ("meia 4", "64"),
+    ("quatro meia", "46"),
+    ("um meia zero", "160"),
+    ("deu 6 a 7", "deu 67"),                      # how Whisper sometimes breaks "meia sete"
+    ("Meu teste de glicemia deu 0.67.", "Meu teste de glicemia deu 67."),
+    ("deu 0,105", "deu 105"),
+    # "meia" alone is "half", never a 6
+    ("oito e meia", "8 e meia"),
+    ("meia hora", "meia hora"),
+    ("daqui a meia hora", "daqui a meia hora"),
+    ("deu 0,5", "deu 0,5"),
+    ("faz 1 2 dias", "faz 1 2 dias"),             # bare digits are never joined
+])
+def test_dictated_meia_and_the_asr_forms_of_it(text, expected):
+    assert normalize_spoken(text, "pt") == expected
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("deu 6 a 7.", "deu 67."),
+    ("La lectura fue de 90 y 5.", "La lectura fue de 95."),
+    ("deu 100 e 20.", "deu 120."),
+])
+def test_trailing_punctuation_does_not_block_the_digit_repairs(text, expected):
+    assert normalize_spoken(text) == expected

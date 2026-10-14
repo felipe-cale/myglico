@@ -25,7 +25,7 @@ class AudioLimits:
     recycle_after_requests: int = 25
     min_glucose_mg_dl: int = int(os.environ.get("GLICO_MEDIA_MIN_GLUCOSE_MG_DL", "20"))
     max_glucose_mg_dl: int = int(os.environ.get("GLICO_MEDIA_MAX_GLUCOSE_MG_DL", "600"))
-    min_confidence: float = float(os.environ.get("GLICO_MEDIA_MIN_ASR_CONFIDENCE", "0.55"))
+    min_confidence: float = float(os.environ.get("GLICO_MEDIA_MIN_ASR_CONFIDENCE", "0.5"))
 
 
 @dataclass(frozen=True)

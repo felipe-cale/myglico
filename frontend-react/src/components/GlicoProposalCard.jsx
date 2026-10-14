@@ -181,6 +181,7 @@ export default function GlicoProposalCard({ proposal, role, busy, onSave, onConf
 
           {proposal.missing_fields?.length ? <p className="glico-hint" role="note">{t("glicoAssistant.missingFields")}</p> : null}
           {proposal.missing_fields?.includes("measured_at") ? <p className="glico-hint" role="note">{t("glicoAssistant.missingMeasuredAtHint")}</p> : null}
+          {proposal.warnings?.includes("low_confidence") ? <p className="glico-hint" role="note">{t("glicoAssistant.lowConfidenceAudio")}</p> : null}
           {proposal.warnings?.includes("measured_at_assumed") ? <p className="glico-hint" role="note">{t("glicoAssistant.measuredAtAssumed")}</p> : null}
           {dirty ? <p className="glico-hint" role="note">{t("glicoAssistant.unsavedEdits")}</p> : null}
           {!isPatient && kind === "glucose_single" ? <p className="glico-hint" role="note">{t("glicoAssistant.doctorCannotConfirm")}</p> : null}

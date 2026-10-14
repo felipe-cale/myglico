@@ -53,7 +53,7 @@ _MMOL_RE = re.compile(r"\bmmol\s*/?\s*l\b", re.I)
 # Without a spoken unit the number is only read as a glucose when the speech is about a measurement.
 _GLUCOSE_CONTEXT = re.compile(
     r"gli[cs]|gluc|a[cç]úcar|azúcar|sugar|diabet|medi[çc]|medic[ií]|medid|measur|resultado|result"
-    r"|marcou|deu |mostrou|show|reading|lectura|leitura|lectur", re.I)
+    r"|marcou|deu |mostrou|show|reading|lectura|leitura|lectur|teste|prueba|exame|examen|\btest\b", re.I)
 
 
 # Times, dates and durations must never become a reading just because the phrase is short.
@@ -142,6 +142,9 @@ def _dev_note_audio(path: Path | None, payload: dict) -> None:
 
 
 RETRY_BUDGET_SECONDS = 10.0
+# A plausible spoken reading below the normal floor is proposed anyway, flagged, instead of refused:
+# the speaker's words are shown and the card still needs a confirmation.
+LOW_CONFIDENCE_FLOOR = 0.25
 
 
 def _image_pick(result, limits) -> tuple[list[int], float | None]:
@@ -400,6 +403,13 @@ def create_media_app(
             confidence = digit_confidence
         if reading is not None:
             assessment = _assessment([reading["mg_dl"]], True, confidence, speech_engine.limits)
+            if (assessment["needs_clarification"] and assessment["clarification_reasons"] == ["confidence_below_threshold"]
+                    and confidence is not None and confidence >= LOW_CONFIDENCE_FLOOR):
+                from dataclasses import replace
+                assessment = _assessment([reading["mg_dl"]], True, confidence,
+                                         replace(speech_engine.limits, min_confidence=0.0))
+                assessment["low_confidence"] = True
+                assessment["confidence_threshold"] = LOW_CONFIDENCE_FLOOR
             assessment.update(candidate_original_value=reading["original_value"],
                               candidate_unit=reading["unit"], unit_inferred=reading["inferred"])
         else:

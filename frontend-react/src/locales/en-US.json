@@ -879,6 +879,7 @@
     "measuredAtAssumed": "I used the current date and time. Adjust it if you measured at another time.",
     "conversationReset": "The conversation was restarted for the new language.",
     "proposalReplaced": "This proposal was replaced by a newer one.",
+    "lowConfidenceAudio": "I was not very sure about this audio. Check that the value is right before confirming.",
     "greetingBody": "Type a value, speak, or send a photo of your meter's display. You review everything before it is saved.",
     "toolsButton": "Queries and collaboration",
     "chips": {

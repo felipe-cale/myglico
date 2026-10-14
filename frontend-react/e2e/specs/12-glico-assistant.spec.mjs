@@ -534,3 +534,21 @@ test.describe("Glico assistant - camera photos", () => {
     expect(uploaded.length).toBeLessThan(original / 2);
   });
 });
+
+test.describe("Glico assistant - low confidence audio", () => {
+  test("a flagged proposal shows the check-the-value note in the user's language", async ({ actor, browserSession }) => {
+    await actor("patientA");
+    const ui = await browserSession("patientA");
+    await ui.page.route("**/api/glico/conversations/*/messages", async (route) => {
+      await route.fulfill({ status: 200, json: { type: "proposal", proposal: {
+        id: "33333333-3333-4333-8333-333333333333", kind: "glucose_single", version: 1, context_version: 1, state: "READY",
+        expires_at: new Date(Date.now() + 600000).toISOString(),
+        fields: { glucose_mg_dl: 84, original_value: 84, original_unit: "mg/dL", measured_at: new Date().toISOString(), timezone: "UTC", context_label: null, notes: null },
+        missing_fields: [], warnings: ["low_confidence"], origin: "glico_audio" } } });
+    });
+    await openAssistant(ui);
+    await ui.page.getByLabel(t("glicoAssistant.messageLabel")).fill("84");
+    await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
+    await expect(ui.page.getByTestId("glico-proposal").getByText(t("glicoAssistant.lowConfidenceAudio"))).toBeVisible();
+  });
+});

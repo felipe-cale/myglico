@@ -135,7 +135,8 @@ def _trusted_worker_assessment(result: dict, media_kind: str) -> float | None:
     threshold = float(threshold)
     # Two independent reads of one photo that agree on the value carry a lower per-read floor.
     agreed = isinstance(assessment.get("agreed_passes"), int) and assessment["agreed_passes"] >= 2
-    minimum_confidence = 0.5 if agreed else (0.75 if media_kind == "image" else 0.55)
+    low_confidence = media_kind == "audio" and assessment.get("low_confidence") is True
+    minimum_confidence = 0.25 if low_confidence else (0.5 if agreed else (0.75 if media_kind == "image" else 0.5))
     if not (math.isfinite(value) and math.isfinite(confidence) and math.isfinite(threshold)
             and 20 <= value <= 600 and confidence >= max(threshold, minimum_confidence)):
         return None
@@ -232,7 +233,7 @@ def _receipt(item: GlicoExecution) -> dict:
             "analytics_status": item.analytics_status}
 
 
-def _make_proposal(db: Session, conversation: GlicoConversation, text: str):
+def _make_proposal(db: Session, conversation: GlicoConversation, text: str, extra_warnings: list[str] | None = None):
     # Deliberately deterministic. No external model receives clinical context or text.
     if re.search(r"\b(hi|lo)\b", text, re.I):
         return {"type": "clarification", "answer_key": "glico.reading.unsupported_signal"}
@@ -292,7 +293,7 @@ def _make_proposal(db: Session, conversation: GlicoConversation, text: str):
                                    origin="glico_text", ready=valid and not missing)
         payload = proposal_payload(proposal)
         payload["missing_fields"] = missing
-        payload["warnings"] = warnings
+        payload["warnings"] = warnings + list(extra_warnings or [])
         from app.core.crypto import encrypt_field
         import json
         proposal.payload_encrypted = encrypt_field(
@@ -1057,7 +1058,9 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
                 original, unit = found.get("candidate_original_value"), found.get("candidate_unit")
                 if (unit in {"mg/dL", "mmol/L"} and isinstance(original, (int, float))
                         and not isinstance(original, bool)):
-                    proposal_result = _make_proposal(db, current, f"{original:g} {unit}")
+                    proposal_result = _make_proposal(
+                        db, current, f"{original:g} {unit}",
+                        ["low_confidence"] if found.get("low_confidence") is True else None)
                 else:
                     proposal_result = _make_proposal(db, current, text)
         if proposal_result and proposal_result.get("type") == "proposal" and not llm_proposal:

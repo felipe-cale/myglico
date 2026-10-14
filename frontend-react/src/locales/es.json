@@ -879,6 +879,7 @@
     "measuredAtAssumed": "Usé la fecha y la hora actuales. Ajústalas si mediste en otro momento.",
     "conversationReset": "La conversación se reinició para el nuevo idioma.",
     "proposalReplaced": "Esta propuesta fue reemplazada por una más reciente.",
+    "lowConfidenceAudio": "Entendí el audio con poca seguridad. Comprueba que el valor sea correcto antes de confirmar.",
     "greetingBody": "Escribe el valor, habla o envía una foto del visor del glucómetro. Revisas todo antes de guardar.",
     "toolsButton": "Consultas y colaboración",
     "chips": {

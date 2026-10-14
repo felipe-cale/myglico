@@ -58,6 +58,10 @@ _HUNDREDS = {  # pt/es have dedicated words; en is "<digit> hundred"
 # Standing alone these are articles ("uma glicose"), not the number 1.
 _ARTICLES = {"pt": {"um", "uma"}, "en": set(), "es": {"un", "una"}}
 
+# Brazilians dictate digits one by one and often say "meia" for 6 ("meia quatro" = 64). Only inside a
+# run of digits: alone, "meia" is "half" ("oito e meia", "meia hora").
+_RUN_ONLY = {"pt": {"meia": 6}, "en": {}, "es": {}}
+
 _AND = {"pt": {"e"}, "en": {"and"}, "es": {"y"}}
 _POINT = {"pt": {"virgula", "ponto"}, "en": {"point", "dot"}, "es": {"coma", "punto"}}
 
@@ -68,11 +72,16 @@ _MMOL_L = re.compile(
 
 
 # Whisper sometimes mixes digits and connectors: "90 y 5", "100 e 20".
-_TENS_PLUS_UNIT = re.compile(r"(?<![\d.,])([2-9]0)\s+(?:y|e|and)\s+([1-9])(?![\d.,])")
-_HUNDRED_PLUS = re.compile(r"(?<![\d.,])([1-9]00)\s+(?:y|e|and)\s+([1-9]\d?)(?![\d.,])")
+_TENS_PLUS_UNIT = re.compile(r"(?<![\d.,])([2-9]0)\s+(?:y|e|and)\s+([1-9])(?!\d|[.,]\d)")
+# ...and breaks a dictated pair of digits apart: "6 a 7" for "meia sete"; or reads it as "0.67".
+_DIGIT_A_DIGIT = re.compile(r"(?<![\d.,])(\d)\s+a\s+(\d)(?!\d|[.,]\d)")
+_ZERO_POINT = re.compile(r"(?<![\d.,])0[.,](\d{2,3})(?!\d)")
+_HUNDRED_PLUS = re.compile(r"(?<![\d.,])([1-9]00)\s+(?:y|e|and)\s+([1-9]\d?)(?!\d|[.,]\d)")
 
 
 def _join_mixed(text: str) -> str:
+    text = _DIGIT_A_DIGIT.sub(lambda m: m.group(1) + m.group(2), text)
+    text = _ZERO_POINT.sub(lambda m: m.group(1), text)
     text = _TENS_PLUS_UNIT.sub(lambda m: str(int(m.group(1)) + int(m.group(2))), text)
     return _HUNDRED_PLUS.sub(lambda m: str(int(m.group(1)) + int(m.group(2))), text)
 
@@ -143,13 +152,25 @@ def _convert(lang: str, words: list[str]) -> tuple[list[str], int]:
     changed = 0
     i = 0
     while i < len(words):
-        # A run of two or more single digit words is read digit by digit ("um dois zero").
+        # A run of two or more single digit words is read digit by digit ("um dois zero"); "meia" counts
+        # as 6 here, and a lone digit next to a digit word is part of the run ("meia 4").
         j = i
         run = []
-        while j < len(tokens) and tokens[j] in _DIGITS[lang]:
-            run.append(str(_DIGITS[lang][tokens[j]]))
+        has_word = False
+        while j < len(tokens):
+            token = tokens[j]
+            if token in _DIGITS[lang]:
+                run.append(str(_DIGITS[lang][token]))
+                has_word = True
+            elif token in _RUN_ONLY[lang]:
+                run.append(str(_RUN_ONLY[lang][token]))
+                has_word = True
+            elif token.isdigit() and len(token) == 1:
+                run.append(token)
+            else:
+                break
             j += 1
-        if len(run) >= 2:
+        if len(run) >= 2 and has_word:
             out.append("".join(run))
             changed += 1
             i = j

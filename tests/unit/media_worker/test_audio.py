@@ -209,12 +209,13 @@ def test_times_durations_and_long_sentences_never_become_a_reading(spoken):
     assert assessment["needs_clarification"] is True
 
 
-@pytest.mark.parametrize("overall,digits,clear", [
-    (0.30, 0.92, True),    # garbled words around a number the model is sure of
-    (0.95, 0.30, False),   # clean sentence but unsure about the number itself
-    (0.40, None, False),   # number came as words: only the overall confidence is available
+@pytest.mark.parametrize("overall,digits,clear,low", [
+    (0.30, 0.92, True, False),   # garbled words around a number the model is sure of
+    (0.95, 0.30, True, True),    # unsure about the number: still proposed, flagged for a check
+    (0.40, None, True, True),    # number came as words: only the overall confidence is available
+    (0.95, 0.10, False, False),  # too unsure to even propose
 ])
-def test_the_numbers_own_confidence_decides_when_it_is_known(overall, digits, clear):
+def test_the_numbers_own_confidence_decides_when_it_is_known(overall, digits, clear, low):
     class Fuzzy:
         limits = AudioLimits()
 
@@ -233,6 +234,7 @@ def test_the_numbers_own_confidence_decides_when_it_is_known(overall, digits, cl
     assert (assessment["needs_clarification"] is False) is clear, assessment
     if clear:
         assert assessment["candidate_value_mg_dl"] == 75
+        assert (assessment.get("low_confidence") is True) is low
 
 
 def _opus_in_ogg(seconds=1):
@@ -259,3 +261,43 @@ def _opus_in_ogg(seconds=1):
 def test_ogg_opus_recordings_such_as_whatsapp_voice_notes_are_accepted():
     audio = _decode_audio(_opus_in_ogg(), AudioLimits())
     assert 15000 <= len(audio) <= 17000  # ~1 s resampled to 16 kHz mono
+
+
+@pytest.mark.parametrize("spoken,mg_dl,digit_confidence", [
+    ("Meu teste de glicemia deu meia sete", 67, 0.9),    # what the ASR writes with a vocabulary hint
+    ("Meu teste de glicemia deu 6 a 7.", 67, 0.8),       # ...and without it
+    ("Meu teste de glicemia deu 0.67.", 67, 0.30),       # ...or this one, whose token is low-confidence
+    ("manda um ó fiz o teste de 82", 82, 0.63),           # 8 words: "teste" is the glucose context
+    ("Fiz o teste de 190.", 190, 0.53),                  # just under the old 0.55 floor
+])
+def test_real_recordings_that_used_to_fail_now_become_readings(spoken, mg_dl, digit_confidence):
+    class Real:
+        limits = AudioLimits()
+
+        async def transcribe_async(self, data, language=None):
+            return Transcription(spoken, "pt", 4, "fake-test-only", 0.5, digit_confidence)
+
+    body = wav_bytes()
+    signed = sign_request(b"w" * 32, "POST", "/internal/extract/audio", str(int(time.time())), "S" * 24, body)
+    headers = {
+        "content-type": "application/octet-stream", "x-correlation-id": "syntheticCorrelation123",
+        "x-worker-timestamp": signed.timestamp, "x-worker-nonce": signed.nonce,
+        "x-worker-content-sha256": signed.body_sha256, "x-worker-signature": signed.signature,
+    }
+    client = TestClient(create_media_app(b"w" * 32, ReplayStore(), transcriber=Real()))
+    assessment = client.post("/internal/extract/audio", content=body, headers=headers).json()["assessment"]
+    assert assessment["needs_clarification"] is False, assessment
+    assert assessment["candidate_value_mg_dl"] == mg_dl
+
+
+def test_a_low_confidence_reading_is_flagged_and_the_gateway_carries_the_warning():
+    from app.api.glico_routes import _trusted_worker_assessment
+
+    flagged = {"status": "review_required", "needs_clarification": False, "clarification_reasons": [],
+               "candidate_value_mg_dl": 84, "candidate_confidence": 0.34, "confidence_threshold": 0.25,
+               "low_confidence": True}
+    assert _trusted_worker_assessment({"assessment": flagged}, "audio") == 84.0
+    # the flag never relaxes photos, and an unflagged weak audio reading is still refused
+    assert _trusted_worker_assessment({"assessment": flagged}, "image") is None
+    assert _trusted_worker_assessment({"assessment": {**flagged, "low_confidence": False,
+                                                       "confidence_threshold": 0.5}}, "audio") is None
