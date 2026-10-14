@@ -26,7 +26,7 @@ os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 
 async def run(args) -> int:
     from app.media_worker.image import PaddleReadingExtractor
-    from app.media_worker.service import read_photo
+    from app.media_worker.photo import read_photo
 
     models = Path(args.models)
     engine = PaddleReadingExtractor(str(models / "paddle-det"), str(models / "paddle-rec"))

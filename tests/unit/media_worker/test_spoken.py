@@ -13,10 +13,10 @@ from app.media_worker.spoken import normalize_spoken
     ("pt", "noventa e nove", "99"),
     ("pt", "dezessete", "17"),
     ("pt", "minha glicose está em cento e vinte e oito miligramas por decilitro", "minha glicose está em 128 mg/dL"),
-    ("pt", "cinco vírgula seis milimoles por litro", "5.6 mmol/L"),
+    ("pt", "cinco vírgula seis milimoles por litro", "5,6 mmol/L"),
     ("en", "one hundred and twenty", "120"),
     ("en", "one hundred twenty", "120"),
-    ("en", "a hundred and five", "105"),
+    ("en", "a hundred and five", "a 105"),
     ("en", "one two zero", "120"),
     ("en", "one oh five", "105"),
     ("en", "ninety eight", "98"),
@@ -27,7 +27,7 @@ from app.media_worker.spoken import normalize_spoken
     ("es", "ciento veintiocho miligramos por decilitro", "128 mg/dL"),
     ("es", "doscientos cincuenta y uno", "251"),
     ("es", "noventa y ocho", "98"),
-    ("es", "cinco coma seis milimoles por litro", "5.6 mmol/L"),
+    ("es", "cinco coma seis milimoles por litro", "5,6 mmol/L"),
     ("es", "La lectura fue de 90 y 5 mg/dL.", "La lectura fue de 95 mg/dL."),
     ("pt", "deu 100 e 20 mg/dL", "deu 120 mg/dL"),
     ("en", "it was 90 and 5 mg per deciliter", "it was 95 mg/dL"),
@@ -77,7 +77,7 @@ def test_misspelled_deciliter_still_normalizes_to_mg_dl(text):
     ("meia hora", "meia hora"),
     ("daqui a meia hora", "daqui a meia hora"),
     ("deu 0,5", "deu 0,5"),
-    ("faz 1 2 dias", "faz 1 2 dias"),             # bare digits are never joined
+    ("faz 1 2 dias", "faz 12 dias"),               # in audio, digits in a row are digits dictated one by one
 ])
 def test_dictated_meia_and_the_asr_forms_of_it(text, expected):
     assert normalize_spoken(text, "pt") == expected

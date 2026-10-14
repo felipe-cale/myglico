@@ -9,3 +9,5 @@ faster-whisper==1.2.0
 av==15.1.0
 redis==6.4.0
 psutil==7.2.2
+
+text2num==3.1.0   # number words -> digits for pt/en/es (app/media_worker/spoken.py)

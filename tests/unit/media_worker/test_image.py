@@ -4,7 +4,7 @@ import pytest
 from PIL import Image
 
 from app.media_worker.image import ImageLimits, MediaError, PaddleReadingExtractor, _decode_image, _normalize_paddle
-from app.media_worker.service import _assessment
+from app.media_worker.reading import assessment as _assessment
 
 
 def image_bytes(fmt="PNG", size=(160, 80), color="white"):

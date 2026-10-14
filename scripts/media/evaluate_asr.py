@@ -20,7 +20,7 @@ import psutil
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from app.media_worker.audio import FasterWhisperTranscriber
-from app.media_worker.service import _assessment, _audio_numeric_candidates
+from app.media_worker.reading import assessment as _assessment, digit_candidates as _audio_numeric_candidates
 
 
 _ES_UNITS = {

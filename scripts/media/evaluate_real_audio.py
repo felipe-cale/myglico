@@ -23,9 +23,8 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
-from app.media_worker.service import _assessment, _audio_reading  # noqa: E402
+from app.media_worker.reading import assess_transcript  # noqa: E402
 from app.media_worker.audio import AudioLimits  # noqa: E402
-from app.media_worker.spoken import normalize_spoken  # noqa: E402
 
 
 def main() -> int:
@@ -51,18 +50,17 @@ def main() -> int:
         segments = list(segments)
         seconds = time.time() - started
         raw = " ".join(s.text.strip() for s in segments)
-        spoken = normalize_spoken(raw, str(info.language))
         digit = [w.probability for s in segments for w in (s.words or []) if any(c.isdigit() for c in w.word)]
         overall = sum(math.exp(s.avg_logprob) for s in segments) / max(1, len(segments))
-        confidence = min(digit) if digit else overall
-        reading = _audio_reading(spoken)
-        assessment = _assessment([reading["mg_dl"]], True, confidence, limits) if reading else None
-        value = assessment["candidate_value_mg_dl"] if assessment else None
-        ok = value == item.get("expected_mg_dl")
+        # The same function the worker runs in production: normalization, unit, confidence policy.
+        _, verdict = assess_transcript(raw, str(info.language), overall, min(digit) if digit else None, limits)
+        value = verdict["candidate_value_mg_dl"]
+        expected = item.get("expected_mg_dl")
+        ok = value is not None if expected is None else value == expected
         passed += ok
-        print(f"{'OK  ' if ok else 'FAIL'} {item['file']:22} {seconds:4.1f}s conf={confidence:.2f} "
-              f"valor={value} esperado={item.get('expected_mg_dl')} :: {raw!r}")
-    print(f"\n{passed}/{len(manifest)} corretos")
+        print(f"{'OK  ' if ok else 'FAIL'} {item['file']:22} {seconds:4.1f}s "
+              f"valor={value}{' (baixa confiança)' if verdict.get('low_confidence') else ''} esperado={expected} :: {raw!r}")
+    print(f"\n{passed}/{len(manifest)} corretos (sem valor esperado: conta se virou leitura)")
     return 0 if passed == len(manifest) else 1
 
 

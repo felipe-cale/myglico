@@ -1,217 +1,124 @@
-"""Deterministic spoken-number and unit normalization for ASR transcripts (pt, en, es).
+"""Spoken numbers and units in an ASR transcript, normalized to digits (pt, en, es).
 
-"cento e vinte", "um dois zero", "one hundred and twenty", "ciento veinte" all become 120, and
-"miligramas por decilitro" / "mg per deciliter" become "mg/dL". Digits already present are left
-untouched. Anything that does not parse cleanly is left as the speaker said it, so the strict
-digit-and-unit gate downstream stays the only thing that can create a reading.
+Two layers, on purpose:
+
+* **Generic**: number words ("cento e vinte e oito", "ninety eight", "ciento veinte") are converted by
+  ``text2num``, a maintained library, instead of hand-kept dictionaries for three languages.
+* **Domain**: what a glucose log needs on top, as small declarative tables (``RUN_WORDS``, ``REPAIRS``,
+  ``UNITS``): dictated digit runs ("um dois zero", "meia quatro"), the broken forms Whisper writes for
+  them ("6 a 7", "0.67"), and the unit phrases ("miligramas por decilitro").
+
+Anything that does not parse cleanly is left as the speaker said it, so the strict digit-and-unit gate
+downstream stays the only thing that can create a reading. To handle a new case add a row to a table and a
+case to ``tests/unit/media_worker/test_spoken.py``.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import re
+from typing import Callable
 import unicodedata
 
-_DIGITS = {
-    "pt": {"zero": 0, "um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "quatro": 4, "cinco": 5,
-           "seis": 6, "sete": 7, "oito": 8, "nove": 9},
-    "en": {"zero": 0, "oh": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
-           "seven": 7, "eight": 8, "nine": 9},
-    "es": {"cero": 0, "uno": 1, "un": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5,
-           "seis": 6, "siete": 7, "ocho": 8, "nueve": 9},
+from text_to_num import alpha2digit
+
+LANGUAGES = ("pt", "en", "es")
+
+
+@dataclass(frozen=True)
+class Repair:
+    """A rewrite applied to the text: ``pattern`` -> ``replace``. ``why`` documents the speech it handles."""
+    name: str
+    pattern: re.Pattern
+    replace: Callable[[re.Match], str]
+    why: str
+
+
+# Words that count as a single digit when they sit next to another digit while dictating one by one.
+# Alone they keep their normal meaning: "uma glicose", "oito e meia" (half past eight), "meia hora".
+RUN_WORDS: dict[str, dict[str, int]] = {
+    "pt": {"zero": 0, "um": 1, "uma": 1, "meia": 6},   # Brazilians say "meia" for 6: "meia quatro" = 64
+    "en": {"zero": 0, "oh": 0, "one": 1},
+    "es": {"cero": 0, "un": 1, "uno": 1, "una": 1},
 }
 
-_TEENS = {  # 10-19, plus es 21-29 which are single words
-    "pt": {"dez": 10, "onze": 11, "doze": 12, "treze": 13, "catorze": 14, "quatorze": 14, "quinze": 15,
-           "dezesseis": 16, "dezasseis": 16, "dezessete": 17, "dezassete": 17, "dezoito": 18,
-           "dezenove": 19, "dezanove": 19},
-    "en": {"ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
-           "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19},
-    "es": {"diez": 10, "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15,
-           "dieciseis": 16, "diecisiete": 17, "dieciocho": 18, "diecinueve": 19, "veinte": 20,
-           "veintiuno": 21, "veintiun": 21, "veintiuna": 21, "veintidos": 22, "veintitres": 23,
-           "veinticuatro": 24, "veinticinco": 25, "veintiseis": 26, "veintisiete": 27,
-           "veintiocho": 28, "veintinueve": 29},
-}
+_NOT_AFTER_DIGIT = r"(?<![\d.,])"
+_NOT_BEFORE_DIGIT = r"(?!\d|[.,]\d)"
 
-_TENS = {
-    "pt": {"vinte": 20, "trinta": 30, "quarenta": 40, "cinquenta": 50, "sessenta": 60, "setenta": 70,
-           "oitenta": 80, "noventa": 90},
-    "en": {"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
-           "eighty": 80, "ninety": 90},
-    "es": {"treinta": 30, "cuarenta": 40, "cincuenta": 50, "sesenta": 60, "setenta": 70,
-           "ochenta": 80, "noventa": 90},
-}
+# Whisper sometimes mixes digits and connectors, breaks a dictated pair apart, or reads it as a decimal.
+REPAIRS: tuple[Repair, ...] = (
+    Repair("digit_a_digit", re.compile(_NOT_AFTER_DIGIT + r"(\d)\s+a\s+(\d)" + _NOT_BEFORE_DIGIT),
+           lambda m: m.group(1) + m.group(2), 'Whisper writes a dictated "meia sete" as "6 a 7"'),
+    Repair("zero_point_pair", re.compile(_NOT_AFTER_DIGIT + r"0[.,](\d{2,3})(?!\d)"),
+           lambda m: m.group(1), 'Whisper writes a dictated "meia sete" as "0.67"'),
+    Repair("tens_and_unit", re.compile(_NOT_AFTER_DIGIT + r"([2-9]0)\s+(?:y|e|and)\s+([1-9])" + _NOT_BEFORE_DIGIT),
+           lambda m: str(int(m.group(1)) + int(m.group(2))), '"90 y 5" for "noventa y cinco"'),
+    Repair("hundreds_and_rest", re.compile(_NOT_AFTER_DIGIT + r"([1-9]00)\s+(?:y|e|and)\s+([1-9]\d?)" + _NOT_BEFORE_DIGIT),
+           lambda m: str(int(m.group(1)) + int(m.group(2))), '"100 e 20" for "cento e vinte"'),
+)
 
-_HUNDREDS = {  # pt/es have dedicated words; en is "<digit> hundred"
-    "pt": {"cem": 100, "cento": 100, "duzentos": 200, "duzentas": 200, "trezentos": 300, "trezentas": 300,
-           "quatrocentos": 400, "quatrocentas": 400, "quinhentos": 500, "quinhentas": 500,
-           "seiscentos": 600, "seiscentas": 600, "setecentos": 700, "setecentas": 700,
-           "oitocentos": 800, "oitocentas": 800, "novecentos": 900, "novecentas": 900},
-    "en": {},
-    "es": {"cien": 100, "ciento": 100, "doscientos": 200, "doscientas": 200, "trescientos": 300,
-           "trescientas": 300, "cuatrocientos": 400, "cuatrocientas": 400, "quinientos": 500,
-           "quinientas": 500, "seiscientos": 600, "seiscientas": 600, "setecientos": 700,
-           "setecientas": 700, "ochocientos": 800, "ochocientas": 800, "novecientos": 900,
-           "novecientas": 900},
-}
-
-# Standing alone these are articles ("uma glicose"), not the number 1.
-_ARTICLES = {"pt": {"um", "uma"}, "en": set(), "es": {"un", "una"}}
-
-# Brazilians dictate digits one by one and often say "meia" for 6 ("meia quatro" = 64). Only inside a
-# run of digits: alone, "meia" is "half" ("oito e meia", "meia hora").
-_RUN_ONLY = {"pt": {"meia": 6}, "en": {}, "es": {}}
-
-_AND = {"pt": {"e"}, "en": {"and"}, "es": {"y"}}
-_POINT = {"pt": {"virgula", "ponto"}, "en": {"point", "dot"}, "es": {"coma", "punto"}}
-
-_MG_DL = re.compile(
-    r"\b(?:miligramas?|milligrams?|miligramos?|mg)\s*(?:por|per|/)\s*(?:deci\w*|dl)\b", re.I)
-_MMOL_L = re.compile(
-    r"\b(?:milimol(?:es)?|millimol(?:es)?|mmol)\s*(?:por|per|/)\s*(?:litros?|liters?|litres?|l)\b", re.I)
-
-
-# Whisper sometimes mixes digits and connectors: "90 y 5", "100 e 20".
-_TENS_PLUS_UNIT = re.compile(r"(?<![\d.,])([2-9]0)\s+(?:y|e|and)\s+([1-9])(?!\d|[.,]\d)")
-# ...and breaks a dictated pair of digits apart: "6 a 7" for "meia sete"; or reads it as "0.67".
-_DIGIT_A_DIGIT = re.compile(r"(?<![\d.,])(\d)\s+a\s+(\d)(?!\d|[.,]\d)")
-_ZERO_POINT = re.compile(r"(?<![\d.,])0[.,](\d{2,3})(?!\d)")
-_HUNDRED_PLUS = re.compile(r"(?<![\d.,])([1-9]00)\s+(?:y|e|and)\s+([1-9]\d?)(?!\d|[.,]\d)")
-
-
-def _join_mixed(text: str) -> str:
-    text = _DIGIT_A_DIGIT.sub(lambda m: m.group(1) + m.group(2), text)
-    text = _ZERO_POINT.sub(lambda m: m.group(1), text)
-    text = _TENS_PLUS_UNIT.sub(lambda m: str(int(m.group(1)) + int(m.group(2))), text)
-    return _HUNDRED_PLUS.sub(lambda m: str(int(m.group(1)) + int(m.group(2))), text)
+# Unit phrases: "miligramas por decilitro", "mg per deciliter" (also as the ASR misspells them) -> mg/dL.
+UNITS: tuple[Repair, ...] = (
+    Repair("mg_dl", re.compile(r"\b(?:miligramas?|milligrams?|miligramos?|mg)\s*(?:por|per|/)\s*(?:deci\w*|dl)\b", re.I),
+           lambda m: "mg/dL", "milligrams per deciliter"),
+    Repair("mmol_l", re.compile(r"\b(?:milimol(?:es)?|millimol(?:es)?|mmol)\s*(?:por|per|/)\s*(?:litros?|liters?|litres?|l)\b", re.I),
+           lambda m: "mmol/L", "millimoles per liter"),
+)
 
 
 def _fold(word: str) -> str:
-    word = unicodedata.normalize("NFKD", word.lower())
+    word = unicodedata.normalize("NFKD", word.strip(".,;:!?¿¡").lower())
     return "".join(ch for ch in word if not unicodedata.combining(ch))
 
 
-def _unit(lang: str, tokens: list[str], i: int) -> tuple[int, int] | None:
-    token = tokens[i] if i < len(tokens) else ""
-    if token in _DIGITS[lang] and token != "oh":
-        return _DIGITS[lang][token], i + 1
-    return None
+def _digit_of(token: str, lang: str) -> int | None:
+    word = _fold(token)
+    if word.isdigit() and len(word) == 1:
+        return int(word)
+    return RUN_WORDS[lang].get(word)
 
 
-def _below_hundred(lang: str, tokens: list[str], i: int) -> tuple[int, int] | None:
-    if i >= len(tokens):
-        return None
-    token = tokens[i]
-    if token in _TEENS[lang]:
-        return _TEENS[lang][token], i + 1
-    if token in _TENS[lang]:
-        value = _TENS[lang][token]
-        j = i + 1
-        if lang == "en":
-            nxt = _unit(lang, tokens, j)
-            if nxt and nxt[0] > 0:
-                return value + nxt[0], nxt[1]
-        elif j < len(tokens) and tokens[j] in _AND[lang]:
-            nxt = _unit(lang, tokens, j + 1)
-            if nxt and nxt[0] > 0:
-                return value + nxt[0], nxt[1]
-        return value, j
-    unit = _unit(lang, tokens, i)
-    if unit:
-        return unit
-    return None
-
-
-def _cardinal(lang: str, tokens: list[str], i: int) -> tuple[int, int] | None:
-    if i >= len(tokens):
-        return None
-    total, j = 0, i
-    hundred = None
-    if lang == "en":
-        if tokens[j] == "a" and j + 1 < len(tokens) and tokens[j + 1] == "hundred":
-            hundred, j = 100, j + 2
-        else:
-            unit = _unit(lang, tokens, j)
-            if unit and unit[0] > 0 and unit[1] < len(tokens) and tokens[unit[1]] == "hundred":
-                hundred, j = unit[0] * 100, unit[1] + 1
-    elif tokens[j] in _HUNDREDS[lang]:
-        hundred, j = _HUNDREDS[lang][tokens[j]], j + 1
-    if hundred is not None:
-        total = hundred
-        k = j + 1 if j < len(tokens) and tokens[j] in _AND[lang] else j
-        rest = _below_hundred(lang, tokens, k)
-        if rest and rest[0] > 0:
-            return total + rest[0], rest[1]
-        return total, j
-    return _below_hundred(lang, tokens, i)
-
-
-def _convert(lang: str, words: list[str]) -> tuple[list[str], int]:
-    tokens = [_fold(w.strip(".,;:!?¿¡")) for w in words]
+def _join_digit_runs(text: str, lang: str) -> str:
+    """Two or more dictated digits in a row become one number: "um 2 0" -> "120", "meia quatro" -> "64"."""
+    words = text.split()
     out: list[str] = []
-    changed = 0
     i = 0
     while i < len(words):
-        # A run of two or more single digit words is read digit by digit ("um dois zero"); "meia" counts
-        # as 6 here, and a lone digit next to a digit word is part of the run ("meia 4").
-        j = i
-        run = []
-        has_word = False
-        while j < len(tokens):
-            token = tokens[j]
-            if token in _DIGITS[lang]:
-                run.append(str(_DIGITS[lang][token]))
-                has_word = True
-            elif token in _RUN_ONLY[lang]:
-                run.append(str(_RUN_ONLY[lang][token]))
-                has_word = True
-            elif token.isdigit() and len(token) == 1:
-                run.append(token)
-            else:
-                break
+        j, digits = i, []
+        while j < len(words) and (value := _digit_of(words[j], lang)) is not None:
+            digits.append(str(value))
             j += 1
-        if len(run) >= 2 and has_word:
-            out.append("".join(run))
-            changed += 1
+        if len(digits) >= 2:
+            tail = re.search(r"[.,;:!?]+$", words[j - 1])
+            out.append("".join(digits) + (tail.group(0) if tail else ""))
             i = j
-            continue
-        number = _cardinal(lang, tokens, i)
-        if number is None:
+        else:
             out.append(words[i])
             i += 1
-            continue
-        value, j = number
-        if j == i + 1 and tokens[i] in _ARTICLES[lang]:
-            out.append(words[i])
-            i += 1
-            continue
-        text = str(value)
-        # Decimals: "cinco vírgula seis" -> 5.6
-        if j < len(tokens) and tokens[j] in _POINT[lang]:
-            frac, k = [], j + 1
-            while k < len(tokens) and tokens[k] in _DIGITS[lang] and len(frac) < 2:
-                frac.append(str(_DIGITS[lang][tokens[k]]))
-                k += 1
-            if frac:
-                text, j = f"{value}.{''.join(frac)}", k
-        out.append(text)
-        changed += 1
-        i = j
-    return out, changed
+    return " ".join(out)
+
+
+def _apply(text: str, rules: tuple[Repair, ...]) -> str:
+    for rule in rules:
+        text = rule.pattern.sub(rule.replace, text)
+    return text
+
+
+def _normalize_as(text: str, lang: str) -> str:
+    text = alpha2digit(text, lang)
+    text = _join_digit_runs(text, lang)
+    return _apply(_apply(text, REPAIRS), UNITS)
 
 
 def normalize_spoken(text: str, language: str | None = None) -> str:
-    """Return the transcript with spoken numbers and units rewritten as digits and mg/dL, mmol/L."""
-    words = text.split()
-    if not words:
+    """The transcript with spoken numbers and units rewritten as digits and mg/dL, mmol/L.
+
+    With an unknown language each of pt, en and es is tried and the rewrite that produced the most
+    digits wins (the words of different languages do not collide in practice).
+    """
+    if not text.split():
         return text
     lang = (language or "")[:2]
-    candidates = [lang] if lang in _DIGITS else list(_DIGITS)
-    best, best_changed = words, 0
-    for code in candidates:
-        converted, changed = _convert(code, words)
-        if changed > best_changed:
-            best, best_changed = converted, changed
-    result = _join_mixed(" ".join(best))
-    result = _MG_DL.sub("mg/dL", result)
-    return _MMOL_L.sub("mmol/L", result)
+    candidates = [lang] if lang in LANGUAGES else list(LANGUAGES)
+    results = [_normalize_as(text, code) for code in candidates]
+    return max(results, key=lambda result: sum(ch.isdigit() for ch in result))
