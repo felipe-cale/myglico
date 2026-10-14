@@ -873,6 +873,13 @@
   },
   "glicoAssistant": {
     "title": "Glico Assistant",
+    "greeting": "How can I help today?",
+    "greetingBody": "Type a value, speak, or send a photo of your meter's display. You review everything before it is saved.",
+    "toolsButton": "Queries and collaboration",
+    "toolsClose": "Close panel",
+    "toolsTitle": "Queries and collaboration",
+    "composerPlaceholder": "Type a reading or ask something…",
+    "composerPlaceholderLocked": "Choose a patient to start chatting",
     "intro": "Log a reading by typing, photographing the meter display or speaking. You always review before saving.",
     "selectPatient": "Patient for this conversation",
     "selectPatientPlaceholder": "Choose a linked patient",
@@ -972,7 +979,12 @@
       "disabledPhoto": "Photo reading is turned off. Use text or manual entry.",
       "disabledAudio": "Audio reading is turned off. Use text or manual entry.",
       "discarded": "The media was discarded; none of it was stored.",
-      "groupLabel": "Send photo or audio"
+      "groupLabel": "Send photo or audio",
+      "cameraButton": "Take a photo",
+      "previewAlt": "Preview of the chosen photo",
+      "sendPhoto": "Send photo",
+      "removePhoto": "Remove photo",
+      "audioCancel": "Cancel recording"
     },
     "query": {
       "readingsTitle": "Your recent readings",

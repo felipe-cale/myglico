@@ -21,6 +21,14 @@ async function openAssistant(ui, { lang, viewport } = {}) {
   await expect(ui.page.getByRole("heading", { level: 1, name: t("glicoAssistant.title", lang || "pt-BR") })).toBeVisible();
 }
 
+async function openTools(ui) {
+  await ui.page.getByRole("button", { name: t("glicoAssistant.toolsButton") }).click();
+}
+
+async function sendPickedPhoto(ui) {
+  await ui.page.getByRole("button", { name: t("glicoAssistant.media.sendPhoto") }).click();
+}
+
 async function expectNoHorizontalOverflow(page) {
   const dims = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, view: window.innerWidth }));
   expect(dims.doc, `content exceeds ${dims.view}px viewport`).toBeLessThanOrEqual(dims.view);
@@ -154,6 +162,7 @@ test.describe("Glico assistant - patient", () => {
       } } });
     });
     await openAssistant(ui);
+    await openTools(ui);
     await ui.page.locator("#glico-collaboration-kind").selectOption("investigation_open");
     await ui.page.locator("#glico-collaboration-subject").fill("Reading question");
     await ui.page.locator("#glico-collaboration-message").fill("Please review this reading");
@@ -173,6 +182,7 @@ test.describe("Glico assistant - patient", () => {
       delete window.webkitSpeechRecognition;
     });
     await openAssistant(ui);
+    await openTools(ui);
     await ui.page.getByRole("button", { name: t("glicoAssistant.investigation.dictate") }).click();
     await expect(ui.page.getByTestId("glico-error")).toHaveText(t("glicoAssistant.errors.dictationUnavailable"));
   });
@@ -196,6 +206,7 @@ test.describe("Glico assistant - patient", () => {
     await expect(list.locator("li")).toContainText("123 mg/dL");
     await expect(list.locator("time")).toHaveAttribute("datetime", "2025-06-12T08:30:00Z");
 
+    await openTools(ui);
     await ui.page.getByLabel(t("glicoAssistant.period.startLabel")).fill("2025-06-01");
     await ui.page.getByLabel(t("glicoAssistant.period.endLabel")).fill("2025-06-30");
     await ui.page.getByRole("button", { name: t("glicoAssistant.period.apply") }).click();
@@ -277,6 +288,7 @@ test.describe("Glico assistant - media states (UI against stubbed extract endpoi
       });
       await openAssistant(ui);
       await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "visor.png", mimeType: "image/png", buffer: PNG });
+      await sendPickedPhoto(ui);
       await expect(ui.page.getByTestId("glico-error")).toHaveText(t(`glicoAssistant.${item.key}`, "pt-BR", item.vars));
       expect(received["content-type"]).toBe("application/octet-stream");
       expect(received["x-glico-context-version"]).toBeTruthy();
@@ -306,6 +318,7 @@ test.describe("Glico assistant - media states (UI against stubbed extract endpoi
     await ui.page.route("**/api/glico/conversations/*/extract/image", () => {});
     await openAssistant(ui);
     await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "visor.png", mimeType: "image/png", buffer: PNG });
+    await sendPickedPhoto(ui);
     await expect(ui.page.getByText(t("glicoAssistant.media.processingPhoto"))).toBeVisible();
     await ui.page.getByRole("button", { name: t("glicoAssistant.media.cancel") }).click();
     await expect(ui.page.getByText(t("glicoAssistant.media.discarded"))).toBeVisible();
@@ -332,6 +345,7 @@ test.describe("Glico assistant - media states (UI against stubbed extract endpoi
     );
     await openAssistant(ui);
     await ui.page.getByTestId("glico-photo-input").setInputFiles({ name: "visor.png", mimeType: "image/png", buffer: PNG });
+    await sendPickedPhoto(ui);
     const card = ui.page.getByTestId("glico-proposal");
     await expect(card.getByLabel(t("glicoAssistant.valueLabel"))).toHaveValue("132");
     expect(confirmCalls).toBe(0);

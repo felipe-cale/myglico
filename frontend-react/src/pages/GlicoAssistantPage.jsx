@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import GlicoMediaCapture from "../components/GlicoMediaCapture";
 import GlicoProposalCard from "../components/GlicoProposalCard";
+import { CloseIcon, SendIcon, ToolsIcon } from "../components/GlicoIcons";
 import useDocumentTitle from "../hooks/useDocumentTitle";
 import "../glico.css";
 import {
@@ -102,6 +103,9 @@ export default function GlicoAssistantPage() {
   const conversationOwner = useRef(null);
   const confirmKeys = useRef(new Map());
   const proposalWrap = useRef(null);
+  const threadEnd = useRef(null);
+  const composerRef = useRef(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   const isPatient = conversation?.role === "patient";
   const isDoctor = conversation?.role === "doctor";
@@ -223,6 +227,28 @@ export default function GlicoAssistantPage() {
     if (proposal?.id) proposalWrap.current?.focus();
   }, [proposal?.id]);
 
+  useEffect(() => {
+    threadEnd.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
+  }, [messages.length, proposal?.id, shownReceipt]);
+
+  useEffect(() => {
+    const field = composerRef.current;
+    if (!field) return;
+    field.style.height = "auto";
+    field.style.height = `${Math.min(field.scrollHeight, 176)}px`;
+  }, [draft, textOn]);
+
+  useEffect(() => {
+    if (!hasPatientContext) setToolsOpen(false);
+  }, [hasPatientContext]);
+
+  const onComposerKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  };
+
   const clearFeedback = () => {
     setError(null);
     setNotice("");
@@ -293,6 +319,7 @@ export default function GlicoAssistantPage() {
   const showProposal = (next) => {
     setReceipt(null);
     setConversation((current) => withProposal(current, next));
+    setToolsOpen(false);
     addAssistant({ text: t("glicoAssistant.reviewPrompt") });
   };
 
@@ -610,29 +637,52 @@ export default function GlicoAssistantPage() {
     : "";
 
   return (
-    <section className="react-page glico" aria-labelledby="glico-title">
-      <header className="react-page-header glico__header">
-        <h1 id="glico-title">{t("glicoAssistant.title")}</h1>
-        <p>{t("glicoAssistant.intro")}</p>
+    <section className="react-page glico glico--chat" aria-labelledby="glico-title">
+      <header className="glico-bar">
+        <div className="glico-bar__title">
+          <img src="/img/myglico-mark.svg" alt="" className="glico-bar__mark" width="32" height="32" />
+          <h1 id="glico-title">{t("glicoAssistant.title")}</h1>
+        </div>
+        {isDoctor ? (
+          <div className="glico-bar__patient">
+            <label htmlFor="glico-patient" className="react-visually-hidden">{t("glicoAssistant.selectPatient")}</label>
+            <select id="glico-patient" className="react-field" value={selectedPatient} onChange={choosePatient} disabled={busy}>
+              <option value="">{t("glicoAssistant.selectPatientPlaceholder")}</option>
+              {patients.map((patient) => (
+                <option key={patient.id} value={patient.id}>{patient.display_name}</option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+        {hasPatientContext ? (
+          <button
+            type="button"
+            className={`react-button react-button--ghost glico-bar__tools${toolsOpen ? " is-open" : ""}`}
+            aria-expanded={toolsOpen}
+            aria-controls="glico-tools-panel"
+            aria-label={t("glicoAssistant.toolsButton")}
+            onClick={() => setToolsOpen((open) => !open)}
+          >
+            <ToolsIcon size={18} />
+            <span>{t("glicoAssistant.toolsButton")}</span>
+          </button>
+        ) : null}
       </header>
-
       {isDoctor ? (
-        <section className="react-panel glico__context">
-          <label htmlFor="glico-patient">{t("glicoAssistant.selectPatient")}</label>
-          <select id="glico-patient" className="react-field" value={selectedPatient} onChange={choosePatient} disabled={busy}>
-            <option value="">{t("glicoAssistant.selectPatientPlaceholder")}</option>
-            {patients.map((patient) => (
-              <option key={patient.id} value={patient.id}>{patient.display_name}</option>
-            ))}
-          </select>
-          <p className="glico-hint">{patients.length || busy ? t("glicoAssistant.patientContextPrivacy") : t("glicoAssistant.noPatients")}</p>
-        </section>
+        <p className="glico-hint glico-bar__hint">{patients.length || busy ? t("glicoAssistant.patientContextPrivacy") : t("glicoAssistant.noPatients")}</p>
       ) : null}
 
-      {hasPatientContext && (
-        <section className="react-panel glico__context">
-          <h3>{t("glicoAssistant.period.label")}</h3>
+      {hasPatientContext && toolsOpen ? (
+        <section id="glico-tools-panel" className="glico-panel" aria-label={t("glicoAssistant.toolsTitle")}>
+          <div className="glico-panel__head">
+            <h2>{t("glicoAssistant.toolsTitle")}</h2>
+            <button type="button" className="glico-icon-button" onClick={() => setToolsOpen(false)} aria-label={t("glicoAssistant.toolsClose")} title={t("glicoAssistant.toolsClose")}>
+              <CloseIcon />
+            </button>
+          </div>
+
           <form onSubmit={updatePeriod} className="glico__period-form">
+            <h3>{t("glicoAssistant.period.label")}</h3>
             <div className="glico__period-fields">
               <label htmlFor="glico-period-start">{t("glicoAssistant.period.startLabel")}</label>
               <input id="glico-period-start" className="react-field" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} disabled={busy} />
@@ -653,16 +703,57 @@ export default function GlicoAssistantPage() {
               )}
             </div>
           </form>
-        </section>
-      )}
 
-      <div className="glico__status" aria-live="polite">
-        {error ? <div className="glico-alert glico-alert--error" role="alert" data-testid="glico-error">{errorText}</div> : null}
-        {notice ? <div className="glico-alert glico-alert--success" role="status">{t(`glicoAssistant.${notice}`)}</div> : null}
-      </div>
+          <form onSubmit={prepareCollaboration} className="glico__collaboration-form" aria-labelledby="glico-collaboration-title">
+            <h3 id="glico-collaboration-title">{t("glicoAssistant.investigation.sectionTitle")}</h3>
+            <label htmlFor="glico-collaboration-kind">{t("glicoAssistant.investigation.actionLabel")}</label>
+            <select id="glico-collaboration-kind" className="react-field" value={collaborationKind} onChange={(event) => setCollaborationKind(event.target.value)} disabled={busy}>
+              <option value="investigation_open">{t("glicoAssistant.investigation.openAction")}</option>
+              <option value="investigation_message">{t("glicoAssistant.investigation.replyAction")}</option>
+            </select>
+            {collaborationKind === "investigation_open" ? (
+              <>
+                <label htmlFor="glico-collaboration-subject">{t("glicoAssistant.investigation.titleLabel")}</label>
+                <input id="glico-collaboration-subject" className="react-field" maxLength={180} value={collaborationTitle} onChange={(event) => setCollaborationTitle(event.target.value)} disabled={busy} />
+              </>
+            ) : (
+              <>
+                <label htmlFor="glico-investigation-id">{t("glicoAssistant.investigation.selectLabel")}</label>
+                <select id="glico-investigation-id" className="react-field" value={investigationId} onChange={(event) => setInvestigationId(event.target.value)} disabled={busy}>
+                  <option value="">{t("glicoAssistant.investigation.selectPlaceholder")}</option>
+                  {investigations.map((item) => <option key={item.id} value={item.id}>{t("glicoAssistant.query.investigationItem", { id: item.id, status: t(`investigation.status.${String(item.status).toLowerCase()}`, { defaultValue: t("glicoAssistant.query.statusUnknown") }), date: item.date })}</option>)}
+                </select>
+                {!investigations.length ? <p className="glico-hint">{t("glicoAssistant.investigation.findFirstHint")}</p> : null}
+              </>
+            )}
+            <label htmlFor="glico-collaboration-message">{t("glicoAssistant.investigation.messageLabel")}</label>
+            <textarea id="glico-collaboration-message" className="react-field" rows={3} maxLength={10000} value={collaborationText} onChange={(event) => setCollaborationText(event.target.value)} disabled={busy} />
+            <div className="glico__collaboration-actions">
+              <button type="button" className="react-button react-button--quiet" onClick={startDictation} disabled={busy}>{dictating ? t("glicoAssistant.investigation.stopDictation") : t("glicoAssistant.investigation.dictate")}</button>
+              <button type="submit" className="react-button react-button--primary" disabled={busy || !collaborationText.trim() || (collaborationKind === "investigation_open" && !collaborationTitle.trim()) || (collaborationKind === "investigation_message" && !investigationId)}>{t("glicoAssistant.investigation.review")}</button>
+            </div>
+            <p className="glico-hint">{t("glicoAssistant.investigation.dictationPrivacy")}</p>
+          </form>
+
+          {messages.length || proposal ? (
+            <section className="glico__faq" aria-labelledby="glico-faq-title">
+              <h3 id="glico-faq-title">{t("glicoAssistant.faq.title")}</h3>
+              <ul>
+                {FAQ_ITEMS.map((item) => (
+                  <li key={item}>
+                    <button type="button" className="glico-chip" onClick={() => { askFaq(item); setToolsOpen(false); }}>
+                      {t(`glicoAssistant.faq.${item}.q`)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </section>
+      ) : null}
 
       {capabilities && !textOn ? (
-        <section className="react-panel glico__disabled" role="status">
+        <section className="glico-panel glico__disabled" role="status">
           <h2>{t("glicoAssistant.unavailableTitle")}</h2>
           <p>{t("glicoAssistant.unavailableBody")}</p>
           <Link className="react-button react-button--ghost" to="/dashboard">{t("glicoAssistant.goDashboard")}</Link>
@@ -670,191 +761,184 @@ export default function GlicoAssistantPage() {
       ) : null}
 
       {textOn ? (
-        <section className="react-panel glico__chat" aria-label={t("glicoAssistant.chatLabel")}>
-          <ul className="glico__capabilities" aria-label={t("glicoAssistant.chatLabel")}>
-            <li className="react-badge react-badge--pending">{t("glicoAssistant.textAvailable")}</li>
-            <li className="react-badge">{capabilities.photo ? t("glicoAssistant.photoAvailable") : t("glicoAssistant.photoUnavailable")}</li>
-            <li className="react-badge">{capabilities.audio ? t("glicoAssistant.audioAvailable") : t("glicoAssistant.audioUnavailable")}</li>
-          </ul>
-
+        <section className="glico__chat" aria-label={t("glicoAssistant.chatLabel")}>
           <div className="glico__thread" role="log" aria-live="polite" aria-relevant="additions" data-testid="glico-thread">
-            {!messages.length ? <p className="glico__empty">{t("glicoAssistant.empty")}</p> : null}
+            {!messages.length && !proposal && !shownReceipt ? (
+              <div className="glico-welcome">
+                <img src="/img/myglico-mark.svg" alt="" width="56" height="56" className="glico-welcome__mark" />
+                <h2>{t("glicoAssistant.greeting")}</h2>
+                <p className="glico__empty">{hasPatientContext ? t("glicoAssistant.greetingBody") : (isDoctor ? t("glicoAssistant.selectPatientRequired") : t("glicoAssistant.contextLoading"))}</p>
+                {hasPatientContext ? (
+                  <ul className="glico-suggestions" aria-label={t("glicoAssistant.faq.title")}>
+                    {FAQ_ITEMS.map((item) => (
+                      <li key={item}>
+                        <button type="button" className="glico-chip" onClick={() => askFaq(item)}>
+                          {t(`glicoAssistant.faq.${item}.q`)}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+
             {messages.map((message) => (
               <article key={message.id} className={`glico__message glico__message--${message.role}`}>
-                <span className="glico__author">{t(message.role === "user" ? "glicoAssistant.userSaid" : "glicoAssistant.glicoSaid")}</span>
-                {message.type === "list" ? (
-                  <div className="glico__list" aria-label={message.title}>
-                    <h3>{message.title}</h3>
-                    <ul>
-                      {message.items.map((item, idx) => (
-                        <li key={`${message.id}-${idx}`}>
-                          {message.itemType === "reading" && (
-                            <>
-                              <strong>{item.value} mg/dL</strong>
-                              <time dateTime={item.timestamp}>{item.date}</time>
-                              {item.context && <span className="glico__context-label">{item.context}</span>}
-                            </>
-                          )}
-                          {message.itemType === "patient" && (
-                            <>
-                              <strong>{item.name}</strong>
-                              <span>({item.short_id})</span>
-                            </>
-                          )}
-                          {message.itemType === "metric" && (
-                            <>
-                              <time dateTime={item.date}>{item.date}</time>
-                              <span>{t("glicoAssistant.query.metricAverage")}: {item.avg} mg/dL</span>
-                              <span>{t("glicoAssistant.query.metricReadings")}: {item.count}</span>
-                              <span>{t("glicoAssistant.query.metricMinMax")}: {item.min}/{item.max} mg/dL</span>
-                              <span>{t("glicoAssistant.query.metricFreshness")}: {t(`glicoAssistant.analytics.${item.freshness}`, { defaultValue: item.freshness })}</span>
-                            </>
-                          )}
-                          {message.itemType === "investigation" && (
-                            <>
-                              <strong>{item.id}</strong>
-                              <span>{t("glicoAssistant.query.status")}: {t(`investigation.status.${String(item.status).toLowerCase()}`, { defaultValue: t("glicoAssistant.query.statusUnknown") })}</span>
-                              <time dateTime={item.date}>{item.date}</time>
-                            </>
-                          )}
-                          {message.itemType === "atypicalDay" && (
-                            <>
-                              <time dateTime={item.date}>{item.date}</time>
-                              <span>{t("glicoAssistant.query.score")}: {item.score}</span>
-                            </>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : message.type === "pdf" ? (
-                  <div className="glico__pdf">
-                    <h3>{message.title}</h3>
-                    <p>{message.message}</p>
-                    {message.url && (
-                      <a href={message.url} className="react-button react-button--primary" download>
-                        {message.downloadText}
-                      </a>
-                    )}
-                  </div>
-                ) : (
-                  <p>{message.text}</p>
-                )}
-                {message.links?.map((to) => (
-                  <Link key={to} to={to} className="glico__link">{t("glicoAssistant.goDashboard")}</Link>
-                ))}
+                {message.role === "assistant" ? <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" /> : null}
+                <div className="glico__bubble">
+                  <span className="react-visually-hidden">{t(message.role === "user" ? "glicoAssistant.userSaid" : "glicoAssistant.glicoSaid")}</span>
+                  {message.type === "list" ? (
+                    <div className="glico__list" aria-label={message.title}>
+                      <h3>{message.title}</h3>
+                      <ul>
+                        {message.items.map((item, idx) => (
+                          <li key={`${message.id}-${idx}`}>
+                            {message.itemType === "reading" && (
+                              <>
+                                <strong>{item.value} mg/dL</strong>
+                                <time dateTime={item.timestamp}>{item.date}</time>
+                                {item.context && <span className="glico__context-label">{item.context}</span>}
+                              </>
+                            )}
+                            {message.itemType === "patient" && (
+                              <>
+                                <strong>{item.name}</strong>
+                                <span>({item.short_id})</span>
+                              </>
+                            )}
+                            {message.itemType === "metric" && (
+                              <>
+                                <time dateTime={item.date}>{item.date}</time>
+                                <span>{t("glicoAssistant.query.metricAverage")}: {item.avg} mg/dL</span>
+                                <span>{t("glicoAssistant.query.metricReadings")}: {item.count}</span>
+                                <span>{t("glicoAssistant.query.metricMinMax")}: {item.min}/{item.max} mg/dL</span>
+                                <span>{t("glicoAssistant.query.metricFreshness")}: {t(`glicoAssistant.analytics.${item.freshness}`, { defaultValue: item.freshness })}</span>
+                              </>
+                            )}
+                            {message.itemType === "investigation" && (
+                              <>
+                                <strong>{item.id}</strong>
+                                <span>{t("glicoAssistant.query.status")}: {t(`investigation.status.${String(item.status).toLowerCase()}`, { defaultValue: t("glicoAssistant.query.statusUnknown") })}</span>
+                                <time dateTime={item.date}>{item.date}</time>
+                              </>
+                            )}
+                            {message.itemType === "atypicalDay" && (
+                              <>
+                                <time dateTime={item.date}>{item.date}</time>
+                                <span>{t("glicoAssistant.query.score")}: {item.score}</span>
+                              </>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : message.type === "pdf" ? (
+                    <div className="glico__pdf">
+                      <h3>{message.title}</h3>
+                      <p>{message.message}</p>
+                      {message.url && (
+                        <a href={message.url} className="react-button react-button--primary" download>
+                          {message.downloadText}
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <p>{message.text}</p>
+                  )}
+                  {message.links?.map((to) => (
+                    <Link key={to} to={to} className="glico__link">{t("glicoAssistant.goDashboard")}</Link>
+                  ))}
+                </div>
               </article>
             ))}
+
+            {shownReceipt ? (
+              <article className="glico__message glico__message--assistant">
+                <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" />
+                <div className="glico__bubble glico__bubble--wide">
+                  <div className="glico-alert glico-alert--success glico__receipt" role="status" data-testid="glico-receipt">
+                    <strong>{t("glicoAssistant.receiptTitle")}</strong>
+                    <p>{t("glicoAssistant.receiptBody", { time: receiptTime, status: analyticsLabel })}</p>
+                    {isPatient && session_panel_link(conversation) ? (
+                      <Link to={session_panel_link(conversation)} className="glico__link">{t("glicoAssistant.viewPatientPanel")}</Link>
+                    ) : null}
+                  </div>
+                </div>
+              </article>
+            ) : null}
+
+            {proposal ? (
+              <article className="glico__message glico__message--assistant">
+                <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" />
+                <div className="glico__bubble glico__bubble--wide">
+                  <div ref={proposalWrap} tabIndex={-1} className="glico__proposal-wrap">
+                    <GlicoProposalCard
+                      proposal={proposal}
+                      role={conversation?.role}
+                      busy={busy}
+                      onSave={saveProposal}
+                      onConfirm={confirmProposal}
+                      onDiscard={discardProposal}
+                    />
+                  </div>
+                </div>
+              </article>
+            ) : null}
+
+            {busy && !processing && messages.length ? (
+              <div className="glico__typing" role="status">
+                <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" />
+                <span className="glico__dots" aria-hidden="true"><i /><i /><i /></span>
+                <span className="react-visually-hidden">{t("glicoAssistant.working")}</span>
+              </div>
+            ) : null}
+            <div ref={threadEnd} aria-hidden="true" />
           </div>
 
-          {shownReceipt ? (
-            <div className="glico-alert glico-alert--success glico__receipt" role="status" data-testid="glico-receipt">
-              <strong>{t("glicoAssistant.receiptTitle")}</strong>
-              <p>{t("glicoAssistant.receiptBody", { time: receiptTime, status: analyticsLabel })}</p>
-              {isPatient && session_panel_link(conversation) ? (
-                <Link to={session_panel_link(conversation)} className="glico__link">{t("glicoAssistant.viewPatientPanel")}</Link>
-              ) : null}
+          <div className="glico-dock">
+            <div className="glico__status" aria-live="polite">
+              {error && !["invalidRange", "maxRange"].includes(error.key) ? <div className="glico-alert glico-alert--error" role="alert" data-testid="glico-error">{errorText}</div> : null}
+              {notice ? <div className="glico-alert glico-alert--success" role="status">{t(`glicoAssistant.${notice}`)}</div> : null}
             </div>
-          ) : null}
 
-          {proposal ? (
-            <div ref={proposalWrap} tabIndex={-1} className="glico__proposal-wrap">
-              <GlicoProposalCard
-                proposal={proposal}
-                role={conversation?.role}
-                busy={busy}
-                onSave={saveProposal}
-                onConfirm={confirmProposal}
-                onDiscard={discardProposal}
+            <form className="glico__composer" onSubmit={submitMessage}>
+              <GlicoMediaCapture
+                capabilities={capabilities}
+                enabled={hasPatientContext}
+                processing={processing}
+                onSubmit={submitMedia}
+                onCancel={cancelMedia}
+                onError={(key) => setError({ key })}
               />
-            </div>
-          ) : null}
-
-          <section className="glico__faq" aria-labelledby="glico-faq-title">
-            <h2 id="glico-faq-title">{t("glicoAssistant.faq.title")}</h2>
-            <ul>
-              {FAQ_ITEMS.map((item) => (
-                <li key={item}>
-                  <button type="button" className="react-button react-button--quiet react-button--compact" onClick={() => askFaq(item)}>
-                    {t(`glicoAssistant.faq.${item}.q`)}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {hasPatientContext ? (
-            <section className="glico__collaboration" aria-labelledby="glico-collaboration-title">
-              <h2 id="glico-collaboration-title">{t("glicoAssistant.investigation.sectionTitle")}</h2>
-              <form onSubmit={prepareCollaboration} className="glico__collaboration-form">
-                <label htmlFor="glico-collaboration-kind">{t("glicoAssistant.investigation.actionLabel")}</label>
-                <select id="glico-collaboration-kind" className="react-field" value={collaborationKind} onChange={(event) => setCollaborationKind(event.target.value)} disabled={busy}>
-                  <option value="investigation_open">{t("glicoAssistant.investigation.openAction")}</option>
-                  <option value="investigation_message">{t("glicoAssistant.investigation.replyAction")}</option>
-                </select>
-                {collaborationKind === "investigation_open" ? (
-                  <>
-                    <label htmlFor="glico-collaboration-subject">{t("glicoAssistant.investigation.titleLabel")}</label>
-                    <input id="glico-collaboration-subject" className="react-field" maxLength={180} value={collaborationTitle} onChange={(event) => setCollaborationTitle(event.target.value)} disabled={busy} />
-                  </>
-                ) : (
-                  <>
-                    <label htmlFor="glico-investigation-id">{t("glicoAssistant.investigation.selectLabel")}</label>
-                    <select id="glico-investigation-id" className="react-field" value={investigationId} onChange={(event) => setInvestigationId(event.target.value)} disabled={busy}>
-                      <option value="">{t("glicoAssistant.investigation.selectPlaceholder")}</option>
-                      {investigations.map((item) => <option key={item.id} value={item.id}>{t("glicoAssistant.query.investigationItem", { id: item.id, status: t(`investigation.status.${String(item.status).toLowerCase()}`, { defaultValue: t("glicoAssistant.query.statusUnknown") }), date: item.date })}</option>)}
-                    </select>
-                    {!investigations.length ? <p className="glico-hint">{t("glicoAssistant.investigation.findFirstHint")}</p> : null}
-                  </>
-                )}
-                <label htmlFor="glico-collaboration-message">{t("glicoAssistant.investigation.messageLabel")}</label>
-                <textarea id="glico-collaboration-message" className="react-field" rows={3} maxLength={10000} value={collaborationText} onChange={(event) => setCollaborationText(event.target.value)} disabled={busy} />
-                <div className="glico__collaboration-actions">
-                  <button type="button" className="react-button react-button--quiet" onClick={startDictation} disabled={busy}>{dictating ? t("glicoAssistant.investigation.stopDictation") : t("glicoAssistant.investigation.dictate")}</button>
-                  <button type="submit" className="react-button react-button--primary" disabled={busy || !collaborationText.trim() || (collaborationKind === "investigation_open" && !collaborationTitle.trim()) || (collaborationKind === "investigation_message" && !investigationId)}>{t("glicoAssistant.investigation.review")}</button>
-                </div>
-                <p className="glico-hint">{t("glicoAssistant.investigation.dictationPrivacy")}</p>
-              </form>
-            </section>
-          ) : null}
-
-          <form className="glico__composer" onSubmit={submitMessage}>
-            <label htmlFor="glico-message">{t("glicoAssistant.messageLabel")}</label>
-            <textarea
-              id="glico-message"
-              className="react-field"
-              rows={3}
-              maxLength={maxChars}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder={t("glicoAssistant.placeholder")}
-              disabled={!hasPatientContext || busy}
-              aria-describedby="glico-composer-help"
-            />
-            <div className="glico__composer-footer">
-              <span id="glico-composer-help" className="glico-hint">
-                {!hasPatientContext
-                  ? (isDoctor ? t("glicoAssistant.selectPatientRequired") : t("glicoAssistant.contextLoading"))
-                  : `${t("glicoAssistant.charCount", { count: draft.length, max: maxChars })} · ${t("glicoAssistant.privacyNote")}`}
+              <div className="glico-composer__field">
+                <label htmlFor="glico-message" className="react-visually-hidden">{t("glicoAssistant.messageLabel")}</label>
+                <textarea
+                  id="glico-message"
+                  ref={composerRef}
+                  className="glico-composer__input"
+                  rows={1}
+                  maxLength={maxChars}
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={onComposerKeyDown}
+                  placeholder={hasPatientContext ? t("glicoAssistant.composerPlaceholder") : t("glicoAssistant.composerPlaceholderLocked")}
+                  disabled={!hasPatientContext || busy}
+                  aria-describedby="glico-composer-help"
+                />
+              </div>
+              <span id="glico-composer-help" className="glico-composer__help">
+                {draft.length > maxChars * 0.8 ? t("glicoAssistant.charCount", { count: draft.length, max: maxChars }) : ""}
               </span>
-              <button type="submit" className="react-button react-button--primary" disabled={!hasPatientContext || busy || !draft.trim()}>
-                {busy && !processing ? t("glicoAssistant.working") : t("glicoAssistant.send")}
+              <button type="submit" className="glico-send" aria-label={t("glicoAssistant.send")} title={t("glicoAssistant.send")} disabled={!hasPatientContext || busy || !draft.trim()}>
+                {busy && !processing ? <span className="glico-spinner glico-spinner--light" aria-hidden="true" /> : <SendIcon />}
               </button>
-            </div>
-          </form>
-
-          <GlicoMediaCapture
-            capabilities={capabilities}
-            enabled={hasPatientContext}
-            processing={processing}
-            onSubmit={submitMedia}
-            onCancel={cancelMedia}
-            onError={(key) => setError({ key })}
-          />
+            </form>
+          </div>
         </section>
       ) : null}
 
       <p className="glico-hint glico__disclaimer">{t("glicoAssistant.notClinicalAdvice")}</p>
+      <p className="glico-hint glico__disclaimer">{t("glicoAssistant.privacyNote")}</p>
     </section>
   );
 }

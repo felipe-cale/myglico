@@ -873,6 +873,13 @@
   },
   "glicoAssistant": {
     "title": "Asistente Glico",
+    "greeting": "¿Cómo puedo ayudarte hoy?",
+    "greetingBody": "Escribe el valor, habla o envía una foto del visor del glucómetro. Revisas todo antes de guardar.",
+    "toolsButton": "Consultas y colaboración",
+    "toolsClose": "Cerrar panel",
+    "toolsTitle": "Consultas y colaboración",
+    "composerPlaceholder": "Escribe una medición o pregunta algo…",
+    "composerPlaceholderLocked": "Elige un paciente para conversar",
     "intro": "Registre una medición escribiendo, fotografiando la pantalla o hablando. Siempre revisa antes de guardar.",
     "selectPatient": "Paciente de esta conversación",
     "selectPatientPlaceholder": "Elija un paciente vinculado",
@@ -972,7 +979,12 @@
       "disabledPhoto": "La lectura de fotos está desactivada. Use texto o el registro manual.",
       "disabledAudio": "La lectura de audio está desactivada. Use texto o el registro manual.",
       "discarded": "El archivo fue descartado; nada se guardó.",
-      "groupLabel": "Enviar foto o audio"
+      "groupLabel": "Enviar foto o audio",
+      "cameraButton": "Tomar una foto",
+      "previewAlt": "Vista previa de la foto elegida",
+      "sendPhoto": "Enviar foto",
+      "removePhoto": "Quitar foto",
+      "audioCancel": "Cancelar grabación"
     },
     "query": {
       "readingsTitle": "Sus lecturas recientes",

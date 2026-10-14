@@ -1,93 +1,226 @@
 .glico {
-  display: grid;
-  gap: 1rem;
-  max-width: 56rem;
-  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 52rem;
   min-width: 0;
+  min-height: calc(100dvh - 11rem);
+  margin-inline: auto;
 }
 
 .glico > * {
   min-width: 0;
 }
 
-.glico__header p,
 .glico-hint {
   color: var(--react-muted);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
   margin: 0;
 }
 
-.glico__context,
-.glico__chat,
-.glico__disabled {
-  display: grid;
-  gap: 0.75rem;
+/* Header bar: identity, patient selector (doctor), tools toggle */
+.glico-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
 }
 
-.glico__context label,
-.glico__composer label,
-.glico-card label {
+.glico-bar__title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-right: auto;
+}
+
+.glico-bar__title h1 {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  line-height: 1.15;
+}
+
+.glico-bar__mark {
+  border-radius: 10px;
+}
+
+.glico-bar__patient {
+  flex: 1 1 15rem;
+  max-width: 24rem;
+}
+
+.glico-bar__patient .react-field {
+  width: 100%;
+}
+
+.glico-bar__tools {
+  gap: 0.5rem;
+}
+
+.glico-bar__tools.is-open {
+  background: var(--tint-blue-10);
+}
+
+.glico-bar__hint {
+  margin-top: -0.25rem;
+}
+
+/* Secondary panel: period, collaboration, help */
+.glico-panel {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.1rem;
+  border: 1px solid var(--react-border);
+  border-radius: 24px;
+  background: var(--react-surface-solid);
+  box-shadow: 0 10px 28px rgba(20, 79, 126, 0.1);
+}
+
+.glico-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.glico-panel h2,
+.glico-panel h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.glico-panel label {
   font-weight: 600;
   color: var(--react-text);
 }
 
-.glico__capabilities {
-  list-style: none;
+.glico__disabled {
+  justify-items: start;
+}
+
+/* Thread */
+.glico__chat {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .glico__thread {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 0.5rem 0 1.25rem;
+}
+
+.glico-welcome {
   display: grid;
+  justify-items: center;
   gap: 0.6rem;
-  max-height: 24rem;
-  overflow-y: auto;
-  padding: 0.25rem;
+  margin: auto;
+  padding: 2rem 0 1rem;
+  text-align: center;
+}
+
+.glico-welcome__mark {
+  border-radius: 16px;
+}
+
+.glico-welcome h2 {
+  margin: 0.25rem 0 0;
+  font-size: clamp(1.5rem, 3.4vw, 2rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .glico__empty {
-  color: var(--react-muted);
+  max-width: 34rem;
   margin: 0;
+  color: var(--react-muted);
+}
+
+.glico-suggestions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  width: 100%;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.glico-chip {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--react-border);
+  border-radius: 18px;
+  background: var(--react-surface-solid);
+  color: var(--react-text);
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.glico-chip:hover {
+  background: var(--tint-blue-8);
+  border-color: var(--tint-blue-32);
 }
 
 .glico__message {
-  max-width: min(100%, 38rem);
-  padding: 0.6rem 0.85rem;
-  border-radius: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-width: 0;
+  animation: glico-rise 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glico__avatar {
+  flex: none;
+  margin-top: 0.1rem;
+  border-radius: 9px;
+}
+
+.glico__bubble {
+  min-width: 0;
+  max-width: min(100%, 42rem);
   overflow-wrap: anywhere;
 }
 
-.glico__message p {
-  margin: 0.15rem 0 0;
+.glico__bubble p {
+  margin: 0;
+  line-height: 1.6;
+  max-width: 68ch;
 }
 
 .glico__message--user {
-  justify-self: end;
-  background: var(--tint-blue-10);
+  justify-content: flex-end;
 }
 
-.glico__message--assistant {
-  justify-self: start;
-  background: var(--tint-cyan-12);
+.glico__message--user .glico__bubble {
+  max-width: min(85%, 34rem);
+  padding: 0.7rem 1rem;
+  border-radius: 20px 20px 6px 20px;
+  background: var(--react-action-start);
+  color: #fff;
 }
 
-.glico__author {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--react-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.glico__message--assistant .glico__bubble--wide {
+  width: 100%;
+  max-width: 100%;
 }
 
 .glico__link {
   display: inline-block;
-  margin-top: 0.35rem;
+  margin-top: 0.4rem;
   color: var(--react-blue-deep);
   font-weight: 600;
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .glico__link:focus-visible,
@@ -100,9 +233,32 @@
   outline-offset: 4px;
 }
 
+.glico__typing {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.glico__dots {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.glico__dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--react-slate);
+  animation: glico-dot 1.1s ease-in-out infinite;
+}
+
+.glico__dots i:nth-child(2) { animation-delay: 0.15s; }
+.glico__dots i:nth-child(3) { animation-delay: 0.3s; }
+
+/* Alerts */
 .glico-alert {
   padding: 0.7rem 0.9rem;
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid var(--react-border);
   overflow-wrap: anywhere;
 }
@@ -123,13 +279,238 @@
   color: var(--react-green-deep);
 }
 
+/* Composer dock */
+.glico-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0 calc(0.25rem + env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, rgba(244, 251, 254, 0), var(--react-bg) 28%);
+}
+
+.glico__status:empty {
+  display: none;
+}
+
+.glico__composer {
+  display: grid;
+  grid-template-areas:
+    "strip strip strip"
+    "field field field"
+    "tools help send";
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  padding: 0.5rem 0.6rem 0.55rem 0.9rem;
+  border: 1px solid var(--tint-blue-32);
+  border-radius: 28px;
+  background: var(--react-surface-solid);
+  box-shadow: 0 10px 30px rgba(20, 79, 126, 0.14);
+  transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.glico__composer:focus-within {
+  border-color: var(--tint-blue-55);
+  box-shadow: 0 10px 30px rgba(20, 79, 126, 0.14), 0 0 0 3px var(--tint-blue-18);
+}
+
+.glico-composer__field {
+  grid-area: field;
+  display: grid;
+}
+
+.glico-composer__input {
+  width: 100%;
+  min-height: 2.75rem;
+  max-height: 11rem;
+  padding: 0.5rem 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--react-text);
+  font: inherit;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+.glico-composer__input::placeholder {
+  color: var(--react-muted);
+}
+
+.glico-composer__input::selection {
+  background: var(--tint-blue-18);
+}
+
+.glico-composer__help {
+  grid-area: help;
+  justify-self: end;
+  color: var(--react-muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.glico-send {
+  grid-area: send;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--react-action-gradient);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 160ms ease-out, opacity 160ms ease-out;
+}
+
+.glico-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.glico-send:focus-visible,
+.glico-icon-button:focus-visible,
+.glico-chip:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.glico-send:disabled {
+  background: var(--state-disabled-bg, rgba(82, 100, 122, 0.16));
+  color: var(--react-muted);
+  cursor: not-allowed;
+}
+
+.glico-tools {
+  grid-area: tools;
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.glico-tools__note {
+  max-width: 11rem;
+  margin-left: 0.4rem;
+  color: var(--react-muted);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.glico-icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--react-blue-deep);
+  cursor: pointer;
+  transition: background-color 160ms ease-out;
+}
+
+.glico-icon-button:hover:not(:disabled) {
+  background: var(--tint-blue-10);
+}
+
+.glico-icon-button:disabled {
+  color: var(--react-slate);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Attachment strip: photo preview, recording, processing */
+.glico-attach {
+  grid-area: strip;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.glico-attach:empty {
+  display: none;
+}
+
+.glico-attach__photo,
+.glico-attach__recording,
+.glico-attach__progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem;
+  border-radius: 18px;
+  background: var(--tint-blue-6);
+}
+
+.glico-attach__photo img {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.glico-attach__meta {
+  margin-right: auto;
+  color: var(--react-muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.glico-attach__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--react-rose);
+  animation: glico-pulse 1.2s ease-in-out infinite;
+}
+
+.glico-attach__clock {
+  margin-right: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.glico-attach .react-button {
+  min-height: 40px;
+  gap: 0.4rem;
+}
+
+.glico-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid var(--tint-blue-32);
+  border-top-color: var(--react-blue);
+  border-radius: 50%;
+  animation: glico-spin 0.8s linear infinite;
+}
+
+.glico-spinner--light {
+  border-color: rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+}
+
+.glico__disclaimer {
+  text-align: center;
+  font-size: 0.8125rem;
+}
+
+/* Proposal card */
 .glico-card {
   display: grid;
   gap: 0.6rem;
   padding: 1rem;
   border: 1px solid var(--tint-blue-32);
-  border-radius: 16px;
+  border-radius: 20px;
   background: var(--react-surface-solid);
+  box-shadow: 0 6px 20px rgba(20, 79, 126, 0.08);
+}
+
+.glico-card label {
+  font-weight: 600;
+  color: var(--react-text);
 }
 
 .glico-card h2 {
@@ -165,16 +546,11 @@
   min-width: 0;
 }
 
-.glico-card__actions,
-.glico__composer-footer {
+.glico-card__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
-  justify-content: space-between;
-}
-
-.glico-card__actions {
   justify-content: flex-start;
   margin-top: 0.4rem;
 }
@@ -183,100 +559,11 @@
   min-height: 44px;
 }
 
-.glico__faq h2 {
-  font-size: 1rem;
-  margin: 0 0 0.4rem;
-}
-
-.glico__faq ul {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0;
-  padding: 0;
-}
-
-.glico__faq .react-button {
-  min-height: 44px;
-  white-space: normal;
-  text-align: left;
-}
-
-.glico__collaboration,
-.glico__collaboration-form {
-  display: grid;
-  gap: 0.6rem;
-  min-width: 0;
-}
-
-.glico__collaboration h2 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.glico__collaboration-form label {
-  font-weight: 600;
-  color: var(--react-text);
-}
-
-.glico__collaboration-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.glico__collaboration-actions .react-button {
-  min-height: 44px;
-}
-
-.glico__composer {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.glico__composer textarea,
 .glico-card textarea {
   resize: vertical;
 }
 
-.glico__composer .react-button--primary {
-  min-height: 44px;
-}
-
-.glico-media {
-  display: grid;
-  gap: 0.6rem;
-  border-top: 1px solid var(--react-border);
-  padding-top: 0.75rem;
-}
-
-.glico-media__item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-}
-
-.glico-media__item .react-button,
-.glico-media__progress .react-button {
-  min-height: 44px;
-}
-
-.glico-media__progress {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 12px;
-  background: var(--tint-blue-8);
-}
-
-.glico__disclaimer {
-  text-align: center;
-}
-
+/* Lists and PDF results */
 .glico__list h3 {
   margin: 0 0 0.4rem;
   font-size: 0.95rem;
@@ -295,8 +582,8 @@
 .glico__list li {
   display: grid;
   gap: 0.2rem;
-  padding: 0.5rem;
-  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
   background: var(--tint-blue-6);
   border: 1px solid var(--react-border);
 }
@@ -304,7 +591,7 @@
 .glico__list li > * {
   display: inline-block;
   margin-right: 0.75rem;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .glico__list li time {
@@ -314,45 +601,19 @@
 
 .glico__list li strong {
   color: var(--react-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .glico__context-label {
   color: var(--react-muted);
-  font-size: 0.8rem;
-}
-
-.glico__period-form {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.glico__period-fields {
-  display: grid;
-  gap: 0.5rem;
-  grid-template-columns: 1fr 1fr;
-}
-
-.glico__period-fields label {
-  font-weight: 600;
-  color: var(--react-text);
-  font-size: 0.85rem;
-}
-
-.glico__period-fields .react-field {
-  min-height: 3rem;
-}
-
-.glico__period-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  font-size: 0.8125rem;
 }
 
 .glico__pdf {
   display: grid;
   gap: 0.5rem;
-  padding: 0.75rem;
-  border-radius: 12px;
+  padding: 0.85rem;
+  border-radius: 16px;
   background: var(--tint-blue-8);
   border: 1px solid var(--react-border);
 }
@@ -373,6 +634,58 @@
   min-height: 44px;
 }
 
+/* Tools panel forms */
+.glico__period-form,
+.glico__collaboration-form {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.glico__period-fields {
+  display: grid;
+  gap: 0.4rem 0.75rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.glico__period-fields label {
+  grid-row: 1;
+  font-size: 0.875rem;
+}
+
+.glico__period-fields label:last-of-type {
+  grid-column: 2;
+}
+
+.glico__period-fields .react-field {
+  grid-row: 2;
+  min-height: 3rem;
+}
+
+.glico__period-fields .react-field:last-of-type {
+  grid-column: 2;
+}
+
+.glico__period-actions,
+.glico__collaboration-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.glico__collaboration-actions .react-button,
+.glico__period-actions .react-button {
+  min-height: 44px;
+}
+
+.glico__faq ul {
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0;
+  padding: 0;
+}
+
 .glico__associated-days {
   display: grid;
   gap: 0.3rem;
@@ -383,7 +696,7 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.4rem;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--tint-blue-6);
   border: 1px solid var(--react-border);
   cursor: pointer;
@@ -393,11 +706,26 @@
   accent-color: var(--react-blue);
 }
 
-@media (min-width: 48rem) {
-  .glico__thread {
-    max-height: 28rem;
-  }
+@keyframes glico-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
 
+@keyframes glico-dot {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+@keyframes glico-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes glico-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (min-width: 48rem) {
   .glico-card__form {
     grid-template-columns: 1fr 1fr;
     column-gap: 1rem;
@@ -410,19 +738,77 @@
     grid-column: 1 / -1;
   }
 
-  .glico-media {
+  .glico-panel {
     grid-template-columns: 1fr 1fr;
+    align-items: start;
   }
 
-  .glico-media__progress {
+  .glico-panel__head,
+  .glico__faq {
     grid-column: 1 / -1;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .glico * {
-    scroll-behavior: auto;
-    transition: none;
-    animation: none;
+@media (max-width: 40rem) {
+  .glico {
+    min-height: calc(100dvh - 9rem);
   }
+
+  .glico-suggestions {
+    grid-template-columns: 1fr;
+  }
+
+  .glico__message--user .glico__bubble {
+    max-width: 90%;
+  }
+
+  .glico-bar__tools span {
+    display: none;
+  }
+
+  .glico-bar__tools {
+    padding-inline: 0.75rem;
+  }
+
+  .glico-tools__note {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glico *,
+  .glico *::before,
+  .glico *::after {
+    scroll-behavior: auto;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Fields inside the chat surfaces follow the MyGlico field language */
+.glico-bar .react-field,
+.glico-panel .react-field,
+.glico-card .react-field {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--tint-blue-32);
+  border-radius: 14px;
+  background: var(--react-surface-solid);
+  color: var(--react-text);
+  font: inherit;
+}
+
+.glico-bar .react-field:focus-visible,
+.glico-panel .react-field:focus-visible,
+.glico-card .react-field:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--tint-blue-55);
+}
+
+.glico-bar .react-field:disabled,
+.glico-panel .react-field:disabled,
+.glico-card .react-field:disabled {
+  background: var(--state-disabled-bg, rgba(82, 100, 122, 0.16));
+  color: var(--react-muted);
 }
