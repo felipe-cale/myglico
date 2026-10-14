@@ -145,15 +145,26 @@ def create_media_app(
         texts = [item.text for item in result.candidates[: engine.limits.max_candidates]]
         # Only digit-only display lines qualify as candidate readings; separators
         # are excluded so dates and clock strings are not treated as glucose.
-        numeric = []
-        numeric_confidence = []
+        readings = []
         for item in result.candidates:
             if re.fullmatch(r"\s*\d{2,4}\s*", item.text):
-                numeric.append(int(item.text.strip()))
-                if item.confidence is not None: numeric_confidence.append(item.confidence)
-        unit_present = any(_UNIT_RE.search(text) for text in texts)
+                height = (item.box[3] - item.box[1]) if item.box else 0
+                readings.append((int(item.text.strip()), item.confidence, height))
+        in_range = [r for r in readings
+                    if engine.limits.min_glucose_mg_dl <= r[0] <= engine.limits.max_glucose_mg_dl]
+        # Meters print the result in the largest digits; with several plausible
+        # numbers (time, date, memory slot) take the clearly tallest one.
+        chosen = in_range
+        if len(in_range) > 1:
+            ranked = sorted(in_range, key=lambda r: r[2], reverse=True)
+            if ranked[0][2] > 0 and ranked[0][2] >= 1.25 * ranked[1][2]:
+                chosen = [ranked[0]]
+        numeric = [r[0] for r in chosen] if chosen else [r[0] for r in readings]
+        numeric_confidence = [r[1] for r in (chosen or readings) if r[1] is not None]
         confidence = min(numeric_confidence) if numeric_confidence else None
-        assessment = _assessment(numeric, unit_present, confidence, engine.limits)
+        # A missing unit is assumed mg/dL: the proposal is still reviewed and
+        # editable by the user before anything is written.
+        assessment = _assessment(numeric, True, confidence, engine.limits)
         return JSONResponse(
             {
                 "correlation_id": correlation_id,

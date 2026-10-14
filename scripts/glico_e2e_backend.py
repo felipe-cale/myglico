@@ -48,6 +48,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8012)
+    parser.add_argument("--media", action="store_true",
+                        help="enable photo/audio and spawn the local media worker (needs .venv-media and --models)")
+    parser.add_argument("--models", default="tmp/media-f1/models-en")
+    parser.add_argument("--worker-port", type=int, default=8400)
     args = parser.parse_args()
     temp_root = Path(tempfile.mkdtemp(prefix="myglico-glico-e2e-"))
     db_path = temp_root / "e2e.sqlite3"
@@ -62,6 +66,22 @@ def main() -> None:
         "MYGLICO_PROVENANCE_DIR": str(temp_root / "provenance"),
         "MYGLICO_RAW_DATA_DIR": str(temp_root / "raw"),
     })
+    worker_proc = None
+    if args.media:
+        media_secret = secrets.token_hex(32)
+        worker_python = ROOT / ".venv-media" / "Scripts" / "python.exe"
+        if not worker_python.exists():
+            worker_python = ROOT / ".venv-media" / "bin" / "python"
+        worker_env = {**os.environ, "PADDLE_PDX_MODEL_SOURCE": "LOCAL", "HF_HUB_OFFLINE": "1",
+                      "TRANSFORMERS_OFFLINE": "1", "PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK": "True"}
+        worker_proc = subprocess.Popen([str(worker_python), str(ROOT / "scripts/media/run_local_worker.py"),
+            "--models", str(ROOT / args.models), "--secret", media_secret, "--port", str(args.worker_port)],
+            cwd=ROOT, env=worker_env)
+        env.update({
+            "MYGLICO_GLICO_PHOTO_ENABLED": "true", "MYGLICO_GLICO_AUDIO_ENABLED": "true",
+            "MYGLICO_GLICO_MEDIA_WORKER_URL": f"http://127.0.0.1:{args.worker_port}",
+            "MYGLICO_GLICO_MEDIA_WORKER_SECRET": media_secret, "MYGLICO_GLICO_MEDIA_GLOBAL_JOBS": "2",
+        })
     os.environ.update({key: value for key, value in env.items() if key.startswith("MYGLICO_")})
     migration = subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=ROOT, env=env, capture_output=True, text=True)
@@ -119,6 +139,8 @@ def main() -> None:
         server.should_exit = True
         thread.join(timeout=10)
     import shutil
+    if worker_proc is not None:
+        worker_proc.terminate()
     engine.dispose()
     shutil.rmtree(temp_root, ignore_errors=True)
 

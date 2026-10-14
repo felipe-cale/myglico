@@ -26,11 +26,8 @@ class RedisReplayStore(ReplayStore):
 
 
 def _secret() -> bytes:
-    value = os.environ.get("MYGLICO_MEDIA_HMAC_SECRET", "")
-    try:
-        secret = bytes.fromhex(value)
-    except ValueError:
-        secret = b""
+    # Same key material as the gateway signer: the configured string as UTF-8.
+    secret = os.environ.get("MYGLICO_MEDIA_HMAC_SECRET", "").encode()
     if len(secret) < 32:
         raise RuntimeError("media worker HMAC secret is not configured")
     return secret

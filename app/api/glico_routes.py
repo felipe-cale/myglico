@@ -903,7 +903,15 @@ async def unavailable_media(conversation_id: str, media_kind: str, request: Requ
                 and (media_kind == "image" or len(extracted_texts) == 1)
                 and current.patient_id is not None
                 and (media_kind == "image" or current.role == "patient")):
-            proposal_result = _make_proposal(db, current, text)
+            # The worker already isolated the reading; parse that value, not the
+            # surrounding OCR text (brand, date, clock), which reads as several values.
+            if media_kind == "image":
+                if re.search(r"(hi|lo)", text, re.I):
+                    proposal_result = {"type": "clarification", "answer_key": "glico.reading.unsupported_signal"}
+                else:
+                    proposal_result = _make_proposal(db, current, f"{trusted_value:g} mg/dL")
+            else:
+                proposal_result = _make_proposal(db, current, text)
         if proposal_result and proposal_result.get("type") == "proposal":
             proposal = db.get(GlicoProposal, proposal_result["proposal"]["id"])
             if float(proposal_result["proposal"]["fields"].get("glucose_mg_dl", -1)) != trusted_value:
