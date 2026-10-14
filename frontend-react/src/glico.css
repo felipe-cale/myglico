@@ -1076,3 +1076,30 @@
 .glico__dots i {
   background: var(--brand-cobalt);
 }
+
+/* Glico thinking: the mascot sways while its bubble pulses, and the strip "tests" the question. */
+.glico__typing {
+  align-items: flex-end;
+}
+
+.glico__dots {
+  align-items: center;
+  padding: 0.95rem 1.1rem;
+  border-radius: 22px 22px 22px 6px;
+  background: var(--react-surface-solid);
+  box-shadow: 0 4px 14px rgba(21, 63, 143, 0.09);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .glico__typing .glico__avatar {
+    transform-origin: 50% 100%;
+    animation: glico-think 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+}
+
+@keyframes glico-think {
+  0%, 100% { transform: rotate(-5deg) translateY(0); }
+  25% { transform: rotate(0deg) translateY(-4px); }
+  50% { transform: rotate(5deg) translateY(0); }
+  75% { transform: rotate(0deg) translateY(-4px); }
+}
