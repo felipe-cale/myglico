@@ -55,6 +55,17 @@
 4. Manter `text2num` atrás de uma função única; registrar `ovos-number-parser` como plano B.
 5. Opcional: correção por LLM **restrita ao texto** (já temos o Gemini para texto), nunca ao áudio, mantendo a política de não enviar mídia a terceiros.
 
+## 7. Experimentos locais com outros modelos (10 gravações reais, CPU, int8, idioma `pt`)
+
+| Modelo | Tempo por áudio | Números | Palavras | Observação |
+|---|---|---|---|---|
+| `small` (atual) | ~5–6 s | em dígitos; confiança no número 0,3–0,96 | erra ("gicoasa", "iglesemia") | referência |
+| `large-v3-turbo` | **~22 s** | em dígitos; confiança **0,92–0,98 em todos** | acerta ("glicose") | ~4× mais lento; só viável com GPU |
+| `small` ajustado p/ pt (`jlondonobo/whisper-small-pt`, Common Voice 11) | ~7 s | **por extenso** ("oitenta e quatro"); sem probabilidade de dígito | erra igual ao `small` | **sem ganho**; muda o estilo de saída |
+
+Conclusões: (1) em CPU, o `small` é o ponto de equilíbrio; o turbo é claramente mais preciso nesta voz, mas custa 4× o tempo. (2) Um ajuste fino em Common Voice não resolveu nada aqui e **quebra uma premissa do pipeline** (a confiança por dígito), pois o modelo foi treinado com números por extenso. Ajuste fino só compensa com dados *do nosso domínio* (fala informal, números ditados, glicemia) e com a mesma convenção de saída (dígitos). (3) `distil-whisper` é, em geral, só inglês; há uma variante comunitária para português (`freds0/distil-whisper-large-v3-ptbr`, não testada). (4) O decodificador duplicado do áudio custava ~60 ms (não 0,6 s): a medição a frio enganou a estimativa inicial.
+**Caso aberto:** na gravação das 15:10, `small` leu "190", `turbo` leu "90" (confiança 0,95) e o `small-pt` escreveu "um noventa". Pode ter sido "um noventa" (190, dígito a dígito) ou "noventa". O piso de confiança de 0,5 aceitou o "190" com 0,53. Precisa do valor real para decidir se o piso deve subir.
+
 ## 6. Onde está no código
 
 `app/media_worker/spoken.py` (números e unidades, tabelas `RUN_WORDS`/`REPAIRS`/`UNITS`) · `reading.py` (tabela `UNIT_RULES`, `assess_transcript`) · `photo.py` · `devcapture.py` · `service.py` (só HTTP) · `scripts/media/evaluate_real_audio.py` e `evaluate_real_photos.py`.
