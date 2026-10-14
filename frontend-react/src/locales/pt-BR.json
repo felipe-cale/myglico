@@ -548,22 +548,88 @@
     "title": "Bem-vindo ao MyGlico",
     "desc": "Acompanhamento glicêmico com visão clara e contínua.",
     "hero": {
-      "eyebrow": "Para pacientes e médicos",
       "title": "Sua glicemia, acompanhada de perto",
-      "body": "Crie sua conta de paciente para registrar suas leituras, entender os dias fora do padrão e conversar com o seu médico. Se você é médico, cadastre-se para acompanhar os pacientes que autorizarem o vínculo com você.",
+      "body": "O MyGlico guarda suas leituras, destaca o que saiu do seu padrão e tem o Glico, um assistente que anota tudo por você. Seu médico só vê o que você autorizar.",
       "badgePatient": "Para pacientes",
       "badgeDoctor": "Para médicos",
-      "badgeControl": "Você decide quem vê seus dados"
+      "badgeControl": "Você decide quem vê seus dados",
+      "mascotAlt": "Glico, o mascote do MyGlico, acenando e fazendo joinha"
     },
     "patient": {
-      "eyebrow": "Sou paciente",
       "title": "Acompanhe sua própria glicemia",
       "body": "Veja seus indicadores, registre novas leituras e convide o seu médico para acompanhar com você. Você pode revogar esse acesso quando quiser."
     },
     "doctor": {
-      "eyebrow": "Sou médico",
       "title": "Acompanhe quem confia em você",
       "body": "Receba pedidos de vínculo, consulte apenas os painéis que os pacientes autorizaram e responda às dúvidas deles em um só lugar."
+    },
+    "example": "Exemplo ilustrativo",
+    "glico": {
+      "title": "Fale com o Glico, ele anota para você",
+      "body": "Digite o valor, envie a foto do visor do glicosímetro ou grave um áudio. O Glico mostra o que entendeu e só salva depois que você confirmar.",
+      "modes": [
+        "Texto",
+        "Foto",
+        "Áudio"
+      ],
+      "user": "112 em jejum",
+      "bot": "Anotei 112 mg/dL, hoje às 07:40. Posso salvar?",
+      "save": "Salvar",
+      "fix": "Corrigir",
+      "avatarAlt": "Glico"
+    },
+    "indicators": {
+      "title": "Indicadores que contam como foram seus dias",
+      "body": "Média, tempo na faixa de 70 a 180 mg/dL e a evolução do período em gráficos fáceis de ler. Os números apoiam a conversa com seu médico, não dão diagnóstico.",
+      "chartAlt": "Gráfico de exemplo com leituras ao longo de uma semana, a maior parte dentro da faixa de 70 a 180 mg/dL",
+      "inRange": "Na faixa 70–180",
+      "high": "Acima",
+      "low": "Abaixo"
+    },
+    "atypical": {
+      "title": "Dias atípicos, sem susto",
+      "body": "O MyGlico destaca os dias que fugiram do seu padrão. Para cada um, você pode abrir um esclarecimento e conversar com seu médico.",
+      "days": [
+        "S",
+        "T",
+        "Q",
+        "Q",
+        "S",
+        "S",
+        "D"
+      ],
+      "daysFull": [
+        "Segunda",
+        "Terça",
+        "Quarta",
+        "Quinta",
+        "Sexta",
+        "Sábado",
+        "Domingo"
+      ],
+      "chip": "Dia atípico",
+      "ask": "Abrir esclarecimento"
+    },
+    "report": {
+      "title": "Relatório em PDF, pronto para a consulta",
+      "body": "Escolha o período e baixe um relatório em português, inglês ou espanhol para levar ao seu médico.",
+      "sheet": "Relatório do período",
+      "languages": [
+        "PT",
+        "EN",
+        "ES"
+      ]
+    },
+    "consent": {
+      "title": "Você decide quem acompanha você",
+      "body": "Cada vínculo com um médico é um convite seu, e você pode revogá-lo quando quiser."
+    },
+    "cta": {
+      "title": "Pronto para começar?",
+      "body": "Crie sua conta em poucos minutos e converse com o Glico."
+    },
+    "nav": {
+      "label": "Entrar ou criar conta"
     }
   },
   "dashboard": {
@@ -873,7 +939,7 @@
   },
   "glicoAssistant": {
     "title": "Assistente Glico",
-    "greeting": "Como posso ajudar hoje?",
+    "greeting": "Oi! Eu sou o Glico. O que vamos anotar hoje?",
     "llmNote": "O que você digita é enviado ao Gemini (Google) só para entender o pedido; seus dados salvos não são enviados. Nada é gravado sem a sua confirmação.",
     "missingMeasuredAtHint": "Sem data e hora, a medição não pode ser salva. Informe quando você mediu.",
     "measuredAtAssumed": "Usei a data e a hora de agora. Ajuste se a medição foi em outro momento.",

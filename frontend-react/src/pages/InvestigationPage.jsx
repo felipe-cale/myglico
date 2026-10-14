@@ -225,7 +225,6 @@ export default function InvestigationPage() {
           </Link>
         </div>
         <div className="react-panel__header-copy">
-          <p className="react-eyebrow">{t(isPatient ? "cscw.conversationEyebrowPatient" : "cscw.conversationEyebrowDoctor")}</p>
           <h1>{inv.title}</h1>
           {counterpartName && (
             <p>{t(inv.counterpart?.role === "doctor" ? "cscw.counterpartDoctor" : "cscw.counterpartPatient")}: <strong>{counterpartName}</strong></p>
@@ -346,7 +345,6 @@ export default function InvestigationPage() {
 
       <ConfirmDialog
         open={inv.status === "open" && closing}
-        eyebrow={t(isPatient ? "cscw.conversationEyebrowPatient" : "cscw.conversationEyebrowDoctor")}
         title={t("cscw.closeDialogTitle")}
         description={t("cscw.closeDialogBody")}
         confirmLabel={t("cscw.confirmClose")}

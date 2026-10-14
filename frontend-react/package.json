@@ -11,6 +11,8 @@
     "test:e2e:list": "playwright test --list"
   },
   "dependencies": {
+    "@fontsource-variable/figtree": "^5.3.0",
+    "@fontsource-variable/fredoka": "^5.3.0",
     "i18next": "^26.3.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -33,6 +33,7 @@ export default function LoginPage() {
   return (
     <div className="react-page react-auth">
       <section className="react-panel react-auth__card">
+        <img className="react-auth__mascot" src={`${import.meta.env.BASE_URL}img/mascote-avatar-192.webp`} alt="" width="72" height="72" />
         <div className="react-panel__header">
           <div className="react-panel__header-copy">
             <h1>{t("auth.login")}</h1>

@@ -365,7 +365,6 @@ export function PendingLinksPanel({ onChange }) {
     <section id="pending-links" className="react-panel react-panel--pending-links" aria-labelledby="pending-links-title">
       <div className="react-panel__header">
         <div className="react-panel__header-copy">
-          <p className="react-eyebrow">{t("doctorHome.pending.eyebrow")}</p>
           <h2 id="pending-links-title">{t("doctorHome.pending.title")}</h2>
           <p>{t("doctorHome.pending.body")}</p>
         </div>

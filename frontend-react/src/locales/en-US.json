@@ -548,22 +548,88 @@
     "title": "Welcome to MyGlico",
     "desc": "Glycemic tracking with clear and continuous insights.",
     "hero": {
-      "eyebrow": "For patients and doctors",
       "title": "Your glucose, closely followed",
-      "body": "Create a patient account to log your readings, understand the days that fall out of pattern and talk to your doctor. If you are a doctor, sign up to follow the patients who authorize a link with you.",
+      "body": "MyGlico keeps your readings, highlights what fell outside your pattern, and comes with Glico, an assistant that logs everything for you. Your doctor only sees what you authorize.",
       "badgePatient": "For patients",
       "badgeDoctor": "For doctors",
-      "badgeControl": "You decide who sees your data"
+      "badgeControl": "You decide who sees your data",
+      "mascotAlt": "Glico, the MyGlico mascot, waving and giving a thumbs up"
     },
     "patient": {
-      "eyebrow": "I am a patient",
       "title": "Follow your own glucose",
       "body": "See your indicators, log new readings and invite your doctor to follow along. You can revoke that access whenever you want."
     },
     "doctor": {
-      "eyebrow": "I am a doctor",
       "title": "Follow those who trust you",
       "body": "Receive link requests, see only the dashboards patients authorized and answer their questions in one place."
+    },
+    "example": "Illustrative example",
+    "glico": {
+      "title": "Talk to Glico, it logs for you",
+      "body": "Type the value, send a photo of your meter's display or record a voice note. Glico shows what it understood and only saves after you confirm.",
+      "modes": [
+        "Text",
+        "Photo",
+        "Voice"
+      ],
+      "user": "112 fasting",
+      "bot": "Logged 112 mg/dL, today at 7:40 AM. Save it?",
+      "save": "Save",
+      "fix": "Fix",
+      "avatarAlt": "Glico"
+    },
+    "indicators": {
+      "title": "Indicators that tell how your days went",
+      "body": "Average, time in the 70 to 180 mg/dL range and how the period evolved, in charts that are easy to read. The numbers support the talk with your doctor; they are not a diagnosis.",
+      "chartAlt": "Example chart with readings across a week, most of them inside the 70 to 180 mg/dL range",
+      "inRange": "In range 70–180",
+      "high": "Above",
+      "low": "Below"
+    },
+    "atypical": {
+      "title": "Atypical days, no scare",
+      "body": "MyGlico highlights the days that broke your pattern. For each one you can open a clarification and talk it through with your doctor.",
+      "days": [
+        "M",
+        "T",
+        "W",
+        "T",
+        "F",
+        "S",
+        "S"
+      ],
+      "daysFull": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ],
+      "chip": "Atypical day",
+      "ask": "Open clarification"
+    },
+    "report": {
+      "title": "A PDF report, ready for the appointment",
+      "body": "Pick the period and download a report in Portuguese, English or Spanish to bring to your doctor.",
+      "sheet": "Period report",
+      "languages": [
+        "PT",
+        "EN",
+        "ES"
+      ]
+    },
+    "consent": {
+      "title": "You decide who follows you",
+      "body": "Every link with a doctor is an invitation from you, and you can revoke it whenever you want."
+    },
+    "cta": {
+      "title": "Ready to start?",
+      "body": "Create your account in a few minutes and talk to Glico."
+    },
+    "nav": {
+      "label": "Sign in or create an account"
     }
   },
   "dashboard": {
@@ -873,7 +939,7 @@
   },
   "glicoAssistant": {
     "title": "Glico Assistant",
-    "greeting": "How can I help today?",
+    "greeting": "Hi! I'm Glico. What shall we log today?",
     "llmNote": "What you type is sent to Gemini (Google) only to understand your request; your saved data is not sent. Nothing is saved without your confirmation.",
     "missingMeasuredAtHint": "Without a date and time the reading can't be saved. Enter when you measured.",
     "measuredAtAssumed": "I used the current date and time. Adjust it if you measured at another time.",

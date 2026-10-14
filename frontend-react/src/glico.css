@@ -952,3 +952,127 @@
     padding-inline: 0.6rem;
   }
 }
+
+/* ---------- Friendly chat: the mascot is the assistant ---------- */
+
+.glico-bar__title {
+  gap: 0.75rem;
+}
+
+.glico-bar__mark {
+  border-radius: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.glico-bar__title h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--brand-cobalt);
+}
+
+.glico-welcome {
+  gap: 0.75rem;
+  padding: 1.5rem 0 1rem;
+}
+
+.glico-welcome__mark {
+  width: 8.25rem;
+  height: 8.25rem;
+  border-radius: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .glico-welcome__mark {
+    animation: glico-wave 5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    transform-origin: 70% 90%;
+  }
+}
+
+@keyframes glico-wave {
+  0%,
+  72%,
+  100% {
+    transform: rotate(0deg);
+  }
+  78% {
+    transform: rotate(-6deg);
+  }
+  84% {
+    transform: rotate(5deg);
+  }
+  90% {
+    transform: rotate(-4deg);
+  }
+}
+
+.glico-welcome h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--brand-cobalt-deep);
+}
+
+.glico-chip {
+  border-radius: 999px;
+  border-color: var(--brand-sky-strong);
+  color: var(--brand-cobalt-deep);
+  font-weight: 600;
+  padding-inline: 1.15rem;
+}
+
+.glico-chip:hover {
+  background: var(--brand-sky);
+  border-color: var(--brand-cobalt);
+}
+
+.glico-chip--quiet {
+  background: transparent;
+  border-style: dashed;
+  color: var(--react-muted);
+  font-weight: 500;
+}
+
+.glico__avatar {
+  align-self: flex-end;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-top: 0;
+  border-radius: 0;
+}
+
+.glico__message--assistant .glico__bubble:not(.glico__bubble--wide) {
+  padding: 0.75rem 1.05rem;
+  border-radius: 22px 22px 22px 6px;
+  background: var(--react-surface-solid);
+  box-shadow: 0 4px 14px rgba(21, 63, 143, 0.09);
+}
+
+.glico__message--user .glico__bubble {
+  background: var(--brand-cobalt);
+  border-radius: 22px 22px 6px 22px;
+}
+
+.glico-dock {
+  background: linear-gradient(to bottom, rgba(238, 247, 253, 0), var(--react-bg) 28%);
+}
+
+.glico__composer {
+  border: 2px solid var(--brand-sky-strong);
+  box-shadow: 0 8px 24px rgba(21, 63, 143, 0.1);
+}
+
+.glico__composer:focus-within {
+  border-color: var(--brand-cobalt);
+  box-shadow: 0 8px 24px rgba(21, 63, 143, 0.12), 0 0 0 4px rgba(21, 83, 184, 0.14);
+}
+
+.glico-send:not(:disabled) {
+  background: var(--brand-cobalt);
+  box-shadow: 0 4px 10px rgba(21, 83, 184, 0.28);
+}
+
+.glico__dots i {
+  background: var(--brand-cobalt);
+}

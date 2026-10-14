@@ -6,7 +6,6 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock";
 
 export default function ConfirmDialog({
   open,
-  eyebrow,
   title,
   description,
   confirmLabel,
@@ -46,7 +45,6 @@ export default function ConfirmDialog({
       >
         <div className="react-dialog__header">
           <div>
-            {eyebrow ? <p className="react-eyebrow">{eyebrow}</p> : null}
             <h3 id={titleId}>{title}</h3>
           </div>
           <button type="button" className="react-dialog__close" onClick={onCancel} aria-label={t("common.closeDialog")}>

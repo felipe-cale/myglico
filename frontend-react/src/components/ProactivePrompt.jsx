@@ -115,7 +115,6 @@ export default function ProactivePrompt() {
     <section id="atypical-days-prompts" role="region" aria-label={t("cscw.promptRegion")} className="react-panel react-prompt">
       <div className="react-panel__header">
         <div className="react-panel__header-copy">
-          <p className="react-eyebrow">{t("cscw.promptEyebrow")}</p>
           <h2>{t("cscw.promptTitle")}</h2>
           <p>{t("cscw.atypicalExplainPatient")}</p>
         </div>

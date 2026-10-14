@@ -91,7 +91,6 @@ function FilterHelpDialog({ signal, open, onClose }) {
       >
         <div className="react-dialog__header">
           <div>
-            <p className="react-eyebrow">{t("overview.profileHelp.eyebrow")}</p>
             <h3 id="profile-help-title">{content.title}</h3>
           </div>
           <button type="button" className="react-dialog__close" onClick={onClose} aria-label={t("overview.profileHelp.closeAriaLabel")} ref={closeRef}>

@@ -760,7 +760,7 @@ export default function GlicoAssistantPage() {
     <section className="react-page glico glico--chat" aria-labelledby="glico-title">
       <header className="glico-bar">
         <div className="glico-bar__title">
-          <img src="/img/myglico-mark.svg" alt="" className="glico-bar__mark" width="32" height="32" />
+          <img src="/img/mascote-avatar-96.webp" alt="" className="glico-bar__mark" width="40" height="40" />
           <h1 id="glico-title">{t("glicoAssistant.title")}</h1>
         </div>
         {isDoctor ? (
@@ -792,7 +792,7 @@ export default function GlicoAssistantPage() {
           <div className="glico__thread" role="log" aria-live="polite" aria-relevant="additions" data-testid="glico-thread">
             {!messages.length && !proposal && !shownReceipt ? (
               <div className="glico-welcome">
-                <img src="/img/myglico-mark.svg" alt="" width="56" height="56" className="glico-welcome__mark" />
+                <img src="/img/mascote-avatar-420.webp" srcSet="/img/mascote-avatar-192.webp 192w, /img/mascote-avatar-420.webp 420w" sizes="132px" alt="" width="132" height="132" className="glico-welcome__mark" />
                 <h2>{t("glicoAssistant.greeting")}</h2>
                 <p className="glico__empty">{hasPatientContext ? t("glicoAssistant.greetingBody") : (isDoctor ? t("glicoAssistant.selectPatientRequired") : t("glicoAssistant.contextLoading"))}</p>
                 {hasPatientContext ? (
@@ -818,7 +818,7 @@ export default function GlicoAssistantPage() {
 
             {messages.map((message) => (
               <article key={message.id} className={`glico__message glico__message--${message.role}`}>
-                {message.role === "assistant" ? <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" /> : null}
+                {message.role === "assistant" ? <img src="/img/mascote-avatar-96.webp" alt="" className="glico__avatar" width="40" height="40" /> : null}
                 <div className={`glico__bubble${["proposal", "receipt"].includes(message.type) ? " glico__bubble--wide" : ""}`}>
                   <span className="react-visually-hidden">{t(message.role === "user" ? "glicoAssistant.userSaid" : "glicoAssistant.glicoSaid")}</span>
                   {message.type === "proposal" ? (
@@ -925,21 +925,21 @@ export default function GlicoAssistantPage() {
 
             {shownReceipt && !receipt && !receiptInThread ? (
               <article className="glico__message glico__message--assistant">
-                <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" />
+                <img src="/img/mascote-avatar-96.webp" alt="" className="glico__avatar" width="40" height="40" />
                 <div className="glico__bubble glico__bubble--wide">{receiptBlock(shownReceipt)}</div>
               </article>
             ) : null}
 
             {proposal && !proposalInThread ? (
               <article className="glico__message glico__message--assistant">
-                <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" />
+                <img src="/img/mascote-avatar-96.webp" alt="" className="glico__avatar" width="40" height="40" />
                 <div className="glico__bubble glico__bubble--wide">{proposalBlock}</div>
               </article>
             ) : null}
 
             {busy && !processing && messages.length ? (
               <div className="glico__typing" role="status">
-                <img src="/img/myglico-mark.svg" alt="" className="glico__avatar" width="28" height="28" />
+                <img src="/img/mascote-avatar-96.webp" alt="" className="glico__avatar" width="40" height="40" />
                 <span className="glico__dots" aria-hidden="true"><i /><i /><i /></span>
                 <span className="react-visually-hidden">{t("glicoAssistant.working")}</span>
               </div>

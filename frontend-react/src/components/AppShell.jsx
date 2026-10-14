@@ -156,7 +156,7 @@ export default function AppShell({ children }) {
         <header className="react-topbar">
           <Link className="react-brand" to="/">
             <span className="react-brand__mark">
-              <img src={assetUrl("img/myglico-mark.svg")} alt="" />
+              <img src={assetUrl("img/mascote-avatar-96.webp")} alt="" width="40" height="40" />
             </span>
             <span>
               <strong>MyGlico</strong>
@@ -176,6 +176,11 @@ export default function AppShell({ children }) {
                 <button type="button" className="react-nav__link react-nav__link--button" onClick={handleLogout}>
                   {t("auth.logout")}
                 </button>
+              ) : null}
+              {!authenticated && location.pathname === "/" ? (
+                <Link to="/login" className="react-button react-button--compact">
+                  {t("auth.login")}
+                </Link>
               ) : null}
             </div>
             <button

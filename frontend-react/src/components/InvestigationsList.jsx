@@ -241,7 +241,6 @@ export default function InvestigationsList() {
     <section id="investigations" ref={sectionRef} className={`react-panel react-investigations${isPatient ? "" : " react-investigations--doctor"}`} aria-labelledby="investigations-title">
       <div className="react-panel__header">
         <div className="react-panel__header-copy">
-          <p className="react-eyebrow">{t("cscw.panelEyebrow")}</p>
           <h2 id="investigations-title">{isPatient ? t("cscw.myInvestigations") : t("cscw.investigations")}</h2>
           <p>{isPatient ? t("cscw.panelBodyPatient") : t("cscw.panelBodyDoctor")}</p>
         </div>
