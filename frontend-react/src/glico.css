@@ -1384,3 +1384,27 @@
     font-size: 0.875rem;
   }
 }
+
+/* Doctor: the patient picker is the first thing to do, so it sits centered above the conversation. */
+.glico-bar {
+  justify-content: center;
+}
+
+.glico-bar__patient {
+  flex: 0 1 28rem;
+  max-width: 28rem;
+}
+
+.glico-bar__patient .react-field {
+  border-radius: 999px;
+  border: 2px solid var(--brand-sky-strong);
+  background-color: var(--react-surface-solid);
+  font-weight: 600;
+  color: var(--brand-cobalt-deep);
+}
+
+.glico-bar__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8125rem;
+}

@@ -119,6 +119,7 @@ export default function GlicoAssistantPage() {
 
   const isPatient = conversation?.role === "patient";
   const isDoctor = conversation?.role === "doctor";
+  const selectedPatientName = patients.find((patient) => patient.id === selectedPatient)?.display_name || "";
   const proposal = useMemo(
     () => conversation?.cards?.find((card) => card.type === "proposal")?.proposal || null,
     [conversation]
@@ -263,6 +264,11 @@ export default function GlicoAssistantPage() {
   };
 
   useEffect(() => {
+    // The welcome screen is read from the top; only a real conversation follows its end.
+    if (!messages.length && !proposal && !shownReceipt) {
+      threadRef.current?.scrollTo?.({ top: 0 });
+      return;
+    }
     if (stickToEnd.current || messages[messages.length - 1]?.role === "user") scrollToEnd();
     else setAwayFromEnd(true);
   }, [messages.length, proposal?.id, shownReceipt, busy, scrollToEnd]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -777,20 +783,28 @@ export default function GlicoAssistantPage() {
   };
 
   // The few things people ask for every day stay one tap away; the rest sits behind "More options".
-  const mainChips = hasPatientContext ? [
-    { key: "readings", label: t("glicoAssistant.chips.readings"), run: () => sendText(t("glicoAssistant.chips.readings")) },
-    { key: "atypical", label: t("glicoAssistant.chips.atypical"), run: () => sendText(t("glicoAssistant.chips.atypical")) },
-    ...[1, 2, 3].map((months) => ({ key: `report-${months}`, label: t("glicoAssistant.chips.reportMonths", { count: months }), run: () => reportForMonths(months) }))
-  ] : [];
-  const actionChips = hasPatientContext ? [
-    { key: "pdf", label: t("glicoAssistant.chips.pdf"), run: askPdf },
-    { key: "period", label: t("glicoAssistant.chips.period"), run: openPeriodCard },
-    { key: "open", label: t("glicoAssistant.chips.open"), run: startOpenQuestion },
-    { key: "reply", label: t("glicoAssistant.chips.reply"), run: startReplyQuestion }
-  ] : [];
-  const faqChips = hasPatientContext
+  const reportChip = (months) => ({ key: `report-${months}`, label: t("glicoAssistant.chips.reportMonths", { count: months }), run: () => reportForMonths(months) });
+  const readingsText = t(isDoctor ? "glicoAssistant.chips.readingsDoctor" : "glicoAssistant.chips.readings");
+  const readingsChip = { key: "readings", label: readingsText, run: () => sendText(readingsText) };
+  const atypicalChip = { key: "atypical", label: t("glicoAssistant.chips.atypical"), run: () => sendText(t("glicoAssistant.chips.atypical")) };
+  const pdfChip = { key: "pdf", label: t("glicoAssistant.chips.pdf"), run: askPdf };
+  const periodChip = { key: "period", label: t("glicoAssistant.chips.period"), run: openPeriodCard };
+  const openChip = { key: "open", label: t("glicoAssistant.chips.open"), run: startOpenQuestion };
+  const replyChip = { key: "reply", label: t("glicoAssistant.chips.reply"), run: startReplyQuestion };
+
+  // The everyday shortcuts stay one tap away; the rest sits behind "More options". A doctor reviews and asks
+  // questions, never logs readings, so the shortcuts and the help topics differ by role.
+  const mainChips = !hasPatientContext ? []
+    : isDoctor ? [readingsChip, atypicalChip, reportChip(1), reportChip(3)]
+    : [readingsChip, atypicalChip, reportChip(1), reportChip(2), reportChip(3)];
+  const actionChips = !hasPatientContext ? []
+    : isDoctor ? []
+    : [pdfChip, periodChip, openChip, replyChip];
+  const faqChips = hasPatientContext && !isDoctor
     ? FAQ_ITEMS.map((item) => ({ key: `faq-${item}`, label: t(`glicoAssistant.faq.${item}.q`), run: () => askFaq(item) }))
     : [];
+
+  const hasMoreChips = actionChips.length + faqChips.length > 0;
 
   const errorText = error
     ? error.key === "limit" && error.retryAfter
@@ -846,7 +860,7 @@ export default function GlicoAssistantPage() {
           </div>
         ) : null}
       </header>
-      {isDoctor ? (
+      {isDoctor && !selectedPatient ? (
         <p className="glico-hint glico-bar__hint">{patients.length || busy ? t("glicoAssistant.patientContextPrivacy") : t("glicoAssistant.noPatients")}</p>
       ) : null}
 
@@ -864,8 +878,8 @@ export default function GlicoAssistantPage() {
             {!messages.length && !proposal && !shownReceipt ? (
               <div className="glico-welcome">
                 <img src="/img/mascote-avatar-420.webp" srcSet="/img/mascote-avatar-192.webp 192w, /img/mascote-avatar-420.webp 420w" sizes="132px" alt="" width="132" height="132" className="glico-welcome__mark" />
-                <h2>{t("glicoAssistant.greeting")}</h2>
-                <p className="glico__empty">{hasPatientContext ? t("glicoAssistant.greetingBody") : (isDoctor ? t("glicoAssistant.selectPatientRequired") : t("glicoAssistant.contextLoading"))}</p>
+                <h2>{t(isDoctor ? (hasPatientContext ? "glicoAssistant.doctor.greetingPatient" : "glicoAssistant.doctor.greeting") : "glicoAssistant.greeting", { name: selectedPatientName })}</h2>
+                <p className="glico__empty">{hasPatientContext ? t(isDoctor ? "glicoAssistant.doctor.greetingBody" : "glicoAssistant.greetingBody") : (isDoctor ? t("glicoAssistant.selectPatientRequired") : t("glicoAssistant.contextLoading"))}</p>
                 {hasPatientContext ? (
                   <>
                     <ul className="glico-suggestions" aria-label={t("glicoAssistant.chips.title")}>
@@ -874,11 +888,11 @@ export default function GlicoAssistantPage() {
                           <button type="button" className="glico-chip" onClick={chip.run} disabled={busy}>{chip.label}</button>
                         </li>
                       ))}
-                      <li>
+                      {hasMoreChips ? <li>
                         <button type="button" className="glico-chip glico-chip--quiet glico-chip--more" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)}>
                           {t(moreOpen ? "glicoAssistant.chips.less" : "glicoAssistant.chips.more")}
                         </button>
-                      </li>
+                      </li> : null}
                     </ul>
                     {moreOpen ? (
                       <ul className="glico-suggestions glico-suggestions--faq" aria-label={t("glicoAssistant.faq.title")}>
@@ -1043,11 +1057,11 @@ export default function GlicoAssistantPage() {
                     <button type="button" className="glico-chip glico-chip--row" onClick={chip.run} disabled={busy}>{chip.label}</button>
                   </li>
                 ))}
-                <li>
+                {hasMoreChips ? <li>
                   <button type="button" className="glico-chip glico-chip--row glico-chip--quiet" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)}>
                     {t(moreOpen ? "glicoAssistant.chips.less" : "glicoAssistant.chips.more")}
                   </button>
-                </li>
+                </li> : null}
               </ul>
             ) : null}
 
@@ -1071,6 +1085,7 @@ export default function GlicoAssistantPage() {
                 </div>
               ) : null}
               <GlicoMediaCapture
+                hidden={isDoctor}
                 capabilities={capabilities}
                 enabled={hasPatientContext}
                 processing={processing}
@@ -1089,7 +1104,7 @@ export default function GlicoAssistantPage() {
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={onComposerKeyDown}
-                  placeholder={!hasPatientContext ? t("glicoAssistant.composerPlaceholderLocked") : collab ? t("glicoAssistant.collab.placeholder") : t("glicoAssistant.composerPlaceholder")}
+                  placeholder={!hasPatientContext ? t("glicoAssistant.composerPlaceholderLocked") : collab ? t("glicoAssistant.collab.placeholder") : t(isDoctor ? "glicoAssistant.doctor.composerPlaceholder" : "glicoAssistant.composerPlaceholder")}
                   disabled={!hasPatientContext || busy}
                   aria-describedby="glico-composer-help"
                 />

@@ -960,7 +960,8 @@
       "reportMonths_one": "Report for the last month",
       "reportMonths_other": "Report for the last {{count}} months",
       "more": "More options",
-      "less": "Fewer options"
+      "less": "Fewer options",
+      "readingsDoctor": "Recent readings"
     },
     "collab": {
       "placeholder": "Write your question or message…",
@@ -979,7 +980,7 @@
     "selectPatient": "Patient for this conversation",
     "selectPatientPlaceholder": "Choose a linked patient",
     "patientContextPrivacy": "Only patients with an active link appear. Switching patient discards any pending proposal.",
-    "selectPatientRequired": "Choose a patient to start.",
+    "selectPatientRequired": "Pick a linked patient to start.",
     "noPatients": "You do not have patients with an active link yet.",
     "contextLoading": "Preparing the conversation…",
     "chatLabel": "Conversation with Glico",
@@ -1172,6 +1173,12 @@
       "offline": "No connection to the server. Check your internet and try again."
     },
     "notesTitle": "Notices and privacy",
-    "jumpToEnd": "Back to the end of the chat"
+    "jumpToEnd": "Back to the end of the chat",
+    "doctor": {
+      "greeting": "Hello! I'm Glico. Which patient shall we talk about?",
+      "greetingPatient": "What would you like to see about {{name}}?",
+      "greetingBody": "Look up the patient's readings, atypical days and PDF report.",
+      "composerPlaceholder": "Ask about this patient's readings…"
+    }
   }
 }

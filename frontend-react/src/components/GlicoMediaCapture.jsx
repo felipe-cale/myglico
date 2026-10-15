@@ -38,7 +38,7 @@ function formatBytes(bytes) {
 // Renders two grid children of the composer: the strip above the text field (photo preview or
 // recording bar) and the tool buttons. The Blob and its preview URL live only in memory until the
 // user sends or discards them; nothing is persisted.
-export default function GlicoMediaCapture({ capabilities, enabled, processing, onSubmit, onCancel, onError }) {
+export default function GlicoMediaCapture({ capabilities, enabled, hidden = false, processing, onSubmit, onCancel, onError }) {
   const { t } = useTranslation();
   const galleryInput = useRef(null);
   const cameraInput = useRef(null);
@@ -148,6 +148,8 @@ export default function GlicoMediaCapture({ capabilities, enabled, processing, o
 
   const idle = !processing && !recording;
   const clock = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
+
+  if (hidden) return null;
 
   return (
     <>
