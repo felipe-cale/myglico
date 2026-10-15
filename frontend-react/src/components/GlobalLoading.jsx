@@ -9,20 +9,38 @@ const MIN_VISIBLE_MS = 450;
 // A slow request offers a way out instead of holding the page indefinitely.
 const CANCEL_AFTER_MS = 8000;
 
+const MASCOT_SRC = `${import.meta.env.BASE_URL}img/mascote-avatar-192.webp`;
+
+// Warm the cache as soon as the app loads, so the mascot is there before the first overlay needs it.
+if (typeof Image !== "undefined") {
+  const preload = new Image();
+  preload.src = MASCOT_SRC;
+}
+
 function GlucometerAnimation() {
   const base = import.meta.env.BASE_URL;
+  const [ready, setReady] = useState(false);
+  const imageRef = useRef(null);
+
+  useEffect(() => {
+    if (imageRef.current?.complete) setReady(true);
+  }, []);
+
+  // The drop only starts falling once the mascot is on screen: it lands on the strip, never alone.
   return (
-    <div className="react-loading__art" aria-hidden="true">
+    <div className={`react-loading__art${ready ? " is-ready" : ""}`} aria-hidden="true">
       <svg className="react-loading__drop-art" viewBox="0 0 24 32" focusable="false">
         <path className="react-loading__drop" d="M12 2c-4 6-7 10-7 14a7 7 0 0 0 14 0c0-4-3-8-7-14z" />
       </svg>
       <img
+        ref={imageRef}
         className="react-loading__mascot"
-        src={`${base}img/mascote-avatar-192.webp`}
+        src={MASCOT_SRC}
         srcSet={`${base}img/mascote-avatar-192.webp 1x, ${base}img/mascote-avatar-420.webp 2x`}
         alt=""
         width="112"
         height="112"
+        onLoad={() => setReady(true)}
       />
       <span className="react-loading__shadow" />
     </div>

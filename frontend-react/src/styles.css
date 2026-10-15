@@ -4491,6 +4491,12 @@ small {
   height: 8.5rem;
 }
 
+.react-loading__art:not(.is-ready) .react-loading__mascot,
+.react-loading__art:not(.is-ready) .react-loading__shadow,
+.react-loading__art:not(.is-ready) .react-loading__drop-art {
+  visibility: hidden;
+}
+
 .react-loading__mascot {
   position: relative;
   width: 7rem;
