@@ -1184,5 +1184,14 @@
     },
     "searchPatient": "Buscar paciente…",
     "noPatientMatch": "Nenhum paciente encontrado."
+  },
+  "errorPage": {
+    "documentTitle": "Algo deu errado",
+    "imageAlt": "Glico, o mascote do MyGlico, assustado com o olhar de quem tropeçou",
+    "title": "Ops! Algo inesperado aconteceu",
+    "body": "O Glico se atrapalhou por aqui. Tente de novo em instantes e, se o problema continuar, volte um pouco mais tarde.",
+    "bodyGlico": "O Glico se atrapalhou e não conseguiu terminar. Se você estava registrando uma leitura, confira em “Meu painel” se ela foi salva antes de tentar de novo. Se o problema continuar, volte um pouco mais tarde.",
+    "retry": "Tentar novamente",
+    "home": "Ir para o início"
   }
 }

@@ -688,3 +688,58 @@
   height: 4.5rem;
   margin-bottom: var(--space-3);
 }
+
+/* Friendly error screen (/erro) */
+.error-page {
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-4);
+  min-height: calc(100dvh - 12rem);
+  text-align: center;
+}
+
+.error-page__mascot {
+  width: min(60vw, 15rem);
+  height: auto;
+  filter: drop-shadow(0 14px 18px rgba(21, 63, 143, 0.2));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .error-page__mascot {
+    transform-origin: 50% 90%;
+    animation: error-wobble 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+}
+
+@keyframes error-wobble {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-4deg); }
+  40% { transform: rotate(3deg); }
+  60% { transform: rotate(-2deg); }
+  80% { transform: rotate(0deg); }
+}
+
+.error-page h1 {
+  margin: 0;
+  max-width: 20ch;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--brand-cobalt-deep);
+}
+
+.error-page__body {
+  margin: 0;
+  max-width: 34rem;
+  font-size: 1.0625rem;
+  color: var(--react-muted);
+}
+
+.error-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import GlicoMediaCapture from "../components/GlicoMediaCapture";
@@ -90,6 +90,7 @@ function withProposal(conversation, proposal) {
 export default function GlicoAssistantPage() {
   const { t, i18n } = useTranslation();
   const { session } = useAuth();
+  const navigate = useNavigate();
   useDocumentTitle(t("glicoAssistant.title"));
   const [capabilities, setCapabilities] = useState(null);
   const [conversation, setConversation] = useState(null);
@@ -163,8 +164,12 @@ export default function GlicoAssistantPage() {
 
   const fail = useCallback((reason, extra = {}) => {
     const key = errorKey(reason);
+    if (key === "genericError") {
+      navigate("/erro?origem=glico", { replace: true });
+      return;
+    }
     if (key) setError({ key, retryAfter: reason?.retryAfter, ...extra });
-  }, []);
+  }, [navigate]);
 
   const addAssistant = useCallback((entry) => {
     setMessages((current) => [...current, { id: requestId(), role: "assistant", ...entry }]);

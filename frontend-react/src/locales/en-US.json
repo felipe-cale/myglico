@@ -1184,5 +1184,14 @@
     },
     "searchPatient": "Search patient…",
     "noPatientMatch": "No patient found."
+  },
+  "errorPage": {
+    "documentTitle": "Something went wrong",
+    "imageAlt": "Glico, the MyGlico mascot, dizzy after a stumble",
+    "title": "Oops! Something unexpected happened",
+    "body": "Glico got tangled up here. Try again in a moment and, if the problem continues, come back a little later.",
+    "bodyGlico": "Glico got tangled up and could not finish. If you were logging a reading, check in “My dashboard” whether it was saved before trying again. If the problem continues, come back a little later.",
+    "retry": "Try again",
+    "home": "Go to the start"
   }
 }

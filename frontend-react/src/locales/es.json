@@ -1184,5 +1184,14 @@
     },
     "searchPatient": "Buscar paciente…",
     "noPatientMatch": "Ningún paciente encontrado."
+  },
+  "errorPage": {
+    "documentTitle": "Algo salió mal",
+    "imageAlt": "Glico, la mascota de MyGlico, mareado tras un tropiezo",
+    "title": "¡Ups! Algo inesperado ocurrió",
+    "body": "Glico se enredó por aquí. Inténtalo de nuevo en un momento y, si el problema continúa, vuelve un poco más tarde.",
+    "bodyGlico": "Glico se enredó y no pudo terminar. Si estabas registrando una lectura, revisa en «Mi panel» si se guardó antes de intentarlo de nuevo. Si el problema continúa, vuelve un poco más tarde.",
+    "retry": "Intentar de nuevo",
+    "home": "Ir al inicio"
   }
 }
