@@ -4,6 +4,7 @@ import useDocumentTitle from "../hooks/useDocumentTitle";
 import { Link, useNavigate } from "react-router-dom";
 import { login } from "../api";
 import { useAuth } from "../contexts/AuthContext";
+import PasswordVisibilityIcon from "../components/PasswordVisibilityIcon";
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -13,6 +14,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,7 +50,19 @@ export default function LoginPage() {
           </label>
           <label className="react-field">
             <span>{t("auth.password")}</span>
-            <input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
+            <div className="react-password-input">
+              <input type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
+              <button
+                type="button"
+                className="react-password-input__toggle"
+                onClick={() => setShowPassword(value => !value)}
+                aria-label={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
+                aria-pressed={showPassword}
+              >
+                <PasswordVisibilityIcon visible={showPassword} />
+                <span>{t(showPassword ? "auth.hidePassword" : "auth.showPassword")}</span>
+              </button>
+            </div>
           </label>
           <button type="submit" className="react-button react-button--block" disabled={submitting}>
             {t("auth.submitLogin")}
