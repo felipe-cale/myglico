@@ -597,7 +597,7 @@ test.describe("Glico assistant - low confidence audio", () => {
 });
 
 test.describe("Glico assistant - unexpected failure", () => {
-  test("an unexpected server error leaves the chat for the friendly error screen, and retry returns to the chat", async ({ actor, browserSession }) => {
+  test("an unexpected server error leaves the chat for the friendly error screen, which only offers a way back home", async ({ actor, browserSession }) => {
     await actor("patientA");
     const ui = await browserSession("patientA");
     await ui.page.route("**/api/glico/conversations/*/messages", (route) => route.fulfill({ status: 500, json: { detail: "boom" } }));
@@ -607,8 +607,8 @@ test.describe("Glico assistant - unexpected failure", () => {
     await expect(ui.page).toHaveURL(/\/erro\?origem=glico$/);
     await expect(ui.page.getByRole("heading", { level: 1, name: t("errorPage.title") })).toBeVisible();
     await expect(ui.page.getByText(t("errorPage.bodyGlico"))).toBeVisible();
-    await ui.page.getByRole("button", { name: t("errorPage.retry") }).click();
-    await expect(ui.page).toHaveURL(/\/glico$/);
+    await ui.page.getByRole("link", { name: t("errorPage.home") }).click();
+    await expect(ui.page).toHaveURL(/\/dashboard$/);
   });
 
   test("the error screen is available at /erro in all three languages", async ({ page }) => {
@@ -616,7 +616,6 @@ test.describe("Glico assistant - unexpected failure", () => {
       await page.addInitScript((value) => window.localStorage.setItem("myglico.language", value), lang);
       await page.goto("/erro");
       await expect(page.getByRole("heading", { level: 1, name: t("errorPage.title", lang) })).toBeVisible();
-      await expect(page.getByRole("button", { name: t("errorPage.retry", lang) })).toBeVisible();
       await expect(page.getByRole("link", { name: t("errorPage.home", lang) })).toBeVisible();
     }
   });

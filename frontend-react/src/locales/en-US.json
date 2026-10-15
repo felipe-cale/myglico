@@ -1189,9 +1189,8 @@
     "documentTitle": "Something went wrong",
     "imageAlt": "Glico, the MyGlico mascot, dizzy after a stumble",
     "title": "Oops! Something unexpected happened",
-    "body": "Glico got tangled up here. Try again in a moment and, if the problem continues, come back a little later.",
-    "bodyGlico": "Glico got tangled up and could not finish. If you were logging a reading, check in “My dashboard” whether it was saved before trying again. If the problem continues, come back a little later.",
-    "retry": "Try again",
+    "body": "Something unexpected happened and we could not finish. Please try again later.",
+    "bodyGlico": "Something unexpected happened and we could not finish. Please try again later. If you were logging a reading, check in “My dashboard” whether it was saved.",
     "home": "Go to the start"
   }
 }
