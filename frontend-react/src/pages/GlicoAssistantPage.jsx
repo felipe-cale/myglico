@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import GlicoMediaCapture from "../components/GlicoMediaCapture";
+import GlicoNotes from "../components/GlicoNotes";
 import GlicoProposalCard from "../components/GlicoProposalCard";
 import { CloseIcon, MicIcon, SendIcon } from "../components/GlicoIcons";
 import useDocumentTitle from "../hooks/useDocumentTitle";
@@ -110,7 +111,10 @@ export default function GlicoAssistantPage() {
   const conversationOwner = useRef(null);
   const confirmKeys = useRef(new Map());
   const proposalWrap = useRef(null);
-  const threadEnd = useRef(null);
+  const threadRef = useRef(null);
+  const stickToEnd = useRef(true);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [awayFromEnd, setAwayFromEnd] = useState(false);
   const composerRef = useRef(null);
 
   const isPatient = conversation?.role === "patient";
@@ -228,12 +232,40 @@ export default function GlicoAssistantPage() {
   }, [i18n.language, session?.authenticated, session?.account?.id]);
 
   useEffect(() => {
-    if (proposal?.id) proposalWrap.current?.focus();
+    if (!proposal?.id) return undefined;
+    proposalWrap.current?.focus({ preventScroll: true });
+    // A card taller than the chat shows its top (what to review), not its bottom.
+    const frame = requestAnimationFrame(() => {
+      const thread = threadRef.current;
+      const wrap = proposalWrap.current;
+      if (!thread || !wrap) return;
+      const top = wrap.getBoundingClientRect().top - thread.getBoundingClientRect().top + thread.scrollTop;
+      if (wrap.offsetHeight > thread.clientHeight - 24) thread.scrollTo?.({ top: Math.max(0, top - 12), behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(frame);
   }, [proposal?.id]);
 
+  // Like a chat app: follow the conversation while the reader is at the bottom, leave them alone once they scroll up.
+  const scrollToEnd = useCallback((behavior = "smooth") => {
+    const thread = threadRef.current;
+    if (!thread) return;
+    stickToEnd.current = true;
+    setAwayFromEnd(false);
+    thread.scrollTo?.({ top: thread.scrollHeight, behavior });
+  }, []);
+
+  const onThreadScroll = () => {
+    const thread = threadRef.current;
+    if (!thread) return;
+    const away = thread.scrollHeight - thread.scrollTop - thread.clientHeight > 96;
+    stickToEnd.current = !away;
+    setAwayFromEnd(away);
+  };
+
   useEffect(() => {
-    threadEnd.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
-  }, [messages.length, proposal?.id, shownReceipt]);
+    if (stickToEnd.current || messages[messages.length - 1]?.role === "user") scrollToEnd();
+    else setAwayFromEnd(true);
+  }, [messages.length, proposal?.id, shownReceipt, busy, scrollToEnd]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const field = composerRef.current;
@@ -706,9 +738,51 @@ export default function GlicoAssistantPage() {
     recognition.start();
   };
 
-  const actionChips = hasPatientContext ? [
+  const isoDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+  // One tap: sets the period to the last N months and hands over the PDF link.
+  const reportForMonths = async (months) => {
+    if (!conversation || busy || !hasPatientContext) return;
+    clearFeedback();
+    const end = new Date();
+    const start = new Date();
+    start.setMonth(start.getMonth() - months);
+    setMessages((current) => [...current, { id: requestId(), role: "user", text: t("glicoAssistant.chips.reportMonths", { count: months }) }]);
+    setBusy(true);
+    try {
+      const next = await updateGlicoContext(conversation.id, {
+        version: conversation.context_version,
+        period_start: isoDate(start),
+        period_end: isoDate(end)
+      });
+      if (activeConversationId.current !== conversation.id) return;
+      setConversation(next);
+      setPeriodStart("");
+      setPeriodEnd("");
+      const url = patientReportPdfUrl(next.context.patient_id, { startDate: isoDate(start), endDate: isoDate(end), lang: i18n.language });
+      addAssistant({
+        type: "pdf",
+        title: t("glicoAssistant.query.pdfTitle"),
+        message: t("glicoAssistant.query.pdfGenerated"),
+        url,
+        downloadText: t("glicoAssistant.query.pdfDownload")
+      });
+    } catch (reason) {
+      if (activeConversationId.current !== conversation.id) return;
+      fail(reason);
+      if (reason?.status === 409) refreshConversation(conversation.id).catch(() => {});
+    } finally {
+      if (activeConversationId.current === conversation.id) setBusy(false);
+    }
+  };
+
+  // The few things people ask for every day stay one tap away; the rest sits behind "More options".
+  const mainChips = hasPatientContext ? [
     { key: "readings", label: t("glicoAssistant.chips.readings"), run: () => sendText(t("glicoAssistant.chips.readings")) },
     { key: "atypical", label: t("glicoAssistant.chips.atypical"), run: () => sendText(t("glicoAssistant.chips.atypical")) },
+    ...[1, 2, 3].map((months) => ({ key: `report-${months}`, label: t("glicoAssistant.chips.reportMonths", { count: months }), run: () => reportForMonths(months) }))
+  ] : [];
+  const actionChips = hasPatientContext ? [
     { key: "pdf", label: t("glicoAssistant.chips.pdf"), run: askPdf },
     { key: "period", label: t("glicoAssistant.chips.period"), run: openPeriodCard },
     { key: "open", label: t("glicoAssistant.chips.open"), run: startOpenQuestion },
@@ -786,7 +860,7 @@ export default function GlicoAssistantPage() {
 
       {textOn ? (
         <section className="glico__chat" aria-label={t("glicoAssistant.chatLabel")}>
-          <div className="glico__thread" role="log" aria-live="polite" aria-relevant="additions" data-testid="glico-thread">
+          <div ref={threadRef} onScroll={onThreadScroll} className="glico__thread" role="log" aria-live="polite" aria-relevant="additions" data-testid="glico-thread">
             {!messages.length && !proposal && !shownReceipt ? (
               <div className="glico-welcome">
                 <img src="/img/mascote-avatar-420.webp" srcSet="/img/mascote-avatar-192.webp 192w, /img/mascote-avatar-420.webp 420w" sizes="132px" alt="" width="132" height="132" className="glico-welcome__mark" />
@@ -795,19 +869,26 @@ export default function GlicoAssistantPage() {
                 {hasPatientContext ? (
                   <>
                     <ul className="glico-suggestions" aria-label={t("glicoAssistant.chips.title")}>
-                      {actionChips.map((chip) => (
+                      {mainChips.map((chip) => (
                         <li key={chip.key}>
                           <button type="button" className="glico-chip" onClick={chip.run} disabled={busy}>{chip.label}</button>
                         </li>
                       ))}
+                      <li>
+                        <button type="button" className="glico-chip glico-chip--quiet glico-chip--more" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)}>
+                          {t(moreOpen ? "glicoAssistant.chips.less" : "glicoAssistant.chips.more")}
+                        </button>
+                      </li>
                     </ul>
-                    <ul className="glico-suggestions glico-suggestions--faq" aria-label={t("glicoAssistant.faq.title")}>
-                      {faqChips.map((chip) => (
-                        <li key={chip.key}>
-                          <button type="button" className="glico-chip glico-chip--quiet" onClick={chip.run}>{chip.label}</button>
-                        </li>
-                      ))}
-                    </ul>
+                    {moreOpen ? (
+                      <ul className="glico-suggestions glico-suggestions--faq" aria-label={t("glicoAssistant.faq.title")}>
+                        {[...actionChips, ...faqChips].map((chip) => (
+                          <li key={chip.key}>
+                            <button type="button" className="glico-chip glico-chip--quiet" onClick={chip.run} disabled={busy}>{chip.label}</button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </>
                 ) : null}
               </div>
@@ -941,8 +1022,13 @@ export default function GlicoAssistantPage() {
                 <span className="react-visually-hidden">{t("glicoAssistant.working")}</span>
               </div>
             ) : null}
-            <div ref={threadEnd} aria-hidden="true" />
           </div>
+
+          {awayFromEnd ? (
+            <button type="button" className="glico-jump" onClick={() => scrollToEnd()} aria-label={t("glicoAssistant.jumpToEnd")}>
+              <SendIcon size={18} />
+            </button>
+          ) : null}
 
           <div className="glico-dock">
             <div className="glico__status" aria-live="polite">
@@ -950,13 +1036,18 @@ export default function GlicoAssistantPage() {
               {notice ? <div className="glico-alert glico-alert--success" role="status">{t(`glicoAssistant.${notice}`)}</div> : null}
             </div>
 
-            {messages.length || proposal || shownReceipt ? (
+            {(messages.length || shownReceipt) && !proposal ? (
               <ul className="glico-chips" aria-label={t("glicoAssistant.chips.title")}>
-                {[...actionChips, ...faqChips].map((chip) => (
+                {[...mainChips, ...(moreOpen ? [...actionChips, ...faqChips] : [])].map((chip) => (
                   <li key={chip.key}>
                     <button type="button" className="glico-chip glico-chip--row" onClick={chip.run} disabled={busy}>{chip.label}</button>
                   </li>
                 ))}
+                <li>
+                  <button type="button" className="glico-chip glico-chip--row glico-chip--quiet" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)}>
+                    {t(moreOpen ? "glicoAssistant.chips.less" : "glicoAssistant.chips.more")}
+                  </button>
+                </li>
               </ul>
             ) : null}
 
@@ -1014,9 +1105,7 @@ export default function GlicoAssistantPage() {
         </section>
       ) : null}
 
-      {capabilities?.language_model ? <p className="glico-hint glico__disclaimer" data-testid="glico-llm-note">{t("glicoAssistant.llmNote")}</p> : null}
-      <p className="glico-hint glico__disclaimer">{t("glicoAssistant.notClinicalAdvice")}</p>
-      <p className="glico-hint glico__disclaimer">{t("glicoAssistant.privacyNote")}</p>
+      <div className="glico__notes"><GlicoNotes languageModel={Boolean(capabilities?.language_model)} /></div>
     </section>
   );
 }

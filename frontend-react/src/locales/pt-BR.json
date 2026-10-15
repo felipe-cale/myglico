@@ -956,7 +956,11 @@
       "period": "Definir período",
       "open": "Abrir questionamento",
       "reply": "Responder questionamento",
-      "investigations": "Meus questionamentos"
+      "investigations": "Meus questionamentos",
+      "reportMonths_one": "Relatório do último mês",
+      "reportMonths_other": "Relatório dos últimos {{count}} meses",
+      "more": "Mais opções",
+      "less": "Menos opções"
     },
     "collab": {
       "placeholder": "Escreva sua pergunta ou mensagem…",
@@ -1166,6 +1170,8 @@
       "audioTooLong": "A gravação passou do limite e foi interrompida.",
       "genericError": "Não foi possível concluir. Tente novamente.",
       "offline": "Sem conexão com o servidor. Verifique a internet e tente novamente."
-    }
+    },
+    "notesTitle": "Avisos e privacidade",
+    "jumpToEnd": "Voltar ao fim da conversa"
   }
 }

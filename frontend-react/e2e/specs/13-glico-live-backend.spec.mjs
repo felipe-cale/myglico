@@ -20,6 +20,7 @@ async function loginAndOpen(page, browserContext, request, lang = "pt-BR", viewp
 
 test("live backend: FAQ, proposal edit/confirm, readings, cancellation and three locales", async ({ page, context, request }) => {
   await loginAndOpen(page, context, request);
+  await page.getByRole("button", { name: t("glicoAssistant.chips.more") }).click();
   await page.getByRole("button", { name: t("glicoAssistant.faq.privacy.q") }).click();
   await expect(page.getByText(t("glicoAssistant.faq.privacy.a"))).toBeVisible();
 
@@ -81,6 +82,7 @@ test("live backend: doctor selects the linked patient before using the conversat
   await expect(composer).toBeDisabled();
   await page.getByLabel(t("glicoAssistant.selectPatient")).selectOption({ label: "E2E patient" });
   await expect(composer).toBeEnabled();
+  await page.getByRole("button", { name: t("glicoAssistant.chips.more") }).click().catch(() => {});
   await page.getByRole("button", { name: t("glicoAssistant.faq.howLog.q") }).click();
   await expect(page.getByText(t("glicoAssistant.faq.howLog.a"))).toBeVisible();
 });

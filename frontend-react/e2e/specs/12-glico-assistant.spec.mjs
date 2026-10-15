@@ -21,7 +21,14 @@ async function openAssistant(ui, { lang, viewport } = {}) {
   await expect(ui.page.getByRole("heading", { level: 1, name: t("glicoAssistant.title", lang || "pt-BR") })).toBeVisible();
 }
 
+const MAIN_CHIPS = ["readings", "atypical"];
+
 async function chip(ui, key) {
+  // Everyday shortcuts are always visible; the others sit behind "More options".
+  if (!MAIN_CHIPS.includes(key)) {
+    const more = ui.page.getByRole("button", { name: t("glicoAssistant.chips.more") });
+    if ((await more.getAttribute("aria-expanded")) !== "true") await more.click();
+  }
   await ui.page.getByRole("button", { name: t(`glicoAssistant.chips.${key}`) }).click();
 }
 
@@ -59,7 +66,9 @@ test.describe("Glico assistant - language model", () => {
       await route.fulfill({ status: 200, json: { type: "message", text: "Oi! <b>Como</b> posso ajudar?" } });
     });
     await openAssistant(ui);
+    await ui.page.getByRole("button", { name: t("glicoAssistant.notesTitle") }).click();
     await expect(ui.page.getByTestId("glico-llm-note")).toHaveText(t("glicoAssistant.llmNote"));
+    await ui.page.keyboard.press("Escape");
     const field = ui.page.getByLabel(t("glicoAssistant.messageLabel"));
     await field.fill("oi");
     await ui.page.getByRole("button", { name: t("glicoAssistant.send"), exact: true }).click();
@@ -152,9 +161,12 @@ test.describe("Glico assistant - patient", () => {
       await actor("patientA");
       const ui = await browserSession("patientA", { locale: lang });
       await openAssistant(ui, { lang });
+      await ui.page.getByRole("button", { name: t("glicoAssistant.chips.more", lang) }).click();
       await ui.page.getByRole("button", { name: t("glicoAssistant.faq.howLog.q", lang) }).click();
       await expect(ui.page.getByText(t("glicoAssistant.faq.howLog.a", lang))).toBeVisible();
+      await ui.page.getByRole("button", { name: t("glicoAssistant.notesTitle", lang) }).click();
       await expect(ui.page.getByText(t("glicoAssistant.notClinicalAdvice", lang))).toBeVisible();
+      await ui.page.keyboard.press("Escape");
     });
   }
 
@@ -290,6 +302,7 @@ test.describe("Glico assistant - patient", () => {
     await expect(ui.page.getByRole("region", { name: t("glicoAssistant.chatLabel") })).toBeVisible();
     await ui.page.getByLabel(t("glicoAssistant.messageLabel")).focus();
     await expect(ui.page.getByLabel(t("glicoAssistant.messageLabel"))).toBeFocused();
+    await ui.page.getByRole("button", { name: t("glicoAssistant.chips.more") }).click();
     await ui.page.getByRole("button", { name: t("glicoAssistant.faq.privacy.q") }).focus();
     await ui.page.keyboard.press("Enter");
     await expect(ui.page.getByText(t("glicoAssistant.faq.privacy.a"))).toBeVisible();

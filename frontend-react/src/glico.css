@@ -726,17 +726,24 @@
   to { transform: rotate(360deg); }
 }
 
-@media (min-width: 48rem) {
-  .glico-card__form {
-    grid-template-columns: 1fr 1fr;
-    column-gap: 1rem;
-  }
+.glico-card__form {
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  column-gap: 0.7rem;
+}
 
-  .glico-card__form > label[for$="-notes"],
-  .glico-card__form > textarea,
-  .glico-card__form > p,
-  .glico-card__actions {
-    grid-column: 1 / -1;
+.glico-card__form > p,
+.glico-card__form > .glico-card__actions,
+.glico-card__form > .glico__associated-days,
+.glico-card__form > input,
+.glico-card__form > textarea,
+.glico-card__form > label {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 40rem) {
+  .glico-card__form {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 0.9rem;
   }
 
   .glico-panel {
@@ -1134,4 +1141,246 @@
 
 .glico-bar:empty {
   display: none;
+}
+
+/* ---------- Chat fits the screen: only the conversation scrolls ---------- */
+
+.glico.glico--chat {
+  height: calc(100dvh - 10.25rem);
+  min-height: 24rem;
+  overflow: hidden;
+}
+
+@media (max-width: 899px) {
+  .glico.glico--chat {
+    height: calc(100dvh - 9rem);
+  }
+}
+
+.react-shell:has(.glico--chat) .react-footer {
+  display: none;
+}
+
+.glico--chat .glico__chat {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.glico--chat .glico__thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-inline: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-sky-strong) transparent;
+}
+
+.glico--chat .glico__thread::-webkit-scrollbar {
+  width: 10px;
+}
+
+.glico--chat .glico__thread::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--brand-sky-strong) padding-box;
+}
+
+.glico--chat .glico__thread::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-cobalt) padding-box;
+  border: 3px solid transparent;
+}
+
+.glico--chat .glico-dock {
+  position: static;
+  flex: none;
+  padding-top: 0.5rem;
+  background: none;
+}
+
+.glico-jump {
+  position: relative;
+  z-index: 3;
+  flex: none;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: -3.25rem 0 0.75rem;
+  border: 2px solid var(--brand-sky-strong);
+  border-radius: 50%;
+  background: var(--react-surface-solid);
+  color: var(--brand-cobalt);
+  box-shadow: 0 6px 16px rgba(21, 63, 143, 0.16);
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glico-jump svg {
+  transform: rotate(180deg);
+}
+
+.glico-jump:hover {
+  transform: translateY(2px);
+}
+
+.glico-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.glico-suggestions li {
+  flex: none;
+  max-width: 100%;
+}
+
+.glico-suggestions .glico-chip {
+  width: auto;
+  max-width: 100%;
+  text-align: center;
+}
+
+.glico-suggestions--faq {
+  margin-top: 0.25rem;
+}
+
+.glico__notes {
+  flex: none;
+  text-align: center;
+}
+
+.glico__notes-link {
+  padding: 0.2rem 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--react-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.glico__notes-link:hover {
+  background: var(--brand-sky);
+  color: var(--brand-cobalt-deep);
+}
+
+.glico-notes__body p {
+  margin: 0 0 0.75rem;
+  color: var(--react-text);
+}
+
+.glico-notes__body p:last-child {
+  margin-bottom: 0;
+}
+
+/* The scroll area spans the whole width, like a chat app: the scrollbar sits at the edge, the text stays centered. */
+.glico.glico--chat {
+  max-width: none;
+  gap: 0.25rem;
+}
+
+.glico--chat .glico__thread {
+  padding-inline: max(0.25rem, calc((100% - 48rem) / 2));
+}
+
+.glico--chat .glico-dock {
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+}
+
+@media (max-height: 780px) {
+  .glico-welcome {
+    gap: 0.4rem;
+    padding: 0.25rem 0 0.5rem;
+  }
+
+  .glico-welcome__mark {
+    width: 5.5rem;
+    height: 5.5rem;
+  }
+}
+
+/* Reading confirmation: compact, fits the chat without being cut off. */
+.glico-card {
+  gap: 0.4rem;
+  padding: 0.85rem 1rem 0.95rem;
+  border-radius: 22px;
+}
+
+.glico-card h2 {
+  font-size: 1.05rem;
+}
+
+.glico-card > p,
+.glico-card .glico-hint {
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.glico-field {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.glico-field label {
+  font-size: 0.8125rem;
+  color: var(--react-muted);
+}
+
+.glico-field .react-field {
+  min-height: 2.5rem;
+  padding-block: 0.35rem;
+}
+
+.glico-field textarea.react-field {
+  min-height: 2.5rem;
+  height: 2.5rem;
+  resize: none;
+}
+
+.glico-field--value .react-field {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.glico-card__actions {
+  margin-top: 0.2rem;
+}
+
+.glico-chips {
+  scrollbar-width: none;
+}
+
+.glico-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.glico__proposal-wrap:focus-visible {
+  outline: 2px solid var(--brand-sky-strong);
+  outline-offset: 3px;
+  border-radius: 24px;
+}
+
+@media (max-width: 40rem) {
+  .glico-field--value .react-field {
+    font-size: 1.125rem;
+  }
+
+  .glico-card__value span {
+    font-size: 0.8125rem;
+  }
+
+  .glico-field input[type="datetime-local"] {
+    padding-inline: 0.5rem;
+    font-size: 0.875rem;
+  }
 }

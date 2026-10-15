@@ -123,30 +123,38 @@ export default function GlicoProposalCard({ proposal, role, busy, onSave, onConf
         <form onSubmit={save} className="glico-card__form" noValidate>
           {kind === "glucose_single" && (
             <>
-              <label htmlFor={field("value")}>{t("glicoAssistant.valueLabel")}</label>
-              <div className="glico-card__value">
-                <input
-                  id={field("value")}
-                  className="react-field"
-                  type="number"
-                  inputMode="decimal"
-                  min="20"
-                  max="600"
-                  step="0.1"
-                  value={values.glucose_mg_dl}
-                  onChange={update("glucose_mg_dl")}
-                  disabled={busy}
-                  aria-invalid={valueInvalid && values.glucose_mg_dl !== "" ? "true" : undefined}
-                  aria-describedby={field("unit")}
-                />
-                <span id={field("unit")}>mg/dL</span>
+              <div className="glico-field glico-field--value">
+                <label htmlFor={field("value")}>{t("glicoAssistant.valueLabel")}</label>
+                <div className="glico-card__value">
+                  <input
+                    id={field("value")}
+                    className="react-field"
+                    type="number"
+                    inputMode="decimal"
+                    min="20"
+                    max="600"
+                    step="0.1"
+                    value={values.glucose_mg_dl}
+                    onChange={update("glucose_mg_dl")}
+                    disabled={busy}
+                    aria-invalid={valueInvalid && values.glucose_mg_dl !== "" ? "true" : undefined}
+                    aria-describedby={field("unit")}
+                  />
+                  <span id={field("unit")}>mg/dL</span>
+                </div>
               </div>
-              <label htmlFor={field("at")}>{t("glicoAssistant.measuredAtLabel")}</label>
-              <input id={field("at")} className="react-field" type="datetime-local" value={values.measured_at} onChange={update("measured_at")} disabled={busy} />
-              <label htmlFor={field("ctx")}>{t("glicoAssistant.contextLabel")}</label>
-              <input id={field("ctx")} className="react-field" type="text" maxLength={100} value={values.context_label} onChange={update("context_label")} disabled={busy} />
-              <label htmlFor={field("notes")}>{t("glicoAssistant.notesLabel")}</label>
-              <textarea id={field("notes")} className="react-field" rows={2} maxLength={500} value={values.notes} onChange={update("notes")} disabled={busy} />
+              <div className="glico-field">
+                <label htmlFor={field("at")}>{t("glicoAssistant.measuredAtLabel")}</label>
+                <input id={field("at")} className="react-field" type="datetime-local" value={values.measured_at} onChange={update("measured_at")} disabled={busy} />
+              </div>
+              <div className="glico-field">
+                <label htmlFor={field("ctx")}>{t("glicoAssistant.contextLabel")}</label>
+                <input id={field("ctx")} className="react-field" type="text" maxLength={100} value={values.context_label} onChange={update("context_label")} disabled={busy} />
+              </div>
+              <div className="glico-field">
+                <label htmlFor={field("notes")}>{t("glicoAssistant.notesLabel")}</label>
+                <textarea id={field("notes")} className="react-field" rows={1} maxLength={500} value={values.notes} onChange={update("notes")} disabled={busy} />
+              </div>
             </>
           )}
 
@@ -187,12 +195,14 @@ export default function GlicoProposalCard({ proposal, role, busy, onSave, onConf
           {!isPatient && kind === "glucose_single" ? <p className="glico-hint" role="note">{t("glicoAssistant.doctorCannotConfirm")}</p> : null}
 
           <div className="glico-card__actions">
-            <button type="submit" className="react-button react-button--ghost" disabled={busy || !dirty || invalid}>
-              {t("glicoAssistant.saveCorrection")}
-            </button>
             <button type="button" className="react-button react-button--primary" onClick={onConfirm} disabled={busy || !ready || !isPatient}>
               {t("glicoAssistant.confirm")}
             </button>
+            {dirty ? (
+              <button type="submit" className="react-button react-button--ghost" disabled={busy || invalid}>
+                {t("glicoAssistant.saveCorrection")}
+              </button>
+            ) : null}
             <button type="button" className="react-button react-button--quiet" onClick={onDiscard} disabled={busy}>
               {t("glicoAssistant.discard")}
             </button>

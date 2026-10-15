@@ -956,7 +956,11 @@
       "period": "Set period",
       "open": "Open an investigation",
       "reply": "Reply to an investigation",
-      "investigations": "My investigations"
+      "investigations": "My investigations",
+      "reportMonths_one": "Report for the last month",
+      "reportMonths_other": "Report for the last {{count}} months",
+      "more": "More options",
+      "less": "Fewer options"
     },
     "collab": {
       "placeholder": "Write your question or message…",
@@ -1166,6 +1170,8 @@
       "audioTooLong": "The recording passed the limit and was stopped.",
       "genericError": "We could not complete that. Please try again.",
       "offline": "No connection to the server. Check your internet and try again."
-    }
+    },
+    "notesTitle": "Notices and privacy",
+    "jumpToEnd": "Back to the end of the chat"
   }
 }
