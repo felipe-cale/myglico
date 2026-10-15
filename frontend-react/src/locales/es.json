@@ -1109,7 +1109,9 @@
       "metricFreshness": "Actualización",
       "status": "Estado",
       "statusUnknown": "Desconocido",
-      "score": "Puntuación"
+      "score": "Puntuación",
+      "readingsLastDay": "Último día con registros: {{date}} · {{count}} lecturas",
+      "readingsTitleDoctor": "Lecturas recientes del paciente"
     },
     "investigation": {
       "openTitle": "Nueva investigación",
@@ -1179,6 +1181,8 @@
       "greetingPatient": "¿Qué quieres ver sobre {{name}}?",
       "greetingBody": "Consulta las lecturas, los días atípicos y el informe en PDF del paciente.",
       "composerPlaceholder": "Pregunta sobre las lecturas de este paciente…"
-    }
+    },
+    "searchPatient": "Buscar paciente…",
+    "noPatientMatch": "Ningún paciente encontrado."
   }
 }

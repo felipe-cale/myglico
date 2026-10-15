@@ -1408,3 +1408,114 @@
   text-align: center;
   font-size: 0.8125rem;
 }
+
+/* Searchable patient picker (doctor) */
+.glico-picker {
+  position: relative;
+  width: 100%;
+}
+
+.glico-picker__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 1rem 0 1.25rem;
+  border: 2px solid var(--brand-sky-strong);
+  border-radius: 999px;
+  background: var(--react-surface-solid);
+  color: var(--brand-cobalt-deep);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.glico-picker__trigger:hover:not(:disabled) {
+  border-color: var(--brand-cobalt);
+}
+
+.glico-picker__trigger[aria-expanded="true"] {
+  border-color: var(--brand-cobalt);
+}
+
+.glico-picker__trigger .is-placeholder {
+  color: var(--react-muted);
+  font-weight: 500;
+}
+
+.glico-picker__popover {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border: 1px solid var(--react-border);
+  border-radius: 22px;
+  background: var(--react-surface-solid);
+  box-shadow: 0 16px 36px rgba(21, 63, 143, 0.18);
+}
+
+.glico-picker__search {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border: 1.5px solid var(--brand-sky-strong);
+  border-radius: 999px;
+  background: var(--brand-sky);
+  font: inherit;
+  color: var(--react-text);
+}
+
+.glico-picker__search:focus-visible {
+  outline: none;
+  border-color: var(--brand-cobalt);
+  background: var(--react-surface-solid);
+}
+
+.glico-picker__list {
+  max-height: 14rem;
+  margin: 0;
+  padding: 0.15rem;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-sky-strong) transparent;
+}
+
+.glico-picker__option {
+  padding: 0.55rem 0.9rem;
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.glico-picker__option.is-active {
+  background: var(--brand-sky);
+}
+
+.glico-picker__option.is-selected {
+  color: var(--brand-cobalt);
+  font-weight: 700;
+}
+
+.glico-picker__empty {
+  padding: 0.6rem 0.9rem;
+  color: var(--react-muted);
+}
+
+/* Readings in the chat: one compact row each, newest first. */
+.glico__list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.75rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.glico__list li > * {
+  margin-right: 0;
+}

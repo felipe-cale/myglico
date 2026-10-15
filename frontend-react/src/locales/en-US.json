@@ -1109,7 +1109,9 @@
       "metricFreshness": "Updated",
       "status": "Status",
       "statusUnknown": "Unknown",
-      "score": "Score"
+      "score": "Score",
+      "readingsLastDay": "Most recent day with records: {{date}} · {{count}} readings",
+      "readingsTitleDoctor": "Patient's recent readings"
     },
     "investigation": {
       "openTitle": "New investigation",
@@ -1179,6 +1181,8 @@
       "greetingPatient": "What would you like to see about {{name}}?",
       "greetingBody": "Look up the patient's readings, atypical days and PDF report.",
       "composerPlaceholder": "Ask about this patient's readings…"
-    }
+    },
+    "searchPatient": "Search patient…",
+    "noPatientMatch": "No patient found."
   }
 }

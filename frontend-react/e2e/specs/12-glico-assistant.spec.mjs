@@ -426,7 +426,8 @@ test.describe("Glico assistant - doctor", () => {
     await expect(message).toBeDisabled();
     await expect(ui.page.getByText(t("glicoAssistant.selectPatientRequired"))).toBeVisible();
 
-    await ui.page.getByLabel(t("glicoAssistant.selectPatient")).selectOption({ label: patient.profile?.display_name || "Paciente A (E2E)" });
+    await ui.page.getByRole("button", { name: t("glicoAssistant.selectPatient") }).click();
+    await ui.page.getByRole("option", { name: patient.profile?.display_name || "Paciente A (E2E)" }).click();
     await expect(message).toBeEnabled();
 
     await message.fill("glicose 110 mg/dL");
@@ -435,14 +436,43 @@ test.describe("Glico assistant - doctor", () => {
     await expect(ui.page.getByTestId("glico-proposal")).toHaveCount(0);
   });
 
+  test("one-tap report shortcuts set the period and hand over the PDF link for the chosen patient", async ({ actor, browserSession }) => {
+    const patient = await actor("patientA");
+    const doctor = await actor("doctorA");
+    await linkActive(patient, doctor);
+    const ui = await browserSession("doctorA");
+    await openAssistant(ui);
+    await ui.page.getByRole("button", { name: t("glicoAssistant.selectPatient") }).click();
+    await ui.page.getByRole("option", { name: patient.profile?.display_name || "Paciente A (E2E)" }).click();
+
+    // A doctor only gets four shortcuts and cannot log readings (no photo or audio capture).
+    await expect(ui.page.getByRole("list", { name: t("glicoAssistant.chips.title") }).getByRole("button")).toHaveCount(4);
+    await expect(ui.page.getByRole("button", { name: t("glicoAssistant.media.sendPhoto") })).toHaveCount(0);
+
+    const links = ui.page.getByRole("link", { name: t("glicoAssistant.query.pdfDownload") });
+    for (const [index, months] of [1, 3].entries()) {
+      await ui.page.getByRole("button", { name: t(months === 1 ? "glicoAssistant.chips.reportMonths_one" : "glicoAssistant.chips.reportMonths_other", "pt-BR", { count: months }) }).click();
+      await expect(links).toHaveCount(index + 1);
+      const download = links.last();
+      const href = await download.getAttribute("href");
+      const params = new URL(href, "http://x").searchParams;
+      const start = new Date(params.get("start_date"));
+      const end = new Date(params.get("end_date"));
+      const spanDays = (end - start) / 86400000;
+      expect(spanDays).toBeGreaterThanOrEqual(months * 28);
+      expect(spanDays).toBeLessThanOrEqual(months * 31 + 1);
+    }
+  });
+
   test("doctor without links sees an empty-state hint and the unrelated patient is never offered", async ({ actor, browserSession }) => {
     await actor("patientB");
     await actor("doctorB");
     const ui = await browserSession("doctorB");
     await openAssistant(ui);
-    await expect(ui.page.getByLabel(t("glicoAssistant.selectPatient")).locator("option").first()).toHaveText(t("glicoAssistant.selectPatientPlaceholder"));
-    const options = await ui.page.getByLabel(t("glicoAssistant.selectPatient")).locator("option").allTextContents();
-    expect(options).toEqual([t("glicoAssistant.selectPatientPlaceholder")]);
+    const picker = ui.page.getByRole("button", { name: t("glicoAssistant.selectPatient") });
+    await expect(picker).toHaveText(t("glicoAssistant.selectPatientPlaceholder"));
+    await picker.click();
+    await expect(ui.page.getByRole("option")).toHaveCount(0);
     await expect(ui.page.getByText(t("glicoAssistant.noPatients"))).toBeVisible();
   });
 

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import GlicoMediaCapture from "../components/GlicoMediaCapture";
 import GlicoNotes from "../components/GlicoNotes";
+import GlicoPatientPicker from "../components/GlicoPatientPicker";
 import GlicoProposalCard from "../components/GlicoProposalCard";
 import { CloseIcon, MicIcon, SendIcon } from "../components/GlicoIcons";
 import useDocumentTitle from "../hooks/useDocumentTitle";
@@ -338,6 +339,8 @@ export default function GlicoAssistantPage() {
     try {
       const next = await updateGlicoContext(conversation.id, {
         version: conversation.context_version,
+        // A doctor's context update always names the patient again; the server re-checks the active link.
+        ...(isDoctor ? { patient_id: selectedPatient } : {}),
         period_start: start,
         period_end: end
       });
@@ -383,14 +386,23 @@ export default function GlicoAssistantPage() {
       return;
     }
     if (result?.answer_key === "glico.query.readings" && Array.isArray(result.items) && result.items.length) {
+      // The list is long; the conversation shows the most recent day with records, newest first.
+      const dayOf = (iso) => new Date(iso).toDateString();
+      const sorted = [...result.items].sort((left, right) => new Date(right.measured_at) - new Date(left.measured_at));
+      const lastDay = dayOf(sorted[0].measured_at);
+      const ofLastDay = sorted.filter((item) => dayOf(item.measured_at) === lastDay);
       addAssistant({
         type: "list",
-        title: t("glicoAssistant.query.readingsTitle"),
-        items: result.items.map((item) => ({
+        title: t(isDoctor ? "glicoAssistant.query.readingsTitleDoctor" : "glicoAssistant.query.readingsTitle"),
+        subtitle: t("glicoAssistant.query.readingsLastDay", {
+          date: new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" }).format(new Date(sorted[0].measured_at)),
+          count: ofLastDay.length
+        }),
+        items: ofLastDay.map((item) => ({
           value: item.glucose_mg_dl,
-          date: formatDate(item.measured_at),
+          date: new Intl.DateTimeFormat(i18n.language, { timeStyle: "short" }).format(new Date(item.measured_at)),
           timestamp: item.measured_at,
-          context: item.context_label
+          context: item.context_label ? t(`enums.context.${item.context_label}`, { defaultValue: item.context_label.replace(/_/g, " ") }) : ""
         })),
         itemType: "reading"
       });
@@ -758,6 +770,7 @@ export default function GlicoAssistantPage() {
     try {
       const next = await updateGlicoContext(conversation.id, {
         version: conversation.context_version,
+        ...(isDoctor ? { patient_id: selectedPatient } : {}),
         period_start: isoDate(start),
         period_end: isoDate(end)
       });
@@ -850,13 +863,12 @@ export default function GlicoAssistantPage() {
       <header className="glico-bar">
         {isDoctor ? (
           <div className="glico-bar__patient">
-            <label htmlFor="glico-patient" className="react-visually-hidden">{t("glicoAssistant.selectPatient")}</label>
-            <select id="glico-patient" className="react-field" value={selectedPatient} onChange={choosePatient} disabled={busy}>
-              <option value="">{t("glicoAssistant.selectPatientPlaceholder")}</option>
-              {patients.map((patient) => (
-                <option key={patient.id} value={patient.id}>{patient.display_name}</option>
-              ))}
-            </select>
+            <GlicoPatientPicker
+              patients={patients}
+              value={selectedPatient}
+              disabled={busy}
+              onChange={(id) => choosePatient({ target: { value: id } })}
+            />
           </div>
         ) : null}
       </header>
@@ -945,6 +957,7 @@ export default function GlicoAssistantPage() {
                   ) : message.type === "list" ? (
                     <div className="glico__list" aria-label={message.title}>
                       <h3>{message.title}</h3>
+                      {message.subtitle ? <p className="glico-hint">{message.subtitle}</p> : null}
                       <ul>
                         {message.items.map((item, idx) => (
                           <li key={`${message.id}-${idx}`} className={message.itemType === "investigation" && collab?.kind === "investigation_message" ? "is-pickable" : undefined}>

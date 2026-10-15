@@ -80,7 +80,8 @@ test("live backend: doctor selects the linked patient before using the conversat
   });
   const composer = page.getByLabel(t("glicoAssistant.messageLabel"));
   await expect(composer).toBeDisabled();
-  await page.getByLabel(t("glicoAssistant.selectPatient")).selectOption({ label: "E2E patient" });
+  await page.getByRole("button", { name: t("glicoAssistant.selectPatient") }).click();
+  await page.getByRole("option", { name: "E2E patient" }).click();
   await expect(composer).toBeEnabled();
   await page.getByRole("button", { name: t("glicoAssistant.chips.more") }).click().catch(() => {});
   await page.getByRole("button", { name: t("glicoAssistant.faq.howLog.q") }).click();
