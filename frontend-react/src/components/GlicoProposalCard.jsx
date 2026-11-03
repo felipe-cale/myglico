@@ -69,7 +69,7 @@ export default function GlicoProposalCard({ proposal, role, busy, onSave, onConf
   };
 
   const number = Number(values.glucose_mg_dl);
-  const valueInvalid = values.glucose_mg_dl === "" || !(number >= 20 && number <= 600);
+  const valueInvalid = values.glucose_mg_dl === "" || !(number >= 10 && number <= 600);
   const dateInvalid = !values.measured_at;
   const titleInvalid = kind === "investigation_open" && !values.title.trim();
   const contentInvalid = (kind === "investigation_open" || kind === "investigation_message") && !values.content.trim();
@@ -131,7 +131,7 @@ export default function GlicoProposalCard({ proposal, role, busy, onSave, onConf
                     className="react-field"
                     type="number"
                     inputMode="decimal"
-                    min="20"
+                    min="10"
                     max="600"
                     step="0.1"
                     value={values.glucose_mg_dl}

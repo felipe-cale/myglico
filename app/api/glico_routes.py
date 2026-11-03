@@ -233,7 +233,18 @@ def _receipt(item: GlicoExecution) -> dict:
             "analytics_status": item.analytics_status}
 
 
-def _make_proposal(db: Session, conversation: GlicoConversation, text: str, extra_warnings: list[str] | None = None):
+def _reading_numbers(text: str) -> list[str]:
+    # Mask date/time tokens before finding numbers, including dates without a year.
+    text = re.sub(
+        r"\b(?:\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}[/-]\d{1,2})\b",
+        " ", text,
+    )
+    text = re.sub(r"\b\d{1,2}:\d{2}(?::\d{2})?\b|\b\d{1,2}h(?:\d{2})?\b", " ", text, flags=re.I)
+    return re.findall(r"(?<![\w.,+\-])(\d+(?:[.,]\d+)?)(?!\w|[.,]\d)", text)
+
+
+def _make_proposal(db: Session, conversation: GlicoConversation, text: str,
+                   extra_warnings: list[str] | None = None, *, inferred_value: str | None = None):
     # Deliberately deterministic. No external model receives clinical context or text.
     if re.search(r"\b(hi|lo)\b", text, re.I):
         return {"type": "clarification", "answer_key": "glico.reading.unsupported_signal"}
@@ -244,13 +255,12 @@ def _make_proposal(db: Session, conversation: GlicoConversation, text: str, extr
     for matched in (unit_match, iso_date, clock):
         if matched:
             numeric_text = numeric_text.replace(matched.group(0), " ", 1)
-    number_matches = re.findall(r"(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)(?!\d)", numeric_text)
+    number_matches = [inferred_value] if inferred_value is not None else _reading_numbers(numeric_text)
     if len(number_matches) > 1:
         return {"type": "clarification", "answer_key": "glico.reading.multiple_values"}
-    number = re.search(r"(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)(?!\d)", numeric_text)
-    if number and unit_match:
-        value = float(number.group(1).replace(",", "."))
-        source_unit = re.sub(r"\s+", "", unit_match.group(1).lower())
+    if number_matches and (unit_match or inferred_value is not None):
+        value = float(number_matches[0].replace(",", "."))
+        source_unit = re.sub(r"\s+", "", unit_match.group(1).lower()) if unit_match else "mgdl"
         unit = source_unit.replace("/", "")
         if unit in {"mmoll", "mmol/l"}:
             mg_dl = round(value * 18.0182, 1)
@@ -286,7 +296,7 @@ def _make_proposal(db: Session, conversation: GlicoConversation, text: str, extr
                   "original_unit": normalized_unit if source_unit.startswith("mg") else "mmol/L",
                   "measured_at": measured_at, "timezone": zone_name,
                   "context_label": None, "notes": None}
-        valid = 20 <= mg_dl <= 600
+        valid = 10 <= mg_dl <= 600
         if not valid:
             return {"type": "clarification", "answer_key": "glico.reading.out_of_range"}
         proposal = create_proposal(db, conversation, kind="glucose_single", fields=fields,
@@ -310,26 +320,18 @@ def _make_proposal(db: Session, conversation: GlicoConversation, text: str, extr
 
 def _confident_reading(db: Session, conversation: GlicoConversation, principal: SessionPrincipal,
                        text: str) -> dict | None:
-    """A message that is just one value with its unit needs no language model: record it directly."""
+    """Suggest one reading for review without requiring a language model or explicit unit."""
     from app.services.glico_llm import is_dose_question
     if conversation.patient_id is None or principal.doctor is not None or is_dose_question(text):
         return None
-    bare = re.fullmatch(r"\s*(\d{1,3}(?:[.,]\d{1,2})?)\s*[.!]?\s*", text)
-    if bare is not None:
-        # Just a number in the glucose chat: decimals read as mmol/L, integers as mg/dL.
-        raw = bare.group(1)
-        value = float(raw.replace(",", "."))
-        decimal = "." in raw or "," in raw
-        if decimal and 2.0 <= value <= 33.3:
-            text = f"{raw} mmol/L"
-        elif not decimal and 20 <= value <= 600:
-            text = f"{raw} mg/dL"
-        else:
-            return None
-    elif not re.search(r"\d\s*(mg\s*/?\s*dl|mmol\s*/?\s*l)" + chr(92) + "b", text, re.I):
+    if re.search(r"\b(?:mg\s*/?\s*dl|mmol\s*/?\s*l)\b", text, re.I):
+        return _make_proposal(db, conversation, text)
+    candidates = [raw for raw in _reading_numbers(text) if 10 <= float(raw.replace(",", ".")) <= 500]
+    if len(candidates) > 1:
+        return {"type": "clarification", "answer_key": "glico.reading.multiple_values"}
+    if not candidates:
         return None
-    result = _make_proposal(db, conversation, text)
-    return result if result and result.get("type") == "proposal" else None
+    return _make_proposal(db, conversation, text, inferred_value=candidates[0])
 
 
 _LLM_QUERY_KEYWORD = {
@@ -653,7 +655,7 @@ def edit_proposal(proposal_id: str, payload: ProposalEdit, request: Request,
             value = float(fields.get("glucose_mg_dl"))
         except (TypeError, ValueError, OverflowError):
             raise HTTPException(status_code=422, detail="invalid_fields") from None
-        if not (20 <= value <= 600):
+        if not (10 <= value <= 600):
             raise HTTPException(status_code=422, detail="invalid_fields")
         try:
             measured_at = datetime.fromisoformat(fields.get("measured_at", ""))
@@ -833,7 +835,7 @@ def confirm_proposal(proposal_id: str, payload: ConfirmRequest, request: Request
     try:
         glucose = float(fields["glucose_mg_dl"])
         measured = datetime.fromisoformat(fields["measured_at"])
-        if measured.tzinfo is None or not (20 <= glucose <= 600):
+        if measured.tzinfo is None or not (10 <= glucose <= 600):
             raise ValueError
     except (KeyError, TypeError, ValueError, OverflowError):
         raise HTTPException(status_code=422, detail="invalid_fields")

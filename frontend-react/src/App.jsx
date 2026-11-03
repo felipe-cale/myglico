@@ -21,10 +21,11 @@ function PageFallback() {
   return <div className="react-page" aria-busy="true" />;
 }
 
-function ProtectedRoute({ children, role }) {
+function ProtectedRoute({ children, role, glico = false }) {
   const { session, loading } = useAuth();
   if (loading) return <PageFallback />;
   if (!session?.authenticated) return <Navigate to="/login" replace />;
+  if (glico && !session.glicoEnabled) return <Navigate to="/dashboard" replace />;
   if (role && session.account?.roles && !session.account.roles.includes(role)) {
      return <Navigate to="/" replace />;
   }
@@ -47,7 +48,7 @@ function MainRoutes() {
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
         <Route path="/investigations/:id" element={<ProtectedRoute><InvestigationPage /></ProtectedRoute>} />
-        <Route path="/glico" element={<ProtectedRoute><GlicoAssistantPage /></ProtectedRoute>} />
+        <Route path="/glico" element={<ProtectedRoute glico><GlicoAssistantPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><OverviewPage /></ProtectedRoute>} />
         <Route path="/patients/:patientId" element={<ProtectedRoute><PatientDetailPage /></ProtectedRoute>} />
 

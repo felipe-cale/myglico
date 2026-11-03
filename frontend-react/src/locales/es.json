@@ -991,7 +991,7 @@
     "audioUnavailable": "Audio no disponible",
     "empty": "Pruebe: “glucosa 110 hoy a las 8h” o toque una pregunta frecuente.",
     "messageLabel": "Mensaje",
-    "placeholder": "Ej.: glucosa 110 mg/dL en ayunas",
+    "placeholder": "Ej.: mi medición dio 110",
     "send": "Enviar",
     "working": "Enviando…",
     "privacyNote": "El texto no se guarda como chat; solo se guarda la propuesta que usted confirme.",
@@ -1002,9 +1002,9 @@
     "userSaid": "Usted",
     "glicoSaid": "Glico",
     "reviewPrompt": "Entendí una medición. Revise los datos abajo antes de confirmar.",
-    "helpManual": "No pude entender una medición. Escriba el valor y la unidad, como “110 mg/dL”, o use el registro manual en el panel.",
+    "helpManual": "No pude entender una medición. Escriba algo como “mi medición dio 110” o use el registro manual en el panel.",
     "clarifySignal": "El medidor mostró “HI” o “LO”, fuera de su rango de medición (HI: por encima de 500 mg/dL). No registré nada. Mide de nuevo y, si tienes síntomas, busca atención médica.",
-    "clarifyMultiple": "Encontré más de un valor. Envía solo la glucemia con su unidad, como “110 mg/dL”.",
+    "clarifyMultiple": "Encontré más de un valor. Envía un solo valor de glucemia para preparar la confirmación.",
     "clarifyImage": "No pude leer la glucemia con seguridad en esta foto. Prueba con una foto más nítida y de frente del visor o escribe el valor, como “110 mg/dL”.",
     "helpDefault": "Puedo ayudar a registrar mediciones y a navegar por MyGlico.",
     "goDashboard": "Abrir el panel",
@@ -1047,7 +1047,7 @@
       "title": "Preguntas frecuentes",
       "howLog": {
         "q": "¿Cómo registro una medición?",
-        "a": "Escriba el valor con la unidad (ej.: 110 mg/dL), envíe una foto de la pantalla o grabe un audio. Usted revisa y confirma antes de guardar."
+        "a": "Escriba el valor (p. ej., 110 o “mi medición dio 110”), envíe una foto de la pantalla o grabe un audio. Usted revisa y confirma antes de guardar."
       },
       "privacy": {
         "q": "¿Qué pasa con mis fotos y audios?",
@@ -1164,7 +1164,7 @@
       "tooLarge": "El archivo es demasiado grande.",
       "unsupported": "Formato de archivo no admitido.",
       "ambiguous": "No pude leer un valor con seguridad. Pruebe otra foto/audio o escriba el valor.",
-      "invalidFields": "Revise los campos: la glucemia debe estar entre 20 y 600 mg/dL y la fecha es obligatoria.",
+      "invalidFields": "Revise los campos: la glucemia debe estar entre 10 y 600 mg/dL y la fecha es obligatoria.",
       "dictationUnavailable": "El dictado por voz no está disponible en este navegador.",
       "pickInvestigation": "Elige el cuestionamiento que quieres responder.",
       "dictationError": "No se pudo completar el dictado. Puede escribir el mensaje.",

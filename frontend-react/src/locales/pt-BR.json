@@ -991,7 +991,7 @@
     "audioUnavailable": "Áudio indisponível",
     "empty": "Experimente: “glicose 110 hoje às 8h” ou toque em uma pergunta frequente.",
     "messageLabel": "Mensagem",
-    "placeholder": "Ex.: glicose 110 mg/dL em jejum",
+    "placeholder": "Ex.: meu teste deu 110",
     "send": "Enviar",
     "working": "Enviando…",
     "privacyNote": "O texto não fica guardado como conversa; só a proposta que você confirmar é salva.",
@@ -1002,9 +1002,9 @@
     "userSaid": "Você",
     "glicoSaid": "Glico",
     "reviewPrompt": "Entendi uma medição. Revise os dados abaixo antes de confirmar.",
-    "helpManual": "Não consegui entender uma medição. Escreva o valor e a unidade, como “110 mg/dL”, ou use o registro manual no painel.",
+    "helpManual": "Não consegui entender uma medição. Escreva algo como “meu teste deu 110” ou use o registro manual no painel.",
     "clarifySignal": "O medidor mostrou “HI” ou “LO”, fora da faixa de medição (HI: acima de 500 mg/dL). Não registrei nada. Meça de novo e, se tiver sintomas, procure atendimento médico.",
-    "clarifyMultiple": "Encontrei mais de um valor. Informe só a glicemia com a unidade, como “110 mg/dL”.",
+    "clarifyMultiple": "Encontrei mais de um valor. Envie apenas um valor de glicemia para eu preparar a confirmação.",
     "clarifyImage": "Não consegui ler a glicemia com segurança nesta foto. Tente uma foto mais nítida e reta do visor ou digite o valor, como “110 mg/dL”.",
     "helpDefault": "Posso ajudar a registrar medições e a navegar pelo MyGlico.",
     "goDashboard": "Abrir o painel",
@@ -1047,7 +1047,7 @@
       "title": "Perguntas frequentes",
       "howLog": {
         "q": "Como registro uma medição?",
-        "a": "Escreva o valor com a unidade (ex.: 110 mg/dL), envie uma foto do visor ou grave um áudio. Você revisa e confirma antes de salvar."
+        "a": "Digite o valor (ex.: 110 ou “meu teste deu 110”), envie uma foto do visor ou grave um áudio. Você revisa e confirma antes de salvar."
       },
       "privacy": {
         "q": "O que acontece com minhas fotos e áudios?",
@@ -1164,7 +1164,7 @@
       "tooLarge": "O arquivo é grande demais.",
       "unsupported": "Formato de arquivo não suportado.",
       "ambiguous": "Não consegui ler um valor com segurança. Tente outra foto/áudio ou digite o valor.",
-      "invalidFields": "Verifique os campos: a glicemia deve estar entre 20 e 600 mg/dL e a data é obrigatória.",
+      "invalidFields": "Verifique os campos: a glicemia deve estar entre 10 e 600 mg/dL e a data é obrigatória.",
       "dictationUnavailable": "O ditado por voz não está disponível neste navegador.",
       "pickInvestigation": "Escolha o questionamento que você quer responder.",
       "dictationError": "Não foi possível concluir o ditado. Você pode digitar a mensagem.",

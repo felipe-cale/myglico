@@ -991,7 +991,7 @@
     "audioUnavailable": "Audio unavailable",
     "empty": "Try: “glucose 110 today at 8am” or tap a frequent question.",
     "messageLabel": "Message",
-    "placeholder": "E.g. fasting glucose 110 mg/dL",
+    "placeholder": "E.g. my reading was 110",
     "send": "Send",
     "working": "Sending…",
     "privacyNote": "Text is not kept as a chat; only the proposal you confirm is saved.",
@@ -1002,9 +1002,9 @@
     "userSaid": "You",
     "glicoSaid": "Glico",
     "reviewPrompt": "I understood a reading. Review the data below before confirming.",
-    "helpManual": "I could not understand a reading. Write the value and unit, like “110 mg/dL”, or use manual entry on the dashboard.",
+    "helpManual": "I could not understand a reading. Write something like “my reading was 110” or use manual entry on the dashboard.",
     "clarifySignal": "The meter showed “HI” or “LO”, which is outside its measuring range (HI: above 500 mg/dL). I did not record anything. Measure again and seek medical care if you have symptoms.",
-    "clarifyMultiple": "I found more than one value. Send only the glucose reading with its unit, such as “110 mg/dL”.",
+    "clarifyMultiple": "I found more than one value. Send a single glucose value so I can prepare it for confirmation.",
     "clarifyImage": "I could not read the glucose safely from this photo. Try a sharper, straight-on photo of the display or type the value, such as “110 mg/dL”.",
     "helpDefault": "I can help log readings and find your way around MyGlico.",
     "goDashboard": "Open the dashboard",
@@ -1047,7 +1047,7 @@
       "title": "Frequent questions",
       "howLog": {
         "q": "How do I log a reading?",
-        "a": "Write the value with the unit (e.g. 110 mg/dL), send a photo of the display or record audio. You review and confirm before saving."
+        "a": "Type the value (e.g. 110 or “my reading was 110”), send a photo of the display or record audio. You review and confirm before saving."
       },
       "privacy": {
         "q": "What happens to my photos and audio?",
@@ -1164,7 +1164,7 @@
       "tooLarge": "The file is too large.",
       "unsupported": "Unsupported file format.",
       "ambiguous": "I could not read a value with confidence. Try another photo/audio or type the value.",
-      "invalidFields": "Check the fields: glucose must be between 20 and 600 mg/dL and the date is required.",
+      "invalidFields": "Check the fields: glucose must be between 10 and 600 mg/dL and the date is required.",
       "dictationUnavailable": "Voice dictation is unavailable in this browser.",
       "pickInvestigation": "Pick the investigation you want to reply to.",
       "dictationError": "Dictation could not be completed. You can type your message.",

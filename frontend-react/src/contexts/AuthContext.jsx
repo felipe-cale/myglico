@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { fetchSession } from "../api";
+import { fetchGlicoCapabilities, fetchSession } from "../api";
 
 const AuthContext = createContext(null);
 
@@ -18,7 +18,10 @@ export function AuthProvider({ children }) {
   const refreshSession = async () => {
     try {
       const data = await fetchSession();
-      setSession(normalizeSession(data));
+      const capabilities = data?.authenticated
+        ? await fetchGlicoCapabilities("pt-BR").catch(() => null)
+        : null;
+      setSession({ ...normalizeSession(data), glicoEnabled: capabilities?.text === true });
     } catch (e) {
       setSession({ authenticated: false });
     } finally {

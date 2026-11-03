@@ -47,6 +47,71 @@ def _draft(actor, headers, conversation_id, context_version):
     return edit.json()["proposal"]
 
 
+@pytest.mark.parametrize("text,value", [
+    ("agora está 80", 80),
+    ("fiz o teste 116", 116),
+    ("10", 10),
+    ("hoje deu 500", 500),
+    ("agora está 110,5", 110.5),
+    ("10.5", 10.5),
+    ("em 03/11/2026 às 10:30 estava 80", 80),
+    ("em 2026-11-03 deu 116", 116),
+    ("em 03.11.2026 deu 116", 116),
+    ("em 03/11 às 10h30 estava 80", 80),
+])
+def test_glico_infers_one_unitless_reading_without_saving(world: World, db_session, text, value):
+    from app.models.entities import GlucoseRecord
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    response = patient.client.post(f"/api/glico/conversations/{conversation_id}/messages",
+        headers=headers, json={"text": text, "context_version": version,
+                              "client_request_id": str(uuid.uuid4())})
+    assert response.status_code == 200, response.text
+    proposal = response.json()["proposal"]
+    assert proposal["state"] == "READY"
+    assert proposal["fields"]["glucose_mg_dl"] == value
+    assert proposal["fields"]["original_unit"] == "mg/dL"
+    assert db_session.scalar(select(func.count()).select_from(GlucoseRecord)
+                             .where(GlucoseRecord.patient_id == patient.id)) == 0
+
+
+@pytest.mark.parametrize("text", [
+    "03/11/2026", "2026-11-03", "03.11.2026", "03/11", "às 10:30", "às 10h30",
+    "agora está 9", "agora está 501", "-80", "paciente80", "8000",
+    "antes 80 e agora 116",
+])
+def test_glico_does_not_guess_dates_or_ambiguous_readings(world: World, text):
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    response = patient.client.post(f"/api/glico/conversations/{conversation_id}/messages",
+        headers=headers, json={"text": text, "context_version": version,
+                              "client_request_id": str(uuid.uuid4())})
+    assert response.status_code == 200, response.text
+    assert response.json()["type"] != "proposal"
+
+
+def test_glico_low_reading_can_be_edited_and_saved_only_after_confirmation(world: World, db_session):
+    from app.models.entities import GlucoseRecord
+    patient = world.patient()
+    headers = _csrf(patient)
+    conversation_id, version = _conversation(patient, headers)
+    response = _post_text(patient, headers, conversation_id, version, "agora está 10")
+    proposal = response.json()["proposal"]
+    edited = patient.client.patch(f"/api/glico/proposals/{proposal['id']}", headers=headers,
+        json={"version": proposal["version"], "context_version": version,
+              "fields": {"glucose_mg_dl": 19}})
+    assert edited.status_code == 200, edited.text
+    proposal = edited.json()["proposal"]
+    confirmed = patient.client.post(f"/api/glico/proposals/{proposal['id']}/confirm", headers=headers,
+        json={"version": proposal["version"], "context_version": version,
+              "idempotency_key": str(uuid.uuid4())})
+    assert confirmed.status_code == 200, confirmed.text
+    record = db_session.scalar(select(GlucoseRecord).where(GlucoseRecord.patient_id == patient.id))
+    assert record.glucose_mg_dl == 19
+
+
 def test_glico_csrf_is_required_and_payload_rejects_identity_fields(world: World):
     patient = world.patient()
     response = patient.client.post("/api/glico/conversations", json={
@@ -710,7 +775,7 @@ def test_global_media_quota_serializes_concurrent_accounts(world: World):
         assert db.get(GlicoGlobalQuota, "image").reserved == 0
 
 
-@pytest.mark.parametrize("value", [19, 601])
+@pytest.mark.parametrize("value", [9, 601])
 def test_text_readings_outside_physiological_range_only_clarify(world: World, value):
     patient = world.patient()
     headers = _csrf(patient)
@@ -962,7 +1027,7 @@ def test_model_reading_intent_still_ends_in_a_reviewable_proposal(llm):
 
 
 def test_model_cannot_invent_a_value_the_user_did_not_type(llm):
-    response = llm.say("minha glicose deu 132", {
+    response = llm.say("qual foi o valor da minha glicose?", {
         "intent": "record_reading", "glucose_value": 150.0, "unit": "mg/dL", "reply": ""})
     assert response.status_code == 200
     assert response.json()["type"] != "proposal"
@@ -1195,8 +1260,8 @@ class _TrustingSettings:
         return True if name == "trust_forwarded_proto" else getattr(self._real, name)
 
 
-@pytest.mark.parametrize("text,mg_dl", [("53", 53.0), ("35", 35.0), (" 118. ", 118.0), ("5,6", 100.9)])
-def test_a_bare_number_in_the_glucose_chat_is_a_reading_with_inferred_unit(world: World, text, mg_dl):
+@pytest.mark.parametrize("text,mg_dl", [("53", 53.0), ("35", 35.0), (" 118. ", 118.0), ("5,6 mmol/L", 100.9)])
+def test_numeric_readings_use_mg_dl_unless_unit_is_explicit(world: World, text, mg_dl):
     patient = world.patient()
     headers = _csrf(patient)
     conversation_id, version = _conversation(patient, headers)
@@ -1204,7 +1269,7 @@ def test_a_bare_number_in_the_glucose_chat_is_a_reading_with_inferred_unit(world
     assert body["type"] == "proposal" and body["proposal"]["fields"]["glucose_mg_dl"] == mg_dl
 
 
-@pytest.mark.parametrize("text", ["2", "700", "30 dias", "faz 30 dias", "1.2.3"])
+@pytest.mark.parametrize("text", ["2", "5,6", "700", "1.2.3"])
 def test_other_short_texts_are_not_turned_into_readings(world: World, text):
     patient = world.patient()
     headers = _csrf(patient)
