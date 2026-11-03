@@ -1002,7 +1002,7 @@
     "userSaid": "You",
     "glicoSaid": "Glico",
     "reviewPrompt": "I understood a reading. Review the data below before confirming.",
-    "helpManual": "I could not understand a reading. Write something like “my reading was 110” or use manual entry on the dashboard.",
+    "helpManual": "I couldn't find a glucose reading to record. Enter a number from 10 to 500; I'll treat it as mg/dL and ask you to confirm before saving. Example: “my reading was 110”.",
     "clarifySignal": "The meter showed “HI” or “LO”, which is outside its measuring range (HI: above 500 mg/dL). I did not record anything. Measure again and seek medical care if you have symptoms.",
     "clarifyMultiple": "I found more than one value. Send a single glucose value so I can prepare it for confirmation.",
     "clarifyImage": "I could not read the glucose safely from this photo. Try a sharper, straight-on photo of the display or type the value, such as “110 mg/dL”.",

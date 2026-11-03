@@ -1002,7 +1002,7 @@
     "userSaid": "Você",
     "glicoSaid": "Glico",
     "reviewPrompt": "Entendi uma medição. Revise os dados abaixo antes de confirmar.",
-    "helpManual": "Não consegui entender uma medição. Escreva algo como “meu teste deu 110” ou use o registro manual no painel.",
+    "helpManual": "Não encontrei um valor de glicemia para registrar. Digite um número entre 10 e 500; vou considerar mg/dL e pedir sua confirmação antes de salvar. Exemplo: “meu teste deu 110”.",
     "clarifySignal": "O medidor mostrou “HI” ou “LO”, fora da faixa de medição (HI: acima de 500 mg/dL). Não registrei nada. Meça de novo e, se tiver sintomas, procure atendimento médico.",
     "clarifyMultiple": "Encontrei mais de um valor. Envie apenas um valor de glicemia para eu preparar a confirmação.",
     "clarifyImage": "Não consegui ler a glicemia com segurança nesta foto. Tente uma foto mais nítida e reta do visor ou digite o valor, como “110 mg/dL”.",

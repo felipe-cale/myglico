@@ -1002,7 +1002,7 @@
     "userSaid": "Usted",
     "glicoSaid": "Glico",
     "reviewPrompt": "Entendí una medición. Revise los datos abajo antes de confirmar.",
-    "helpManual": "No pude entender una medición. Escriba algo como “mi medición dio 110” o use el registro manual en el panel.",
+    "helpManual": "No encontré un valor de glucosa para registrar. Escribe un número entre 10 y 500; lo tomaré como mg/dL y te pediré confirmación antes de guardarlo. Ejemplo: “mi prueba dio 110”.",
     "clarifySignal": "El medidor mostró “HI” o “LO”, fuera de su rango de medición (HI: por encima de 500 mg/dL). No registré nada. Mide de nuevo y, si tienes síntomas, busca atención médica.",
     "clarifyMultiple": "Encontré más de un valor. Envía un solo valor de glucemia para preparar la confirmación.",
     "clarifyImage": "No pude leer la glucemia con seguridad en esta foto. Prueba con una foto más nítida y de frente del visor o escribe el valor, como “110 mg/dL”.",
