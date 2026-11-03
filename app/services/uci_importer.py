@@ -263,9 +263,9 @@ def _add_quality_issue(
     db.add(
         DataQualityIssue(
             source_type="dataset",
-            import_batch_id=import_batch.id,
-            patient_id=patient.id if patient else None,
-            raw_import_record_id=raw_record.id if raw_record else None,
+            import_batch=import_batch,
+            patient=patient,
+            raw_import_record=raw_record,
             severity=severity,
             issue_type=issue_type,
             description=description,
@@ -315,8 +315,9 @@ def import_uci_diabetes(db: Session, skip_if_loaded: bool = True) -> tuple[Impor
 
             parts = line.split("\t")
             raw_record = RawImportRecord(
-                import_batch_id=import_batch.id,
-                patient_id=patient.id,
+                id=str(uuid4()),
+                import_batch=import_batch,
+                patient=patient,
                 source_file=patient_file.name,
                 source_line=source_line,
                 raw_payload=line,
@@ -326,7 +327,6 @@ def import_uci_diabetes(db: Session, skip_if_loaded: bool = True) -> tuple[Impor
                 raw_value=parts[3] if len(parts) >= 4 else None,
             )
             db.add(raw_record)
-            db.flush()
             raw_count += 1
 
             if len(parts) != 4:
@@ -445,20 +445,20 @@ def import_uci_diabetes(db: Session, skip_if_loaded: bool = True) -> tuple[Impor
 
             if normalized_payload["is_glucose"] and normalized_payload["glucose_mg_dl"] is not None:
                 glucose_record = GlucoseRecord(
-                    patient_id=patient.id,
+                    id=str(uuid4()),
+                    patient=patient,
                     measured_at=local_datetime_to_utc_naive(occurred_at, patient.timezone),
                     glucose_mg_dl=float(normalized_payload["glucose_mg_dl"]),
                     context_label=normalized_payload["context_label"],
                     notes=quality_note or None,
                 )
                 db.add(glucose_record)
-                db.flush()
                 db.add(
                     GlucoseRecordSource(
-                        glucose_record_id=glucose_record.id,
+                        glucose_record=glucose_record,
                         source_type="dataset",
-                        import_batch_id=import_batch.id,
-                        raw_import_record_id=raw_record.id,
+                        import_batch=import_batch,
+                        raw_import_record=raw_record,
                         entered_at=datetime.utcnow(),
                         transformation_rule=str(normalized_payload["transformation_rule"]),
                         metadata_json={
@@ -513,6 +513,8 @@ def import_uci_diabetes(db: Session, skip_if_loaded: bool = True) -> tuple[Impor
                 "More than half of the glucose events align with canonical logical slots (08:00, 12:00, 18:00, 22:00).",
                 "slot_alignment_ratio",
             )
+        # Flush per patient to bound MySQL batches without per-record round trips.
+        db.flush()
 
     for patient_id, target_date in dirty_days:
         db.add(
