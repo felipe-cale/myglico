@@ -242,23 +242,44 @@ def investigation_list(
     return items, total, current_page
 
 
-def unread_message_count(db: Session, principal: SessionPrincipal) -> int:
+def _unread_message_query(principal: SessionPrincipal):
     role, domain_id = _actor(principal)
-    if role == "PATIENT":
-        items = db.scalars(select(Investigation).where(Investigation.patient_id == domain_id)).all()
-    else:
-        items = db.scalars(select(Investigation).join(
-            PatientDoctorLink, PatientDoctorLink.id == Investigation.association_id,
-        ).where(Investigation.doctor_id == domain_id, PatientDoctorLink.status == "ACTIVE")).all()
-    total = 0
-    for item in items:
-        position = db.get(InvestigationReadPosition, (item.id, role, domain_id))
-        total += db.scalar(select(func.count(InvestigationMessage.id)).where(
-            InvestigationMessage.investigation_id == item.id,
+    query = (
+        select(func.count(InvestigationMessage.id))
+        .select_from(InvestigationMessage)
+        .join(Investigation, Investigation.id == InvestigationMessage.investigation_id)
+        .outerjoin(InvestigationReadPosition, (
+            (InvestigationReadPosition.investigation_id == Investigation.id)
+            & (InvestigationReadPosition.participant_role == role)
+            & (InvestigationReadPosition.participant_domain_id == domain_id)
+        ))
+        .where(
             InvestigationMessage.author_role != role,
-            InvestigationMessage.sequence > (position.last_read_sequence if position else 0),
-        )) or 0
-    return total
+            InvestigationMessage.sequence > func.coalesce(InvestigationReadPosition.last_read_sequence, 0),
+        )
+    )
+    if role == "PATIENT":
+        return query.where(Investigation.patient_id == domain_id)
+    return query.join(PatientDoctorLink, PatientDoctorLink.id == Investigation.association_id).where(
+        Investigation.doctor_id == domain_id, PatientDoctorLink.status == "ACTIVE",
+    )
+
+
+def unread_message_count(db: Session, principal: SessionPrincipal) -> int:
+    return db.scalar(_unread_message_query(principal)) or 0
+
+
+def notification_unread_summary(db: Session, principal: SessionPrincipal) -> dict[str, int]:
+    notification_count = select(func.count(Notification.id)).where(
+        Notification.recipient_user_account_id == principal.account.id,
+        Notification.read_at.is_(None),
+    )
+    # Only counters are needed for the badges; never load notification or message bodies.
+    row = db.execute(select(
+        notification_count.scalar_subquery().label("notifications_unread"),
+        _unread_message_query(principal).scalar_subquery().label("messages_unread"),
+    )).mappings().one()
+    return dict(row)
 
 
 def investigation_detail(

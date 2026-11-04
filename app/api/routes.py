@@ -40,7 +40,7 @@ from app.services.doctor_links import (
 from app.services.investigations import (
     InvestigationConflict, InvestigationNotFound, advance_read_position,
     append_message, close_investigation, defer_prompt, defer_prompt_batch, investigation_detail,
-    investigation_list, open_investigation, unread_message_count,
+    investigation_list, open_investigation, notification_unread_summary,
 )
 from app.services.manual_entry import create_manual_glucose_record
 from app.services.reports import (
@@ -532,9 +532,7 @@ def api_notifications(
 def api_notification_unread_summary(
     principal: SessionPrincipal = Depends(require_session), db: Session = Depends(get_db),
 ) -> dict[str, int]:
-    _notifications, notification_count, _total, _page = notification_list(db, principal.account.id, unread_only=True)
-    return {"notifications_unread": notification_count,
-            "messages_unread": unread_message_count(db, principal)}
+    return notification_unread_summary(db, principal)
 
 
 @router.post("/api/notifications/{notification_id}/read")
