@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.crypto import encrypt_field
 from app.models.entities import Doctor, Notification, NotificationOutbox, Patient, PatientDoctorLink, ProvenanceEvent
@@ -272,7 +272,8 @@ def list_links(
         )) or 0
         current_page = preceding // page_size + 1
     items = list(db.scalars(
-        query.order_by(PatientDoctorLink.requested_at.desc(), PatientDoctorLink.id)
+        query.options(joinedload(PatientDoctorLink.doctor), joinedload(PatientDoctorLink.patient))
+        .order_by(PatientDoctorLink.requested_at.desc(), PatientDoctorLink.id)
         .offset((current_page - 1) * page_size).limit(page_size)
     ))
     return items, total, current_page
