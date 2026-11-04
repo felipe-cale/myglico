@@ -222,6 +222,60 @@ def get_dashboard_summary(db: Session) -> dict[str, object]:
     }
 
 
+def _patient_metric_summaries(db: Session, patient_ids: list[str]) -> dict[str, dict]:
+    rows = db.execute(
+        select(
+            DailyMetricsCurrent.patient_id,
+            func.count(DailyMetricsCurrent.id),
+            func.avg(DailyMetricsCurrent.avg_glucose),
+            func.avg(DailyMetricsCurrent.pct_hypo),
+            func.avg(DailyMetricsCurrent.pct_hyper),
+        )
+        .where(DailyMetricsCurrent.patient_id.in_(patient_ids))
+        .group_by(DailyMetricsCurrent.patient_id)
+    ).all()
+    return {
+        patient_id: {
+            "days_observed": days,
+            "avg_glucose": round(average, 2) if average is not None else None,
+            "pct_hypo": round(hypo, 2) if hypo is not None else 0.0,
+            "pct_hyper": round(hyper, 2) if hyper is not None else 0.0,
+        }
+        for patient_id, days, average, hypo, hyper in rows
+    }
+
+
+def _page_anomaly_counts(db: Session, patient_ids: list[str]) -> dict[str, int]:
+    # Rank runs per patient, including newer patient-scoped runs with no output.
+    contains_patient = select(DailyIndicator.id).where(
+        DailyIndicator.analysis_run_id == AnalysisRun.id,
+        DailyIndicator.patient_id == Patient.id,
+    ).correlate(AnalysisRun, Patient).exists()
+    ranked_runs = (
+        select(
+            Patient.id.label("patient_id"), AnalysisRun.id.label("run_id"),
+            func.row_number().over(
+                partition_by=Patient.id,
+                order_by=(AnalysisRun.finished_at.desc(), AnalysisRun.created_at.desc()),
+            ).label("position"),
+        )
+        .select_from(Patient)
+        .join(AnalysisRun, or_(AnalysisRun.patient_id == Patient.id, contains_patient))
+        .where(Patient.id.in_(patient_ids), AnalysisRun.status == "completed")
+        .subquery()
+    )
+    return dict(db.execute(
+        select(ranked_runs.c.patient_id, func.count(DailyIndicator.id))
+        .outerjoin(DailyIndicator, (
+            (DailyIndicator.analysis_run_id == ranked_runs.c.run_id)
+            & (DailyIndicator.patient_id == ranked_runs.c.patient_id)
+            & DailyIndicator.anomaly_flag.is_(True)
+        ))
+        .where(ranked_runs.c.position == 1)
+        .group_by(ranked_runs.c.patient_id)
+    ).all())
+
+
 def get_paginated_patients(
     db: Session,
     page: int = 1,
@@ -236,94 +290,65 @@ def get_paginated_patients(
     normalized_signal = (signal or "all").strip().lower()
     normalized_query = (query or "").strip().lower()
 
-    # Patient.name is decrypted at the application boundary and is not a SQL
-    # column; order by the stable internal key rather than ciphertext.
     patient_query = select(Patient).order_by(Patient.id)
     if patient_id is not None:
         patient_query = patient_query.where(Patient.id == patient_id)
     if patient_ids is not None:
         patient_query = patient_query.where(Patient.id.in_(patient_ids))
-    patients = db.scalars(patient_query).all()
-
-    patient_rows: list[dict[str, object]] = []
-    if patients:
-        patient_ids = [patient.id for patient in patients]
-        metrics_by_patient: dict[str, list[DailyMetricsCurrent]] = {}
-        metrics = db.scalars(
-            select(DailyMetricsCurrent)
-            .where(DailyMetricsCurrent.patient_id.in_(patient_ids))
-            .order_by(DailyMetricsCurrent.patient_id, DailyMetricsCurrent.metric_date)
-        ).all()
-        for metric in metrics:
-            metrics_by_patient.setdefault(metric.patient_id, []).append(metric)
-
-        anomaly_by_patient: dict[str, int] = {}
-        for patient in patients:
-            patient_run = get_latest_patient_analytics_run(db, patient.id)
-            if patient_run is not None:
-                anomaly_by_patient[patient.id] = int(db.scalar(
-                    select(func.count(DailyIndicator.id)).where(
-                        DailyIndicator.analysis_run_id == patient_run.id,
-                        DailyIndicator.patient_id == patient.id,
-                        DailyIndicator.anomaly_flag.is_(True),
-                    )
-                ) or 0)
-
-        for patient in patients:
-            patient_metrics = metrics_by_patient.get(patient.id, [])
-            average_glucose = (
-                round(mean([row.avg_glucose for row in patient_metrics if row.avg_glucose is not None]), 2)
-                if patient_metrics
-                else None
-            )
-            hypo_rate = round(mean([row.pct_hypo for row in patient_metrics]), 2) if patient_metrics else 0.0
-            hyper_rate = round(mean([row.pct_hyper for row in patient_metrics]), 2) if patient_metrics else 0.0
-            patient_signal = _patient_signal(average_glucose, hypo_rate, hyper_rate)
-            patient_rows.append(
-                {
-                    "id": patient.id,
-                    "short_id": patient.short_id,
-                    "display_name": patient.name,
-                    "name": patient.name,
-                    "email": patient.email,
-                    "source_file": patient.source_file,
-                    "days_observed": len(patient_metrics),
-                    "avg_glucose": average_glucose,
-                    "pct_hypo": hypo_rate,
-                    "pct_hyper": hyper_rate,
-                    "anomaly_days": anomaly_by_patient.get(patient.id, 0),
-                    "signal_code": patient_signal["code"],
-                    "signal_label": patient_signal["label"],
-                    "signal_tone": patient_signal["tone"],
-                }
-            )
 
     if normalized_query:
-        patient_rows = [
-            row
-            for row in patient_rows
-            if normalized_query in (row["display_name"] or "").lower()
-            or normalized_query in (row["email"] or "").lower()
-            or normalized_query in str(row["short_id"]).lower()
-        ]
+        # Substring searches on encrypted identity fields require decryption.
+        # Only inspect authorized identities; metrics and sources stay unloaded.
+        matches = [patient.id for patient in db.scalars(patient_query)
+                   if normalized_query in patient.name.lower()
+                   or normalized_query in (patient.email or "").lower()
+                   or normalized_query in patient.short_id.lower()]
+        patient_query = patient_query.where(Patient.id.in_(matches))
 
+    summaries = None
     if normalized_signal != "all":
-        patient_rows = [row for row in patient_rows if row["signal_code"] == normalized_signal]
+        candidates = list(db.scalars(patient_query.with_only_columns(Patient.id)))
+        summaries = _patient_metric_summaries(db, candidates)
+        matches = []
+        for candidate_id in candidates:
+            values = summaries.get(candidate_id, {})
+            if _patient_signal(values.get("avg_glucose"), values.get("pct_hypo"),
+                               values.get("pct_hyper"))["code"] == normalized_signal:
+                matches.append(candidate_id)
+        patient_query = patient_query.where(Patient.id.in_(matches))
 
-    total = len(patient_rows)
-    pages = max(1, ceil(total / safe_page_size)) if total else 1
+    total = db.scalar(select(func.count()).select_from(patient_query.order_by(None).subquery())) or 0
+    pages = max(1, ceil(total / safe_page_size))
     current_page = min(safe_page, pages)
-    offset = (current_page - 1) * safe_page_size
-    paginated_rows = patient_rows[offset : offset + safe_page_size]
+    patients = list(db.scalars(
+        patient_query.options(selectinload(Patient.source_links))
+        .offset((current_page - 1) * safe_page_size).limit(safe_page_size)
+    ))
+    page_ids = [patient.id for patient in patients]
+    if summaries is None:
+        summaries = _patient_metric_summaries(db, page_ids) if page_ids else {}
+    anomalies = _page_anomaly_counts(db, page_ids) if page_ids else {}
+
+    patient_rows = []
+    for patient in patients:
+        values = summaries.get(patient.id, {
+            "days_observed": 0, "avg_glucose": None, "pct_hypo": 0.0, "pct_hyper": 0.0,
+        })
+        patient_signal = _patient_signal(values["avg_glucose"], values["pct_hypo"], values["pct_hyper"])
+        name = patient.name
+        patient_rows.append({
+            "id": patient.id, "short_id": patient.short_id,
+            "display_name": name, "name": name, "email": patient.email,
+            "source_file": patient.source_file, **values,
+            "anomaly_days": anomalies.get(patient.id, 0),
+            "signal_code": patient_signal["code"], "signal_label": patient_signal["label"],
+            "signal_tone": patient_signal["tone"],
+        })
 
     return {
-        "patients": paginated_rows,
-        "count": total,
-        "page": current_page,
-        "page_size": safe_page_size,
-        "pages": pages,
-        "query": query or "",
-        "signal": normalized_signal,
+        "patients": patient_rows, "count": total, "page": current_page,
+        "page_size": safe_page_size, "pages": pages,
+        "query": query or "", "signal": normalized_signal,
     }
 
 
